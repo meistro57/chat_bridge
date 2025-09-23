@@ -1,88 +1,93 @@
 # chat_bridge_roles.py
 """
-Chat Bridge (Roles Edition) — OpenAI ↔ Anthropic with role file support
+Chat Bridge (Roles Edition) — bring two configurable AI personas into dialogue.
 
-What you get:
-  • Reads a JSON roles file (default: roles.json) before the session.
-  • Uses roles to set system prompts per agent (OpenAI + Anthropic).
-  • Streams tokens live, saves a Markdown transcript per session.
-  • Logs to SQLite (bridge.db) and per-session .log.
-  • Anthropic messages→completions streaming fallback.
-
-CLI:
-  python chat_bridge_roles.py --roles roles.json --max-rounds 60 --mem-rounds 12
+Highlights:
+  • Reads a roles JSON file to set providers, models, system prompts, and guard rails.
+  • Supports OpenAI, Anthropic, Gemini, Ollama, and LM Studio on either side.
+  • Interactive provider/model picker plus CLI overrides for scripted runs.
+  • Persists transcripts, SQLite logs, and per-session log files.
+  • Shares provider adapters and versioning with the pro edition.
 """
 
-import os
-import sys
-import re
-import json
-import sqlite3
-import asyncio
-import logging
-import contextlib
+from __future__ import annotations
+
 import argparse
-from datetime import datetime
+import asyncio
+import contextlib
+import json
+import logging
+import os
+import re
+import sqlite3
+import sys
 from dataclasses import dataclass, field
-from typing import AsyncGenerator, Dict, List, Tuple, Optional
-
-import httpx
-from dotenv import load_dotenv
+from datetime import datetime
 from difflib import SequenceMatcher
+from typing import AsyncGenerator, Dict, Iterable, List, Optional, Tuple
 
-# ───────────────────────── Env ─────────────────────────
+from dotenv import load_dotenv
+
+from bridge_agents import (
+    AgentRuntime,
+    Turn,
+    STALL_TIMEOUT_SEC,
+    create_agent,
+    get_spec,
+    provider_choices,
+    resolve_model,
+)
+from version import __version__
+
+
+# ───────────────────────── Config / Env ─────────────────────────
 
 load_dotenv()
 
-OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
-ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-DEFAULT_OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-DEFAULT_ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet")
+DEFAULT_PROVIDER_A = os.getenv("BRIDGE_PROVIDER_A", "openai")
+DEFAULT_PROVIDER_B = os.getenv("BRIDGE_PROVIDER_B", "anthropic")
 
-if not OPENAI_KEY or not ANTHROPIC_KEY:
-    print("ERROR: Missing OPENAI_API_KEY or ANTHROPIC_API_KEY in .env")
-    sys.exit(1)
-
-# ───────────────────────── Paths ─────────────────────────
+STOP_WORDS_DEFAULT = {"goodbye", "end chat", "terminate", "stop", "that is all"}
+REPEAT_WINDOW = 6
+REPEAT_THRESHOLD = 0.92
 
 DB_PATH = "bridge.db"
 GLOBAL_LOG = "chat_bridge.log"
 TRANSCRIPTS_DIR = "transcripts"
 SESSION_LOGS_DIR = "logs"
 
-# ───────────────────────── Defaults ─────────────────────────
-
-STOP_WORDS_DEFAULT = {"goodbye", "end chat", "terminate", "stop", "that is all"}
-STALL_TIMEOUT_SEC = 90
-REPEAT_WINDOW = 6
-REPEAT_THRESHOLD = 0.92
-
 DEFAULT_ROLES = {
-    "openai": {
-        "system": "You are ChatGPT. Be concise, helpful, truthful, and witty. Prioritise verifiable facts and clear reasoning.",
+    "agent_a": {
+        "provider": "openai",
+        "model": None,
+        "system": "You are ChatGPT. Be concise, truthful, and witty.",
         "guidelines": [
-            "If asked for probabilities, explain your methodology and uncertainty.",
-            "Prefer examples and citations where appropriate.",
-        ]
+            "Cite sources or examples when you make factual claims.",
+            "Favour clear structure and highlight key takeaways early.",
+        ],
     },
-    "anthropic": {
-        "system": "You are Claude. Be concise, compassionate, truthful, and reflective. Balance clarity with nuance.",
+    "agent_b": {
+        "provider": "anthropic",
+        "model": None,
+        "system": "You are Claude. Be nuanced, compassionate, and rigorous.",
         "guidelines": [
-            "Surface connections across traditions and viewpoints where helpful.",
-            "Avoid speculation without stating uncertainty and alternatives.",
-        ]
+            "Surface competing perspectives fairly before choosing a stance.",
+            "Make uncertainty explicit and flag assumptions.",
+        ],
     },
-    # Optional extras in the roles file; read if present
-    # "stop_words": ["goodbye", "wrap up"],
-    # "temp_a": 0.7,
-    # "temp_b": 0.7
+    "stop_words": ["wrap up", "end chat", "terminate"],
+    "temp_a": 0.7,
+    "temp_b": 0.7,
 }
+
 
 # ───────────────────────── Utilities ─────────────────────────
 
-def ensure_dirs():
+
+def ensure_dirs() -> None:
     os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
     os.makedirs(SESSION_LOGS_DIR, exist_ok=True)
+
 
 def safe_slug(text: str, max_len: int = 80) -> str:
     text = " ".join(text.strip().split())
@@ -91,11 +96,14 @@ def safe_slug(text: str, max_len: int = 80) -> str:
     text = re.sub(r"\s+", "-", text)
     return text[:max_len] if text else "session"
 
+
 def now_stamp() -> str:
     return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+
 def similar(a: str, b: str) -> float:
     return SequenceMatcher(None, a, b).ratio()
+
 
 def is_repetitive(history: List[str], window: int = REPEAT_WINDOW, threshold: float = REPEAT_THRESHOLD) -> bool:
     recent = history[-window:]
@@ -103,106 +111,92 @@ def is_repetitive(history: List[str], window: int = REPEAT_WINDOW, threshold: fl
         return False
     pairs: List[Tuple[str, str]] = []
     for i in range(len(recent) - 1):
-        pairs.append((recent[i], recent[i+1]))
+        pairs.append((recent[i], recent[i + 1]))
     for i in range(len(recent) - 2):
-        pairs.append((recent[i], recent[i+2]))
+        pairs.append((recent[i], recent[i + 2]))
     scores = [similar(x, y) for x, y in pairs]
     if not scores:
         return False
     high = [s for s in scores if s >= threshold]
     return len(high) >= max(2, len(scores) // 2)
 
-def setup_global_logging():
+
+def contains_stop_word(text: str, stop_words: Iterable[str]) -> bool:
+    lower = text.lower()
+    return any(sw in lower for sw in stop_words)
+
+
+# ───────────────────────── Logging ─────────────────────────
+
+
+def setup_global_logging() -> None:
     logging.basicConfig(
         filename=GLOBAL_LOG,
         level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s"
+        format="%(asctime)s %(levelname)s %(message)s",
     )
+
 
 def make_session_logger(path: str) -> logging.Logger:
     logger = logging.getLogger(f"session_{os.path.basename(path)}")
     logger.setLevel(logging.INFO)
-    if not any(isinstance(h, logging.FileHandler) and h.baseFilename == os.path.abspath(path)
-               for h in logger.handlers):
-        fh = logging.FileHandler(path, encoding="utf-8")
-        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-        logger.addHandler(fh)
+    if not any(
+        isinstance(h, logging.FileHandler) and h.baseFilename == os.path.abspath(path)
+        for h in logger.handlers
+    ):
+        handler = logging.FileHandler(path, encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        logger.addHandler(handler)
     return logger
 
-# ───────────────────────── Roles loader ─────────────────────────
-
-def load_roles(path: str) -> Dict:
-    """
-    Loads roles JSON. If missing, writes DEFAULT_ROLES to that path and returns it.
-    Validates basic structure and merges missing fields with defaults.
-    """
-    roles = {}
-    if not os.path.exists(path):
-        # create a default roles file so users can edit it
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(DEFAULT_ROLES, f, indent=2)
-        roles = DEFAULT_ROLES
-    else:
-        with open(path, "r", encoding="utf-8") as f:
-            roles = json.load(f)
-
-    # Merge with defaults (shallow)
-    merged = DEFAULT_ROLES.copy()
-    merged.update(roles or {})
-    # ensure sub-keys exist
-    if "openai" not in merged: merged["openai"] = DEFAULT_ROLES["openai"]
-    if "anthropic" not in merged: merged["anthropic"] = DEFAULT_ROLES["anthropic"]
-    merged["openai"].setdefault("system", DEFAULT_ROLES["openai"]["system"])
-    merged["openai"].setdefault("guidelines", DEFAULT_ROLES["openai"]["guidelines"])
-    merged["anthropic"].setdefault("system", DEFAULT_ROLES["anthropic"]["system"])
-    merged["anthropic"].setdefault("guidelines", DEFAULT_ROLES["anthropic"]["guidelines"])
-    return merged
-
-def combine_system(system: str, guidelines: List[str]) -> str:
-    if not guidelines:
-        return system
-    return system.strip() + "\n\n" + "\n".join(f"- {g}" for g in guidelines)
 
 # ───────────────────────── SQLite ─────────────────────────
+
 
 def init_db(path: str = DB_PATH) -> None:
     con = sqlite3.connect(path)
     cur = con.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS conversations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        openai_model TEXT,
-        anthropic_model TEXT,
-        starter TEXT
-    );
-    """)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        conversation_id INTEGER,
-        provider TEXT,
-        role TEXT,
-        content TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        tokens_est INTEGER,
-        FOREIGN KEY(conversation_id) REFERENCES conversations(id)
-    );
-    """)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            openai_model TEXT,
+            anthropic_model TEXT,
+            starter TEXT
+        );
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER,
+            provider TEXT,
+            role TEXT,
+            content TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            tokens_est INTEGER,
+            FOREIGN KEY(conversation_id) REFERENCES conversations(id)
+        );
+        """
+    )
     con.commit()
     con.close()
 
-def create_conversation(openai_model: str, anthropic_model: str, starter: str) -> int:
+
+def create_conversation(agent_a: AgentRuntime, agent_b: AgentRuntime, starter: str) -> int:
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
     cur.execute(
         "INSERT INTO conversations(openai_model, anthropic_model, starter) VALUES (?, ?, ?);",
-        (openai_model, anthropic_model, starter)
+        (agent_a.identifier, agent_b.identifier, starter),
     )
     con.commit()
     cid = cur.lastrowid
     con.close()
     return cid
+
 
 def log_message_sql(cid: int, provider: str, role: str, content: str) -> None:
     con = sqlite3.connect(DB_PATH)
@@ -210,185 +204,117 @@ def log_message_sql(cid: int, provider: str, role: str, content: str) -> None:
     tokens_est = max(1, len(content.split()))
     cur.execute(
         "INSERT INTO messages(conversation_id, provider, role, content, tokens_est) VALUES (?, ?, ?, ?, ?);",
-        (cid, provider, role, content, tokens_est)
+        (cid, provider, role, content, tokens_est),
     )
     con.commit()
     con.close()
 
-# ───────────────────────── Providers (streaming) ─────────────────────────
 
-class OpenAIChat:
-    def __init__(self, api_key: str, model: str):
-        self.key = api_key
-        self.model = model
-        self.base_url = "https://api.openai.com/v1/chat/completions"
-        self.headers = {"Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
+# ───────────────────────── Roles handling ─────────────────────────
 
-    async def stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: int = 800
-                     ) -> AsyncGenerator[str, None]:
-        payload = {"model": self.model, "messages": messages, "temperature": temperature, "stream": True, "max_tokens": max_tokens}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            async with client.stream("POST", self.base_url, headers=self.headers, json=payload) as r:
-                r.raise_for_status()
-                async for line in r.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        data = line[6:].strip()
-                        if data == "[DONE]":
-                            break
-                        with contextlib.suppress(Exception):
-                            obj = json.loads(data)
-                            delta = obj["choices"][0]["delta"].get("content")
-                            if delta:
-                                yield delta
 
-class AnthropicChat:
-    """
-    Adaptive: try /v1/messages (SSE). On 404/405 or request errors, fall back to /v1/complete (SSE).
-    """
-    def __init__(self, api_key: str, model: str):
-        self.key = api_key
-        self.model = model
-        self.base_messages = "https://api.anthropic.com/v1/messages"
-        self.base_complete = "https://api.anthropic.com/v1/complete"
-        self.msg_headers = {
-            "x-api-key": self.key, "anthropic-version": "2023-06-01",
-            "content-type": "application/json", "accept": "text/event-stream"
+def write_default_roles(path: str) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(DEFAULT_ROLES, handle, indent=2)
+
+
+def clean_override(value: Optional[str]) -> Optional[str]:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def convert_legacy_roles(data: Dict) -> Dict:
+    converted = {"agent_a": {}, "agent_b": {}}
+    openai_cfg = data.get("openai", {})
+    anthro_cfg = data.get("anthropic", {})
+    converted["agent_a"].update(
+        {
+            "provider": "openai",
+            "system": openai_cfg.get("system"),
+            "guidelines": openai_cfg.get("guidelines"),
         }
-        self.cpl_headers = {"x-api-key": self.key, "content-type": "application/json", "accept": "text/event-stream"}
+    )
+    converted["agent_b"].update(
+        {
+            "provider": "anthropic",
+            "system": anthro_cfg.get("system"),
+            "guidelines": anthro_cfg.get("guidelines"),
+        }
+    )
+    if "stop_words" in data:
+        converted["stop_words"] = data["stop_words"]
+    if "temp_a" in data:
+        converted["temp_a"] = data["temp_a"]
+    if "temp_b" in data:
+        converted["temp_b"] = data["temp_b"]
+    return converted
 
-    @staticmethod
-    def _to_prompt_from_messages(system_prompt: str, anthro_msgs: List[Dict[str, str]]) -> str:
-        lines: List[str] = []
-        if system_prompt:
-            lines.append(f"[System]: {system_prompt}")
-        for item in anthro_msgs:
-            role = item.get("role", "user")
-            parts = []
-            for blk in item.get("content", []):
-                if blk.get("type") == "text":
-                    parts.append(blk.get("text", ""))
-            text = "\n".join(parts).strip()
-            if not text:
-                continue
-            if role == "user":
-                lines.append(f"[User (ChatGPT)]: {text}")
-            else:
-                lines.append(f"[Assistant (Claude)]: {text}")
-        lines.append("\n[Assistant (Claude)]:")
-        return "\n".join(lines)
 
-    async def _stream_messages(self, system_prompt: str, messages_for_claude: List[Dict[str, str]],
-                               temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
-        payload = {"model": self.model, "system": system_prompt, "max_tokens": max_tokens,
-                   "temperature": temperature, "messages": messages_for_claude, "stream": True}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            async with client.stream("POST", self.base_messages, headers=self.msg_headers, json=payload) as r:
-                if r.status_code in (404, 405):
-                    text = await r.aread()
-                    raise httpx.HTTPStatusError("Messages unsupported; fallback.", request=r.request, response=r)
-                r.raise_for_status()
-                async for raw in r.aiter_lines():
-                    if not raw:
-                        continue
-                    if raw.startswith("data: "):
-                        data = raw[6:].strip()
-                        if data == "[DONE]":
-                            break
-                        with contextlib.suppress(Exception):
-                            obj = json.loads(data)
-                            if obj.get("type") in ("content_block_delta", "content_block"):
-                                delta = obj.get("delta", {})
-                                if delta.get("type") == "text_delta":
-                                    txt = delta.get("text")
-                                    if txt:
-                                        yield txt
+def merge_roles(data: Dict) -> Dict:
+    merged = json.loads(json.dumps(DEFAULT_ROLES))  # deep copy via json
+    merged.update({k: v for k, v in data.items() if k not in {"agent_a", "agent_b"}})
+    for agent_key in ("agent_a", "agent_b"):
+        merged_agent = merged[agent_key]
+        incoming = data.get(agent_key, {})
+        if incoming:
+            merged_agent.update({k: v for k, v in incoming.items() if v is not None})
+        merged_agent.setdefault("guidelines", [])
+    return merged
 
-    async def _stream_complete(self, prompt: str, temperature: float, max_tokens: int
-                               ) -> AsyncGenerator[str, None]:
-        payload = {"model": self.model, "prompt": prompt, "max_tokens_to_sample": max_tokens,
-                   "temperature": temperature, "stream": True}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            async with client.stream("POST", self.base_complete, headers=self.cpl_headers, json=payload) as r:
-                r.raise_for_status()
-                async for raw in r.aiter_lines():
-                    if not raw:
-                        continue
-                    if raw.startswith("data: "):
-                        data = raw[6:].strip()
-                        if data == "[DONE]":
-                            break
-                        with contextlib.suppress(Exception):
-                            obj = json.loads(data)
-                            if "completion" in obj:
-                                txt = obj.get("completion")
-                                if txt:
-                                    yield txt
-                            elif obj.get("type") == "completion" and "delta" in obj:
-                                delta = obj["delta"]
-                                if isinstance(delta, str):
-                                    yield delta
 
-    async def stream(self, system_prompt: str, messages_for_claude: List[Dict[str, str]],
-                     temperature: float = 0.7, max_tokens: int = 800) -> AsyncGenerator[str, None]:
-        try:
-            async for piece in self._stream_messages(system_prompt, messages_for_claude, temperature, max_tokens):
-                yield piece
-            return
-        except httpx.HTTPStatusError as e:
-            if e.response is None or e.response.status_code not in (404, 405):
-                raise
-        except httpx.RequestError:
-            pass
-        prompt = self._to_prompt_from_messages(system_prompt, messages_for_claude)
-        async for piece in self._stream_complete(prompt, temperature, max_tokens):
-            yield piece
+def load_roles(path: str) -> Dict:
+    if not os.path.exists(path):
+        write_default_roles(path)
+        return json.loads(json.dumps(DEFAULT_ROLES))
+    with open(path, "r", encoding="utf-8") as handle:
+        raw = json.load(handle)
+    if "agent_a" not in raw and "agent_b" not in raw:
+        raw = convert_legacy_roles(raw)
+    return merge_roles(raw)
 
-# ───────────────────────── Conversation state ─────────────────────────
+
+def combine_system(system: Optional[str], guidelines: Iterable[str]) -> str:
+    base = (system or "").strip()
+    extras = [g.strip() for g in guidelines if isinstance(g, str) and g.strip()]
+    if extras:
+        extra_text = "\n".join(f"- {g}" for g in extras)
+        base = f"{base}\n\n{extra_text}" if base else extra_text
+    return base or "You are an AI assistant."
+
+
+# ───────────────────────── Conversation helpers ─────────────────────────
+
 
 @dataclass
-class History:
-    msgs_openai: List[Dict[str, str]] = field(default_factory=list)
-    msgs_anthropic: List[Dict[str, str]] = field(default_factory=list)
+class ConversationHistory:
+    turns: List[Turn] = field(default_factory=list)
     flat_texts: List[str] = field(default_factory=list)
 
-    def add_openai(self, role: str, content: str) -> None:
-        self.msgs_openai.append({"role": role, "content": content})
-        self.flat_texts.append(content)
+    def add_turn(self, author: str, text: str) -> None:
+        self.turns.append(Turn(author=author, text=text))
+        self.flat_texts.append(text)
 
-    def add_anthropic(self, role: str, content: str) -> None:
-        self.msgs_anthropic.append({"role": role, "content": [{"type": "text", "text": content}]})
-        self.flat_texts.append(content)
-
-    def tail_openai(self, n: int) -> List[Dict[str, str]]:
-        msgs = self.msgs_openai
-        if msgs and msgs[0]["role"] == "system":
-            head = [msgs[0]]
-            body = msgs[1:]
-            return head + body[-n:]
-        return msgs[-n:]
-
-    def tail_anthropic(self, n: int) -> List[Dict[str, str]]:
-        return self.msgs_anthropic[-n:]
-
-# ───────────────────────── Transcript ─────────────────────────
 
 @dataclass
 class Transcript:
     lines: List[str] = field(default_factory=list)
-    def start(self, conv_id: int, started_at: str, openai_model: str, anthropic_model: str, starter: str):
+
+    def start(self, conv_id: int, started_at: str, starter: str, agent_a: AgentRuntime, agent_b: AgentRuntime) -> None:
         self.lines.append(f"# Conversation {conv_id}: {starter}\n")
         self.lines.append(f"*Started at {started_at}*  ")
-        self.lines.append(f"*OpenAI model: {openai_model}, Anthropic model: {anthropic_model}*\n")
-    def add(self, provider: str, role: str, timestamp: str, text: str):
-        who = f"{provider.capitalize()} ({role})"
-        self.lines.append(f"**{who}** [{timestamp}]:\n\n{text}\n")
-    def dump(self, path: str):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n\n".join(self.lines))
+        self.lines.append(
+            f"*{agent_tag(agent_a)}: {agent_a.model} | {agent_tag(agent_b)}: {agent_b.model}*\n"
+        )
 
-# ───────────────────────── Streaming collector ─────────────────────────
+    def add(self, actor_label: str, role: str, timestamp: str, text: str) -> None:
+        who = f"{actor_label} ({role})"
+        self.lines.append(f"**{who}** [{timestamp}]:\n\n{text}\n")
+
+    def dump(self, path: str) -> None:
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("\n\n".join(self.lines))
+
 
 async def stream_collect(gen: AsyncGenerator[str, None]) -> str:
     chunks: List[str] = []
@@ -398,158 +324,284 @@ async def stream_collect(gen: AsyncGenerator[str, None]) -> str:
     print()
     return "".join(chunks).strip()
 
+
+def agent_tag(agent: AgentRuntime) -> str:
+    side = "A" if agent.agent_id == "a" else "B"
+    return f"Agent {side} – {agent.label}"
+
+
+def list_providers() -> List[str]:
+    return provider_choices()
+
+
+def parse_provider_choice(value: str, options: List[str]) -> Optional[str]:
+    cleaned = value.strip().lower()
+    if not cleaned:
+        return None
+    if cleaned.isdigit():
+        idx = int(cleaned) - 1
+        if 0 <= idx < len(options):
+            return options[idx]
+        return None
+    if cleaned in options:
+        return cleaned
+    return None
+
+
+def interactive_provider_selection(
+    provider_a: str,
+    provider_b: str,
+    model_a: str,
+    model_b: str,
+) -> Tuple[str, str, str, str]:
+    options = list_providers()
+    print("\nAvailable providers:")
+    for idx, key in enumerate(options, start=1):
+        spec = get_spec(key)
+        print(f"  {idx}) {spec.label:<9} – default model: {spec.default_model} | {spec.description}")
+
+    spec_a = get_spec(provider_a)
+    spec_b = get_spec(provider_b)
+    print(
+        f"Current selection → Agent A: {spec_a.label} ({model_a}), Agent B: {spec_b.label} ({model_b})"
+    )
+    choice = input("Choose providers as 'A,B' or press Enter to keep: ").strip()
+
+    prev_a, prev_b = provider_a, provider_b
+    if choice:
+        parts = [p.strip() for p in choice.split(",") if p.strip()]
+        if len(parts) == 2:
+            maybe_a = parse_provider_choice(parts[0], options)
+            maybe_b = parse_provider_choice(parts[1], options)
+            if maybe_a:
+                provider_a = maybe_a
+            else:
+                print("⚠️  Invalid Agent A provider selection; keeping previous value.")
+            if maybe_b:
+                provider_b = maybe_b
+            else:
+                print("⚠️  Invalid Agent B provider selection; keeping previous value.")
+        else:
+            print("⚠️  Expected two comma-separated choices. Keeping existing providers.")
+
+    if provider_a != prev_a:
+        model_a = resolve_model(provider_a, override=None, agent_env="BRIDGE_MODEL_A")
+        print(f"Agent A switched to {get_spec(provider_a).label}. Using model {model_a}.")
+    if provider_b != prev_b:
+        model_b = resolve_model(provider_b, override=None, agent_env="BRIDGE_MODEL_B")
+        print(f"Agent B switched to {get_spec(provider_b).label}. Using model {model_b}.")
+
+    override_a = input(f"Agent A model override [{model_a}]: ").strip()
+    if override_a:
+        model_a = override_a
+    override_b = input(f"Agent B model override [{model_b}]: ").strip()
+    if override_b:
+        model_b = override_b
+
+    return provider_a, provider_b, model_a, model_b
+
+
 # ───────────────────────── Runner ─────────────────────────
 
-async def run_bridge(args):
+
+async def run_bridge(args) -> None:
     ensure_dirs()
     setup_global_logging()
     init_db()
 
-    # Load roles (create default if missing)
     roles = load_roles(args.roles)
-    # Merge optional overrides
-    stop_words = set(STOP_WORDS_DEFAULT)
-    if isinstance(roles.get("stop_words"), list):
-        stop_words |= {w.strip().lower() for w in roles["stop_words"] if isinstance(w, str) and w.strip()}
+
+    role_provider_a = clean_override(roles["agent_a"].get("provider"))
+    role_provider_b = clean_override(roles["agent_b"].get("provider"))
+
+    provider_a = args.provider_a if args.provider_a != DEFAULT_PROVIDER_A else (role_provider_a or args.provider_a)
+    provider_b = args.provider_b if args.provider_b != DEFAULT_PROVIDER_B else (role_provider_b or args.provider_b)
+
+    role_model_a = clean_override(roles["agent_a"].get("model"))
+    role_model_b = clean_override(roles["agent_b"].get("model"))
+
+    model_a = resolve_model(provider_a, override=args.model_a or role_model_a, agent_env="BRIDGE_MODEL_A")
+    model_b = resolve_model(provider_b, override=args.model_b or role_model_b, agent_env="BRIDGE_MODEL_B")
+
     temp_a = float(roles.get("temp_a", args.temp_a))
     temp_b = float(roles.get("temp_b", args.temp_b))
 
-    # Compose system prompts from roles
-    sys_openai = combine_system(roles["openai"]["system"], roles["openai"].get("guidelines", []))
-    sys_anthropic = combine_system(roles["anthropic"]["system"], roles["anthropic"].get("guidelines", []))
+    stop_words = set(STOP_WORDS_DEFAULT)
+    if isinstance(roles.get("stop_words"), list):
+        stop_words |= {w.strip().lower() for w in roles["stop_words"] if isinstance(w, str) and w.strip()}
 
-    # Starter
+    sys_a = combine_system(roles["agent_a"].get("system"), roles["agent_a"].get("guidelines", []))
+    sys_b = combine_system(roles["agent_b"].get("system"), roles["agent_b"].get("guidelines", []))
+
     starter = input("Starter prompt (blank = default): ").strip()
     if not starter:
-        starter = "Compare how different traditions define awakening. Cite examples and disagreements."
+        starter = "Compare how different traditions define awakening. Cite disagreements and convergences."
 
-    # Filenames
+    provider_a, provider_b, model_a, model_b = interactive_provider_selection(
+        provider_a, provider_b, model_a, model_b
+    )
+
+    try:
+        agent_a = create_agent("a", provider_a, model_a, temp_a, sys_a)
+        agent_b = create_agent("b", provider_b, model_b, temp_b, sys_b)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}")
+        sys.exit(1)
+
     ts = now_stamp()
     slug = safe_slug(starter)
     md_path = os.path.join(TRANSCRIPTS_DIR, f"{ts}__{slug}.md")
     session_log_path = os.path.join(SESSION_LOGS_DIR, f"{ts}__{slug}.log")
     session_logger = make_session_logger(session_log_path)
 
-    # Providers
-    openai = OpenAIChat(OPENAI_KEY, args.openai_model)
-    claude = AnthropicChat(ANTHROPIC_KEY, args.anthropic_model)
+    cid = create_conversation(agent_a, agent_b, starter)
 
-    # DB
-    cid = create_conversation(args.openai_model, args.anthropic_model, starter)
+    history = ConversationHistory()
+    history.add_turn("human", starter)
+    log_message_sql(cid, agent_a.provider_key, "user", starter)
 
-    # History with role-driven system messages
-    history = History()
-    history.add_openai("system", sys_openai)
-    claude_system = sys_anthropic  # used directly in Anthropic Messages API
-
-    # Seed first user message to OpenAI
-    history.add_openai("user", starter)
-    log_message_sql(cid, "openai", "user", starter)
-
-    # Transcript header
     started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     transcript = Transcript()
-    transcript.start(cid, started_at, args.openai_model, args.anthropic_model, starter)
-    transcript.add("openai", "user", started_at, starter)
+    transcript.start(cid, started_at, starter, agent_a, agent_b)
+    transcript.add(agent_tag(agent_a), "user", started_at, starter)
 
-    print(f"\nRoles loaded from: {os.path.abspath(args.roles)}")
-    print(f"OpenAI system prompt (first 140 chars): {sys_openai[:140]!r}")
-    print(f"Anthropic system prompt (first 140 chars): {sys_anthropic[:140]!r}")
-    print(f"\nTranscript: {md_path}\nSession log: {session_log_path}\n")
+    print(f"\nChat Bridge Roles v{__version__}")
+    print(f"Roles loaded from: {os.path.abspath(args.roles)}")
+    print(f"Agent A system preview: {sys_a[:140]!r}")
+    print(f"Agent B system preview: {sys_b[:140]!r}")
+    print(f"Transcript: {md_path}\nSession log: {session_log_path}\n")
 
-    current = "openai"
+    agents: Dict[str, AgentRuntime] = {"a": agent_a, "b": agent_b}
+    current_id = "a"
     rounds = 0
+    bridge_logger = logging.getLogger("bridge")
 
     try:
         while rounds < args.max_rounds:
             rounds += 1
             print(f"\n—— Round {rounds} ——")
 
-            # Loop detector
             if is_repetitive(history.flat_texts):
                 print("⚠️  Loop detected. Stopping.")
                 break
 
-            if current == "openai":
-                print("[OpenAI] ", end="", flush=True)
-                messages = history.tail_openai(args.mem_rounds)
-                gen = openai.stream(messages, temperature=temp_a)
+            agent = agents[current_id]
+            label = agent_tag(agent)
+            print(f"[{label}] ", end="", flush=True)
+
+            gen = agent.stream_reply(history.turns, args.mem_rounds)
+            try:
                 reply = await asyncio.wait_for(stream_collect(gen), timeout=STALL_TIMEOUT_SEC)
-                if not reply:
-                    print("…(no reply from OpenAI)")
-                    break
-                log_message_sql(cid, "openai", "assistant", reply)
-                history.add_openai("assistant", reply)
-                history.add_anthropic("user", reply)
+            except asyncio.TimeoutError:
+                print("…timeout waiting for response.")
+                break
 
-                nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                transcript.add("openai", "assistant", nowt, reply)
-                session_logger.info(f"OpenAI assistant: {reply[:4000]}")
-                if any(sw in reply.lower() for sw in stop_words):
-                    print("🛑 Stop word detected (OpenAI). Ending chat.")
-                    break
+            if not reply:
+                print("…(no reply)")
+                break
 
-                current = "anthropic"
+            log_message_sql(cid, agent.provider_key, "assistant", reply)
+            history.add_turn(agent.agent_id, reply)
 
-            else:
-                print("[Anthropic] ", end="", flush=True)
-                anthro_msgs = history.tail_anthropic(args.mem_rounds)
-                gen = claude.stream(
-                    system_prompt=claude_system,
-                    messages_for_claude=anthro_msgs,
-                    temperature=temp_b
-                )
-                reply = await asyncio.wait_for(stream_collect(gen), timeout=STALL_TIMEOUT_SEC)
-                if not reply:
-                    print("…(no reply from Anthropic)")
-                    break
-                log_message_sql(cid, "anthropic", "assistant", reply)
-                history.add_anthropic("assistant", reply)
-                history.add_openai("user", reply)
+            nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            transcript.add(label, "assistant", nowt, reply)
+            session_logger.info(f"{label}: {reply[:5000]}")
 
-                nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                transcript.add("anthropic", "assistant", nowt, reply)
-                session_logger.info(f"Anthropic assistant: {reply[:4000]}")
-                if any(sw in reply.lower() for sw in stop_words):
-                    print("🛑 Stop word detected (Anthropic). Ending chat.")
-                    break
+            if contains_stop_word(reply, stop_words):
+                print("🛑 Stop word detected. Ending chat.")
+                break
 
-                current = "openai"
+            current_id = "b" if current_id == "a" else "a"
 
             if is_repetitive(history.flat_texts):
                 print("⚠️  Loop detected after this round. Stopping.")
                 break
 
-        print(f"\nFinished.\nMarkdown: {md_path}\nLogs: {session_log_path}  |  Global: {GLOBAL_LOG}")
+        print(
+            f"\nFinished.\nMarkdown: {md_path}\nLogs: {session_log_path}  |  Global: {GLOBAL_LOG}"
+        )
 
     except KeyboardInterrupt:
         print("\nInterrupted by you. Cheerio.")
-    except asyncio.TimeoutError:
-        print("\n⏱️  A provider stalled beyond timeout. Stopping.")
-    except Exception as e:
-        logging.getLogger("bridge").exception("Unhandled error: %s", e)
-        print(f"\nUnexpected error: {e}")
+    except Exception as exc:
+        bridge_logger.exception("Unhandled error: %s", exc)
+        print(f"\nUnexpected error: {exc}")
     finally:
-        try:
+        with contextlib.suppress(Exception):
             transcript.dump(md_path)
-        except Exception as e:
-            print(f"Failed to write transcript: {e}")
+
 
 # ───────────────────────── CLI ─────────────────────────
 
+
 def parse_args():
-    p = argparse.ArgumentParser(description="OpenAI ↔ Anthropic chat bridge with role file support.")
-    p.add_argument("--roles", type=str, default="roles.json", help="Path to roles JSON file.")
-    p.add_argument("--max-rounds", type=int, default=30, help="Max total replies across both agents.")
-    p.add_argument("--mem-rounds", type=int, default=8, help="How many recent turns each side sees.")
-    p.add_argument("--openai-model", type=str, default=DEFAULT_OPENAI_MODEL, help="OpenAI chat model.")
-    p.add_argument("--anthropic-model", type=str, default=DEFAULT_ANTHROPIC_MODEL, help="Anthropic model.")
-    p.add_argument("--temp-a", type=float, default=0.7, help="Temperature for OpenAI (overridable via roles file).")
-    p.add_argument("--temp-b", type=float, default=0.7, help="Temperature for Anthropic (overridable via roles file).")
-    return p.parse_args()
+    choices = list_providers()
+    parser = argparse.ArgumentParser(
+        description="Role-driven Chat Bridge supporting multiple AI providers."
+    )
+    parser.add_argument("--roles", type=str, default="roles.json", help="Path to roles JSON file.")
+    parser.add_argument("--max-rounds", type=int, default=30, help="Max total replies across both agents.")
+    parser.add_argument("--mem-rounds", type=int, default=8, help="How many recent turns each side sees.")
+    parser.add_argument(
+        "--provider-a",
+        choices=choices,
+        default=DEFAULT_PROVIDER_A,
+        help="Provider override for Agent A.",
+    )
+    parser.add_argument(
+        "--provider-b",
+        choices=choices,
+        default=DEFAULT_PROVIDER_B,
+        help="Provider override for Agent B.",
+    )
+    parser.add_argument(
+        "--model-a",
+        dest="model_a",
+        type=str,
+        default=None,
+        help="Model override for Agent A.",
+    )
+    parser.add_argument(
+        "--model-b",
+        dest="model_b",
+        type=str,
+        default=None,
+        help="Model override for Agent B.",
+    )
+    parser.add_argument(
+        "--openai-model",
+        dest="model_a",
+        type=str,
+        default=None,
+        help="Alias for --model-a (legacy).",
+    )
+    parser.add_argument(
+        "--anthropic-model",
+        dest="model_b",
+        type=str,
+        default=None,
+        help="Alias for --model-b (legacy).",
+    )
+    parser.add_argument(
+        "--temp-a",
+        type=float,
+        default=0.7,
+        help="Temperature for Agent A (overridden by roles temp_a).",
+    )
+    parser.add_argument(
+        "--temp-b",
+        type=float,
+        default=0.7,
+        help="Temperature for Agent B (overridden by roles temp_b).",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    return parser.parse_args()
+
 
 # ───────────────────────── Entry ─────────────────────────
 
+
 if __name__ == "__main__":
-    args = parse_args()
-    asyncio.run(run_bridge(args))
+    arguments = parse_args()
+    asyncio.run(run_bridge(arguments))
+
