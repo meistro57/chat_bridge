@@ -1,79 +1,97 @@
-# chat_bridge
+# Chat Bridge
 
-# Chat Bridge Pro
+A small toolkit for watching OpenAI's ChatGPT and Anthropic's Claude talk to each other. The project currently ships with two entrypoints:
 
-*OpenAI ↔ Anthropic conversational bridge*
+- **`chat_bridge_pro.py`** – the "classic" bridge with default personas for both models.
+- **`chat_bridge_roles.py`** – a variant that reads rich role definitions from `roles.json` before the session starts.
 
-# Overview
+Both scripts stream tokens live to the terminal, log every exchange to SQLite, and emit a Markdown transcript that you can review later.
 
-This script creates a direct, turn-based conversation between **OpenAI (ChatGPT)** and **Anthropic (Claude)**. It streams tokens live, logs each session into a SQLite database, and automatically saves a **Markdown transcript** for easy reading.
+## Features at a Glance
 
-Think of it as a digital “chatroom” where two AIs can bounce ideas back and forth, while you watch, log, and analyze.
+- **Live streaming:** watch both assistants type in real time.
+- **Persistent history:** conversations are saved to `bridge.db` and summarised per-turn in Markdown transcripts.
+- **Session artefacts:** alongside the transcript you also get an optional per-session `.log` file and an append-only `chat_bridge.log`.
+- **Loop + stop detection:** automatic safeguards stop the run if the models repeat themselves or hit predefined stop phrases.
+- **Anthropic fallback:** seamlessly downgrades from the Anthropic Messages API to the older Completions API when required.
 
-# Features
+## Requirements
 
-* **Live streaming**: Tokens print in real time for both sides.
-* **Dual logging**:
-   * SQLite database (`bridge.db`) stores structured turns.
-   * Per-session Markdown transcript in `transcripts/`.
-* **Session isolation**: Each starter prompt creates its own `.md` transcript and `.log` file.
-* **Loop detector**: Stops if the conversation repeats itself.
-* **Stop words**: Ends gracefully if either model outputs “stop”, “terminate”, etc.
-* **Adaptive Anthropic client**: Works with both the `/v1/messages` API and the older `/v1/complete`.
+- Python 3.10 or newer.
+- API keys for both OpenAI and Anthropic.
+- The packages listed below (installable via `pip`).
 
-# Setup
+## Setup
 
-1. Clone or copy the repo.
-2. Create a virtual environment:python -m venv .venv .\\.venv\\Scripts\\activate  # Windows # or source .venv/bin/activate  # Linux/Mac
-3. Install dependencies:pip install httpx python-dotenv
-4. Create a `.env` file with your API keys:OPENAI\_API\_KEY=sk-... ANTHROPIC\_API\_KEY=ak-...
+1. Clone the repository.
+2. Create a virtual environment (optional but recommended):
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Windows: .venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install httpx python-dotenv
+   ```
+4. Create a `.env` file alongside the scripts and add your keys:
+   ```bash
+   OPENAI_API_KEY=sk-...
+   ANTHROPIC_API_KEY=ak-...
+   # Optional overrides
+   OPENAI_MODEL=gpt-4o-mini
+   ANTHROPIC_MODEL=claude-3-5-sonnet
+   ```
 
-# Usage
+## Running the Bridge
 
-Run the script:
+### Default personas (`chat_bridge_pro.py`)
 
-    python chat_bridge_pro.py --max-rounds 60 --mem-rounds 12
+```bash
+python chat_bridge_pro.py --max-rounds 60 --mem-rounds 12
+```
 
-You’ll be prompted for a **starter prompt**. The two models then alternate messages until:
+You'll be prompted for the starter message. The bridge alternates between ChatGPT and Claude until it reaches the round limit, encounters a stop word, or detects a loop.
 
-* max rounds is reached,
-* a stop word is detected, or
-* a loop is detected.
+### Role-driven personas (`chat_bridge_roles.py`)
 
-# CLI Options
+```bash
+python chat_bridge_roles.py --roles roles.json --max-rounds 60 --mem-rounds 12
+```
 
-* `--max-rounds` → maximum number of replies (default: 30)
-* `--mem-rounds` → how many recent turns each side “remembers” (default: 8)
-* `--openai-model` → override default model (default: gpt-4o-mini)
-* `--anthropic-model` → override default model (default: claude-3-5-sonnet)
-* `--temp-a` → temperature for OpenAI (default: 0.7)
-* `--temp-b` → temperature for Anthropic (default: 0.7)
+This variant loads structured instructions from `roles.json` before the chat begins, allowing you to tailor system prompts, guidelines, stop words, and default temperatures. See [docs/roles.md](docs/roles.md) for the JSON schema and customisation tips.
 
-# Outputs
+### Shared CLI options
 
-* **Markdown transcript** Saved in `transcripts/<timestamp>__<starter-slug>.md` Contains the full dialogue in clean, human-readable form.
-* **Session log** Saved in `logs/<timestamp>__<starter-slug>.log` Contains request IDs, errors, and debug info.
-* **Global log** Appended to `chat_bridge.log`.
-* **SQLite DB** `bridge.db` holds all structured conversation data:
-   * `conversations` table → session metadata
-   * `messages` table → each turn of dialogue
+- `--max-rounds` – maximum number of assistant replies across the session (default: `30`).
+- `--mem-rounds` – how many recent turns each provider can see (default: `8`).
+- `--openai-model` – override the OpenAI model name (default: `gpt-4o-mini` or the `OPENAI_MODEL` env var).
+- `--anthropic-model` – override the Anthropic model (default: `claude-3-5-sonnet` or the `ANTHROPIC_MODEL` env var).
+- `--temp-a` / `--temp-b` – sampling temperature for OpenAI and Anthropic respectively (default: `0.7`).
+- `--roles` – path to a roles JSON file (roles edition only).
 
-# Running Longer Sessions
+## Outputs & Logs
 
-To stretch conversations:
+Each session produces several artefacts:
 
-* Increase `--max-rounds` (e.g., `--max-rounds 200`).
-* Increase `--mem-rounds` if you want more context remembered (12–20 is a good sweet spot).
-* Be mindful of API token limits (OpenAI \~128k tokens, Anthropic \~200k). For ultra-long chats, use the **auto-summariser** version of the script.
+- `transcripts/<timestamp>__<starter-slug>.md` – the human-readable dialogue.
+- `logs/<timestamp>__<starter-slug>.log` – optional structured session log.
+- `chat_bridge.log` – append-only global log capturing request IDs and errors.
+- `bridge.db` – SQLite database containing conversation metadata and turn-by-turn content.
 
-# Example
+Legacy transcripts from earlier experiments may be stored in `chatlogs/`; current scripts write to `transcripts/` automatically.
 
-    python chat_bridge_pro.py --max-rounds 100 --mem-rounds 16
+## Running Longer Sessions
 
-Starter prompt:
+To keep the conversation going:
 
-    What do you think is the meaning behind human life?
+- Increase `--max-rounds` (e.g. `--max-rounds 200`).
+- Raise `--mem-rounds` if you want each model to retain more context (values between 12–20 work well).
+- Monitor your token budgets: OpenAI models typically cap around 128k tokens, Anthropic models around 200k.
 
-Transcript saved to:
+## Troubleshooting
 
-    transcripts/2025-09-22_09-51-42__what-do-you-think-is-the-meaning-behind-human-life.md
+- The scripts will abort if either model outputs a stop phrase (configurable via roles.json in the roles edition).
+- A stall longer than 90 seconds triggers a timeout and exits gracefully.
+- Check the per-session log and the global `chat_bridge.log` for API request IDs and error details.
+
+Happy bridging!
