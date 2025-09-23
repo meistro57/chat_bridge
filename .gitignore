@@ -1,0 +1,2 @@
+# Ignore conversation transcripts captured outside the automated transcripts/ directory
+chatlogs/
