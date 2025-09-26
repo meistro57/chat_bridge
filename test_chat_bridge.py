@@ -349,6 +349,149 @@ class TestRolesAndPersonas(unittest.TestCase):
         result = chat_bridge.apply_persona(mock_agent, None, {})
         self.assertEqual(result, mock_agent)
 
+    def test_roles_json_structure(self):
+        """Test the actual roles.json file has correct structure and valid data"""
+        roles_file_path = os.path.join(os.path.dirname(__file__), 'roles.json')
+
+        # Test file exists
+        self.assertTrue(os.path.exists(roles_file_path), "roles.json file should exist")
+
+        # Test file is valid JSON
+        try:
+            with open(roles_file_path, 'r') as f:
+                roles_data = json.load(f)
+        except json.JSONDecodeError as e:
+            self.fail(f"roles.json contains invalid JSON: {e}")
+
+        # Test required top-level keys exist
+        required_keys = ['agent_a', 'agent_b', 'persona_library', 'stop_words', 'temp_a', 'temp_b']
+        for key in required_keys:
+            self.assertIn(key, roles_data, f"Missing required key: {key}")
+
+        # Test agent_a and agent_b structure
+        for agent_key in ['agent_a', 'agent_b']:
+            agent = roles_data[agent_key]
+            self.assertIsInstance(agent, dict, f"{agent_key} should be a dictionary")
+            self.assertIn('provider', agent, f"{agent_key} missing 'provider' field")
+            self.assertIn('system', agent, f"{agent_key} missing 'system' field")
+            self.assertIn('guidelines', agent, f"{agent_key} missing 'guidelines' field")
+
+            # Validate provider is a string
+            self.assertIsInstance(agent['provider'], str, f"{agent_key} provider should be string")
+
+            # Validate system is a string
+            self.assertIsInstance(agent['system'], str, f"{agent_key} system should be string")
+
+            # Validate guidelines is a list
+            self.assertIsInstance(agent['guidelines'], list, f"{agent_key} guidelines should be list")
+
+        # Test persona_library structure
+        persona_lib = roles_data['persona_library']
+        self.assertIsInstance(persona_lib, dict, "persona_library should be a dictionary")
+
+        # Test each persona has required fields
+        for persona_name, persona_data in persona_lib.items():
+            self.assertIsInstance(persona_data, dict, f"Persona {persona_name} should be a dictionary")
+            self.assertIn('provider', persona_data, f"Persona {persona_name} missing 'provider' field")
+            self.assertIn('system', persona_data, f"Persona {persona_name} missing 'system' field")
+            self.assertIn('guidelines', persona_data, f"Persona {persona_name} missing 'guidelines' field")
+
+            # Validate types
+            self.assertIsInstance(persona_data['provider'], str, f"Persona {persona_name} provider should be string")
+            self.assertIsInstance(persona_data['system'], str, f"Persona {persona_name} system should be string")
+            self.assertIsInstance(persona_data['guidelines'], list, f"Persona {persona_name} guidelines should be list")
+
+        # Test stop_words is a list
+        self.assertIsInstance(roles_data['stop_words'], list, "stop_words should be a list")
+
+        # Test temperature values are valid numbers
+        self.assertIsInstance(roles_data['temp_a'], (int, float), "temp_a should be a number")
+        self.assertIsInstance(roles_data['temp_b'], (int, float), "temp_b should be a number")
+        self.assertTrue(0 <= roles_data['temp_a'] <= 2, "temp_a should be between 0 and 2")
+        self.assertTrue(0 <= roles_data['temp_b'] <= 2, "temp_b should be between 0 and 2")
+
+    def test_save_roles_file(self):
+        """Test saving roles data to file"""
+        test_data = {
+            "agent_a": {
+                "provider": "openai",
+                "system": "Test system prompt",
+                "guidelines": ["Test guideline"]
+            },
+            "persona_library": {},
+            "temp_a": 0.5,
+            "temp_b": 0.8
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            temp_path = f.name
+
+        try:
+            # Test successful save
+            result = chat_bridge.save_roles_file(test_data, temp_path)
+            self.assertTrue(result, "save_roles_file should return True on success")
+
+            # Verify file was created and contains correct data
+            self.assertTrue(os.path.exists(temp_path), "File should exist after save")
+
+            with open(temp_path, 'r') as f:
+                saved_data = json.load(f)
+
+            self.assertEqual(saved_data, test_data, "Saved data should match original")
+
+            # Test save to invalid path (should return False)
+            result = chat_bridge.save_roles_file(test_data, "/invalid/path/file.json")
+            self.assertFalse(result, "save_roles_file should return False on error")
+
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+
+    def test_ping_provider_exists(self):
+        """Test that ping_provider function exists and has correct signature"""
+        import inspect
+
+        # Test function exists
+        self.assertTrue(hasattr(chat_bridge, 'ping_provider'))
+
+        # Test function is a coroutine
+        self.assertTrue(inspect.iscoroutinefunction(chat_bridge.ping_provider))
+
+        # Test provider_ping_menu exists
+        self.assertTrue(hasattr(chat_bridge, 'provider_ping_menu'))
+        self.assertTrue(inspect.iscoroutinefunction(chat_bridge.provider_ping_menu))
+
+    def test_show_provider_status_summary(self):
+        """Test provider status summary formatting"""
+        test_results = {
+            "openai": {
+                "provider": "openai",
+                "label": "OpenAI",
+                "status": "online",
+                "message": "✅ API key valid",
+                "response_time": 150.5,
+                "model": "gpt-4.1-mini"
+            },
+            "anthropic": {
+                "provider": "anthropic",
+                "label": "Anthropic",
+                "status": "error",
+                "message": "❌ Invalid API key",
+                "error": "Invalid API key",
+                "response_time": None,
+                "model": "claude-3-5-sonnet-20240620"
+            }
+        }
+
+        # This should not raise an exception
+        try:
+            chat_bridge.show_provider_status_summary(test_results)
+            test_passed = True
+        except Exception:
+            test_passed = False
+
+        self.assertTrue(test_passed, "show_provider_status_summary should handle test data without errors")
+
 
 class TestMenuInteractions(unittest.TestCase):
     """Test menu interaction functions"""

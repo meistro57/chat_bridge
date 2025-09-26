@@ -92,8 +92,36 @@ python launch.py
 
 ## Creating Custom Personas
 
+### 🎯 Interactive Management (Recommended)
+
+The Chat Bridge now includes a comprehensive **Roles & Personas Manager** accessible from the main menu:
+
+```bash
+python chat_bridge.py
+# Choose option 2: "Manage Roles & Personas"
+```
+
+#### Features:
+- **✨ Create New Personas** - Interactive wizard with guided setup
+- **✏️ Edit Existing Personas** - Modify any persona property
+- **🤖 Edit Default Agents** - Configure Agent A and Agent B defaults
+- **🌡️ Temperature Settings** - Adjust creativity levels (0.0-2.0)
+- **🛑 Stop Words Management** - Configure conversation termination phrases
+- **📁 Import/Export** - Backup and restore configurations
+- **🔄 Reset to Defaults** - Restore original settings
+
+#### Interactive Creation Process:
+1. **Persona Name** - Choose a unique identifier
+2. **Provider Selection** - Pick from available AI providers
+3. **System Prompt** - Multi-line system prompt entry
+4. **Guidelines** - Add behavioral guidelines one by one
+5. **Model Override** - Optional specific model selection
+6. **Notes** - Optional documentation
+
+### 📝 Manual Configuration
+
 ### Step 1: Edit roles.json
-Add new personas to the `persona_library` section:
+You can also manually add new personas to the `persona_library` section:
 
 ```json
 {
@@ -131,6 +159,17 @@ Run the interactive mode and select your new personas to see them in action!
 - **Provider Matching**: Choose providers that work well with your persona's style
 - **Model Selection**: Specify models when you need specific capabilities
 - **Testing**: Always test new personas in short conversations first
+
+## 🌐 Provider Testing Integration
+
+Before creating personas for specific providers, use the **Provider Connectivity Test** from the main menu to verify:
+
+- **API Key Validity** - Ensure credentials are working
+- **Model Accessibility** - Verify default models are available
+- **Response Times** - Check network performance
+- **Connection Health** - Diagnose any issues
+
+This helps ensure your personas will work smoothly with their assigned providers.
 
 ## Legacy Compatibility
 

@@ -2,12 +2,14 @@
 
 A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in the Unified Edition
+## ✨ What's New in the Latest Edition
 
 - **🎨 Beautiful colorful interface** with styled menus and progress indicators
 - **🚀 Single unified script** combining all previous functionality
 - **🎯 Interactive mode** with guided setup and provider selection
 - **🎭 Persona system** supporting custom AI personalities from `roles.json`
+- **⚙️ Comprehensive roles management** - Create, edit, and manage personas interactively
+- **🌐 Provider connectivity testing** - Ping and diagnose AI provider connections
 - **⚡ Quick launcher** with preset configurations
 - **🔒 Enhanced security** with proper API key management
 
@@ -94,6 +96,14 @@ python chat_bridge.py
 ```
 
 You'll see beautiful colored menus guiding you through:
+
+### 🚀 Main Menu Options:
+1. **Start Chat Bridge Conversation** - Begin an AI-to-AI conversation
+2. **Manage Roles & Personas** - Interactive roles.json configuration
+3. **Test Provider Connectivity** - Diagnose and test AI provider connections
+4. **Exit** - Gracefully exit the application
+
+### 💬 Conversation Flow:
 1. **Provider Selection** - Choose AI providers for both agents
 2. **Persona Selection** - Optional personas from `roles.json`
 3. **Conversation Starter** - Enter your discussion topic
@@ -120,12 +130,34 @@ Skip the interactive setup by providing all parameters via command line.
 
 **Legacy aliases:** `--openai-model`, `--anthropic-model`
 
-## 🎭 Persona System
+## 🎭 Persona System & Roles Management
 
-Create custom AI personalities in `roles.json` - see [docs/roles.md](docs/roles.md) for full details:
+### Interactive Roles Configuration
+The Chat Bridge now includes a comprehensive roles management interface accessible from the main menu:
+
+- **✨ Create New Personas** - Interactive wizard for persona creation
+- **✏️ Edit Existing Personas** - Modify system prompts, guidelines, and settings
+- **🤖 Edit Default Agents** - Configure Agent A and Agent B defaults
+- **🌡️ Temperature Settings** - Adjust creativity levels for each agent
+- **🛑 Stop Words Management** - Configure conversation termination phrases
+- **📁 Import/Export** - Backup and restore configurations
+- **🔄 Reset to Defaults** - Restore original settings
+
+### Roles.json Structure
+Create custom AI personalities in `roles.json`:
 
 ```json
 {
+  "agent_a": {
+    "provider": "openai",
+    "system": "You are ChatGPT. Be concise, truthful, and witty.",
+    "guidelines": ["Cite sources", "Use clear structure"]
+  },
+  "agent_b": {
+    "provider": "anthropic",
+    "system": "You are Claude. Be thoughtful and reflective.",
+    "guidelines": ["Consider multiple perspectives", "Express uncertainty"]
+  },
   "persona_library": {
     "philosopher": {
       "provider": "anthropic",
@@ -135,8 +167,53 @@ Create custom AI personalities in `roles.json` - see [docs/roles.md](docs/roles.
         "Explore multiple perspectives"
       ]
     }
-  }
+  },
+  "temp_a": 0.6,
+  "temp_b": 0.7,
+  "stop_words": ["wrap up", "end chat", "terminate"]
 }
+```
+
+## 🌐 Provider Connectivity Testing
+
+Diagnose connection issues and verify API keys before starting conversations:
+
+### 🔍 Testing Features:
+- **Test All Providers** - Comprehensive connectivity check for all configured providers
+- **Test Specific Provider** - Detailed diagnostics for individual providers
+- **System Diagnostics** - Environment variables and configuration overview
+- **Real-time Results** - Response times and connection status
+- **Error Diagnosis** - Specific troubleshooting recommendations
+
+### 📊 What Gets Tested:
+- ✅ **API Key Validity** - Authentication with each provider
+- ✅ **Model Accessibility** - Default model availability
+- ✅ **Response Time** - Network latency measurement
+- ✅ **Local Services** - Ollama/LM Studio server status
+- ✅ **Connection Health** - Network connectivity verification
+
+### Sample Output:
+```
+🌐 PROVIDER CONNECTIVITY TEST
+
+Testing OpenAI...
+  ✅ API key valid, model accessible (245ms)
+
+Testing Anthropic...
+  ❌ Invalid API key
+
+📊 PROVIDER STATUS SUMMARY
+Overall Status: 1/2 providers online
+
+🟢 ONLINE PROVIDERS:
+  • OpenAI (gpt-4.1-mini) - 245ms
+
+🔴 PROVIDERS WITH ISSUES:
+  • Anthropic: ❌ Invalid API key
+
+💡 RECOMMENDATIONS:
+  • Check your API keys and network connectivity
+  • Consider using available providers for conversations
 ```
 
 ## 🎨 Visual Features
@@ -168,10 +245,25 @@ write to `transcripts/` automatically.
 
 ## Troubleshooting
 
+### 🔧 Quick Diagnostics
+Use the built-in **Provider Connectivity Test** from the main menu to quickly diagnose issues:
+- Check API key validity
+- Test network connectivity
+- Verify local services (Ollama/LM Studio)
+- View environment configuration
+
+### Common Issues
 - The scripts abort if either assistant hits a configured stop phrase.
 - A stall longer than 90 seconds triggers a timeout and ends the session gracefully.
 - Check the per-session log and the global `chat_bridge.log` for request IDs and errors.
 - Missing API keys raise clear runtime errors—set them in `.env` or your shell.
+
+### Provider-Specific Tips
+- **OpenAI**: Verify `OPENAI_API_KEY` and check quota limits
+- **Anthropic**: Ensure `ANTHROPIC_API_KEY` is valid and active
+- **Gemini**: Check `GEMINI_API_KEY` and API access permissions
+- **Ollama**: Start server with `ollama serve` and verify models are installed
+- **LM Studio**: Ensure local server is running and `LMSTUDIO_BASE_URL` is correct
 
 Happy bridging!
 

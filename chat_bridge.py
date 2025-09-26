@@ -35,6 +35,11 @@ from bridge_agents import (
     get_spec,
     provider_choices,
     resolve_model,
+    ensure_credentials,
+    OpenAIChat,
+    AnthropicChat,
+    GeminiChat,
+    OllamaChat,
 )
 from version import __version__
 
@@ -88,6 +93,8 @@ def print_banner():
 ╔══════════════════════════════════════════════════════════════════╗
 ║                          🌉 CHAT BRIDGE 🌉                        ║
 ║                     Connect Two AI Assistants                     ║
+║                                                                    ║
+║                    🎭 Personas  ⚙️ Configurable                   ║
 ╚══════════════════════════════════════════════════════════════════╝
 """
     print(colorize(banner, Colors.CYAN, bold=True))
@@ -287,17 +294,27 @@ def get_conversation_starter() -> str:
         return starter
     return default_starter
 
-def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_rounds: int):
+def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_rounds: int, roles_data: Optional[Dict] = None, temp_a: Optional[float] = None, temp_b: Optional[float] = None):
     """Show a summary of the session configuration"""
     print_section_header("Session Configuration", "⚙️")
 
     spec_a = get_spec(provider_a)
     spec_b = get_spec(provider_b)
 
+    # Get temperature values from roles data if available
+    if roles_data:
+        display_temp_a = roles_data.get('temp_a', temp_a or 0.7)
+        display_temp_b = roles_data.get('temp_b', temp_b or 0.7)
+    else:
+        display_temp_a = temp_a or 0.7
+        display_temp_b = temp_b or 0.7
+
     print(f"  {colorize('Agent A:', Colors.BLUE, bold=True)} {colorize(spec_a.label, Colors.GREEN)} ({colorize(spec_a.default_model, Colors.YELLOW)})")
     print(f"  {colorize('Agent B:', Colors.MAGENTA, bold=True)} {colorize(spec_b.label, Colors.GREEN)} ({colorize(spec_b.default_model, Colors.YELLOW)})")
     print(f"  {colorize('Max Rounds:', Colors.WHITE)} {colorize(str(max_rounds), Colors.CYAN)}")
     print(f"  {colorize('Memory Rounds:', Colors.WHITE)} {colorize(str(mem_rounds), Colors.CYAN)}")
+    print(f"  {colorize('Temperature A:', Colors.WHITE)} {colorize(f'{display_temp_a:.1f}', Colors.CYAN)}")
+    print(f"  {colorize('Temperature B:', Colors.WHITE)} {colorize(f'{display_temp_b:.1f}', Colors.CYAN)}")
 
     print()
     try:
@@ -480,12 +497,799 @@ def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: O
 
     return agent
 
+
+def save_roles_file(roles_data: Dict, roles_path: str) -> bool:
+    """Save roles data to JSON file with pretty formatting"""
+    try:
+        with open(roles_path, 'w', encoding='utf-8') as f:
+            json.dump(roles_data, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print_error(f"Could not save roles file {roles_path}: {e}")
+        return False
+
+
+def create_new_persona() -> Optional[Dict]:
+    """Interactive creation of a new persona"""
+    print_section_header("Create New Persona", "✨")
+
+    # Get persona name
+    name = get_user_input("Enter persona name (e.g., 'expert_analyst'): ").strip()
+    if not name:
+        return None
+
+    # Select provider
+    providers = provider_choices()
+    provider_options = [(p, get_spec(p).label) for p in providers]
+    print_info("Select provider for this persona:")
+    choice = select_from_menu(provider_options, "Provider")
+    if not choice:
+        return None
+    provider = provider_options[int(choice) - 1][0]
+
+    # Get system prompt
+    print_info("Enter system prompt (multi-line supported, empty line to finish):")
+    system_lines = []
+    while True:
+        line = get_user_input("System> " if not system_lines else "     > ")
+        if not line.strip() and system_lines:
+            break
+        if line.strip():
+            system_lines.append(line)
+
+    if not system_lines:
+        print_warning("System prompt cannot be empty")
+        return None
+
+    system_prompt = "\n".join(system_lines)
+
+    # Get guidelines
+    print_info("Enter guidelines (one per line, empty line to finish):")
+    guidelines = []
+    while True:
+        guideline = get_user_input(f"Guideline {len(guidelines)+1}> ")
+        if not guideline.strip():
+            break
+        guidelines.append(guideline.strip())
+
+    # Get model (optional)
+    model_input = get_user_input(f"Model (optional, default: {get_spec(provider).default_model}): ").strip()
+    model = model_input if model_input else None
+
+    # Optional notes
+    notes = get_user_input("Notes (optional): ").strip()
+
+    persona = {
+        "provider": provider,
+        "model": model,
+        "system": system_prompt,
+        "guidelines": guidelines
+    }
+
+    if notes:
+        persona["notes"] = notes
+
+    return {name: persona}
+
+
+def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
+    """Interactive editing of an existing persona"""
+    print_section_header(f"Edit Persona: {persona_key}", "✏️")
+
+    options = [
+        ("1", "Edit system prompt"),
+        ("2", "Edit guidelines"),
+        ("3", "Change provider"),
+        ("4", "Change model"),
+        ("5", "Edit notes"),
+        ("6", "Delete persona"),
+        ("7", "Back to main menu")
+    ]
+
+    while True:
+        print_info(f"Current persona: {persona_key}")
+        print(f"Provider: {colorize(persona_data['provider'], Colors.BLUE)}")
+        print(f"Model: {colorize(str(persona_data.get('model', 'default')), Colors.CYAN)}")
+        print(f"System: {persona_data['system'][:100]}...")
+        print(f"Guidelines: {len(persona_data.get('guidelines', []))} items")
+        if persona_data.get('notes'):
+            print(f"Notes: {persona_data['notes'][:50]}...")
+
+        choice = select_from_menu(options, "Edit Option")
+        if not choice:
+            return persona_data
+
+        if choice == "1":  # Edit system prompt
+            print_info("Current system prompt:")
+            print(persona_data['system'])
+            new_system = get_user_input("New system prompt (or Enter to keep current): ")
+            if new_system.strip():
+                persona_data['system'] = new_system.strip()
+
+        elif choice == "2":  # Edit guidelines
+            print_info("Current guidelines:")
+            for i, g in enumerate(persona_data.get('guidelines', []), 1):
+                print(f"{i}. {g}")
+
+            print_info("Enter new guidelines (one per line, empty line to finish):")
+            guidelines = []
+            while True:
+                guideline = get_user_input(f"Guideline {len(guidelines)+1}> ")
+                if not guideline.strip():
+                    break
+                guidelines.append(guideline.strip())
+
+            if guidelines:
+                persona_data['guidelines'] = guidelines
+
+        elif choice == "3":  # Change provider
+            providers = provider_choices()
+            provider_options = [(p, get_spec(p).label) for p in providers]
+            print_info("Select new provider:")
+            prov_choice = select_from_menu(provider_options, "Provider")
+            if prov_choice:
+                persona_data['provider'] = provider_options[int(prov_choice) - 1][0]
+
+        elif choice == "4":  # Change model
+            current_model = persona_data.get('model', 'default')
+            print_info(f"Current model: {current_model}")
+            new_model = get_user_input("New model (or Enter for default): ").strip()
+            persona_data['model'] = new_model if new_model else None
+
+        elif choice == "5":  # Edit notes
+            current_notes = persona_data.get('notes', '')
+            print_info(f"Current notes: {current_notes}")
+            new_notes = get_user_input("New notes (or Enter to clear): ").strip()
+            if new_notes:
+                persona_data['notes'] = new_notes
+            elif 'notes' in persona_data:
+                del persona_data['notes']
+
+        elif choice == "6":  # Delete persona
+            confirm = get_user_input(f"Delete persona '{persona_key}'? (yes/no): ").lower()
+            if confirm in ['yes', 'y']:
+                return None  # Signal to delete
+
+        elif choice == "7":  # Back
+            return persona_data
+
+    return persona_data
+
+
+def manage_roles_configuration(roles_path: str = "roles.json"):
+    """Interactive roles management interface"""
+    while True:
+        print_section_header("Roles Configuration Manager", "⚙️")
+
+        # Load current roles
+        roles_data = load_roles_file(roles_path)
+        if not roles_data:
+            print_warning(f"Could not load {roles_path}. Creating new configuration...")
+            roles_data = {
+                "agent_a": {
+                    "provider": "openai",
+                    "model": None,
+                    "system": "You are ChatGPT. Be concise, truthful, and witty.",
+                    "guidelines": []
+                },
+                "agent_b": {
+                    "provider": "anthropic",
+                    "model": None,
+                    "system": "You are Claude. Be concise, compassionate, truthful, and reflective.",
+                    "guidelines": []
+                },
+                "persona_library": {},
+                "stop_words": ["wrap up", "end chat", "terminate"],
+                "temp_a": 0.6,
+                "temp_b": 0.7
+            }
+
+        # Show current status
+        persona_count = len(roles_data.get('persona_library', {}))
+        print_info(f"Current configuration: {persona_count} personas")
+
+        options = [
+            ("1", "View/Edit personas"),
+            ("2", "Create new persona"),
+            ("3", "Edit default agents (A & B)"),
+            ("4", "Edit temperature settings"),
+            ("5", "Edit stop words"),
+            ("6", "Export configuration"),
+            ("7", "Import configuration"),
+            ("8", "Reset to defaults"),
+            ("9", "Back to main menu")
+        ]
+
+        choice = select_from_menu(options, "Roles Management")
+        if not choice:
+            break
+
+        if choice == "1":  # View/Edit personas
+            if not roles_data.get('persona_library'):
+                print_warning("No personas found. Create one first!")
+                continue
+
+            persona_options = []
+            for key, persona in roles_data['persona_library'].items():
+                provider_name = get_spec(persona['provider']).label
+                persona_options.append((key, f"{key} ({provider_name})"))
+
+            print_info("Select persona to edit:")
+            persona_choice = select_from_menu(persona_options, "Persona")
+            if persona_choice:
+                selected_key = persona_options[int(persona_choice) - 1][0]
+                selected_persona = roles_data['persona_library'][selected_key]
+
+                result = edit_persona(selected_key, selected_persona.copy())
+                if result is None:  # Delete requested
+                    del roles_data['persona_library'][selected_key]
+                    print_success(f"Persona '{selected_key}' deleted")
+                else:
+                    roles_data['persona_library'][selected_key] = result
+                    print_success(f"Persona '{selected_key}' updated")
+
+                if save_roles_file(roles_data, roles_path):
+                    print_success("Configuration saved")
+
+        elif choice == "2":  # Create new persona
+            new_persona = create_new_persona()
+            if new_persona:
+                persona_name = list(new_persona.keys())[0]
+                if persona_name in roles_data.get('persona_library', {}):
+                    overwrite = get_user_input(f"Persona '{persona_name}' exists. Overwrite? (yes/no): ")
+                    if overwrite.lower() not in ['yes', 'y']:
+                        continue
+
+                if 'persona_library' not in roles_data:
+                    roles_data['persona_library'] = {}
+                roles_data['persona_library'].update(new_persona)
+
+                if save_roles_file(roles_data, roles_path):
+                    print_success(f"Persona '{persona_name}' created and saved")
+
+        elif choice == "3":  # Edit default agents
+            agent_options = [("agent_a", "Agent A"), ("agent_b", "Agent B")]
+            agent_choice = select_from_menu(agent_options, "Select Agent")
+            if agent_choice:
+                agent_key = agent_options[int(agent_choice) - 1][0]
+                agent_data = roles_data[agent_key]
+
+                print_section_header(f"Edit {agent_key.upper()}", "🤖")
+
+                edit_options = [
+                    ("1", "Edit system prompt"),
+                    ("2", "Edit guidelines"),
+                    ("3", "Change provider"),
+                    ("4", "Back")
+                ]
+
+                edit_choice = select_from_menu(edit_options, "Edit Option")
+                if edit_choice == "1":
+                    print_info("Current system prompt:")
+                    print(agent_data['system'])
+                    new_system = get_user_input("New system prompt: ")
+                    if new_system.strip():
+                        agent_data['system'] = new_system.strip()
+                        if save_roles_file(roles_data, roles_path):
+                            print_success("Agent updated")
+
+                elif edit_choice == "2":
+                    print_info("Current guidelines:")
+                    for i, g in enumerate(agent_data.get('guidelines', []), 1):
+                        print(f"{i}. {g}")
+
+                    print_info("Enter new guidelines (one per line, empty line to finish):")
+                    guidelines = []
+                    while True:
+                        guideline = get_user_input(f"Guideline {len(guidelines)+1}> ")
+                        if not guideline.strip():
+                            break
+                        guidelines.append(guideline.strip())
+
+                    if guidelines:
+                        agent_data['guidelines'] = guidelines
+                        if save_roles_file(roles_data, roles_path):
+                            print_success("Guidelines updated")
+
+                elif edit_choice == "3":
+                    providers = provider_choices()
+                    provider_options = [(p, get_spec(p).label) for p in providers]
+                    print_info("Select new provider:")
+                    prov_choice = select_from_menu(provider_options, "Provider")
+                    if prov_choice:
+                        agent_data['provider'] = provider_options[int(prov_choice) - 1][0]
+                        if save_roles_file(roles_data, roles_path):
+                            print_success("Provider updated")
+
+        elif choice == "4":  # Edit temperature settings
+            print_section_header("Temperature Settings", "🌡️")
+            print_info(f"Current temp_a: {roles_data.get('temp_a', 0.6)}")
+            print_info(f"Current temp_b: {roles_data.get('temp_b', 0.7)}")
+
+            new_temp_a = get_user_input("New temp_a (0.0-2.0): ").strip()
+            if new_temp_a:
+                try:
+                    temp_val = float(new_temp_a)
+                    if 0 <= temp_val <= 2:
+                        roles_data['temp_a'] = temp_val
+                    else:
+                        print_warning("Temperature must be between 0.0 and 2.0")
+                except ValueError:
+                    print_warning("Invalid temperature value")
+
+            new_temp_b = get_user_input("New temp_b (0.0-2.0): ").strip()
+            if new_temp_b:
+                try:
+                    temp_val = float(new_temp_b)
+                    if 0 <= temp_val <= 2:
+                        roles_data['temp_b'] = temp_val
+                    else:
+                        print_warning("Temperature must be between 0.0 and 2.0")
+                except ValueError:
+                    print_warning("Invalid temperature value")
+
+            if save_roles_file(roles_data, roles_path):
+                print_success("Temperature settings updated")
+
+        elif choice == "5":  # Edit stop words
+            print_section_header("Stop Words", "🛑")
+            current_words = roles_data.get('stop_words', [])
+            print_info(f"Current stop words: {', '.join(current_words)}")
+
+            print_info("Enter new stop words (one per line, empty line to finish):")
+            stop_words = []
+            while True:
+                word = get_user_input(f"Stop word {len(stop_words)+1}> ")
+                if not word.strip():
+                    break
+                stop_words.append(word.strip())
+
+            if stop_words:
+                roles_data['stop_words'] = stop_words
+                if save_roles_file(roles_data, roles_path):
+                    print_success("Stop words updated")
+
+        elif choice == "6":  # Export configuration
+            export_path = get_user_input("Export to file (default: roles_backup.json): ").strip()
+            if not export_path:
+                export_path = "roles_backup.json"
+
+            if save_roles_file(roles_data, export_path):
+                print_success(f"Configuration exported to {export_path}")
+
+        elif choice == "7":  # Import configuration
+            import_path = get_user_input("Import from file: ").strip()
+            if import_path and os.path.exists(import_path):
+                imported_data = load_roles_file(import_path)
+                if imported_data:
+                    confirm = get_user_input("This will replace current configuration. Continue? (yes/no): ")
+                    if confirm.lower() in ['yes', 'y']:
+                        if save_roles_file(imported_data, roles_path):
+                            print_success("Configuration imported successfully")
+                        else:
+                            print_error("Failed to save imported configuration")
+                else:
+                    print_error("Failed to load import file")
+            else:
+                print_error("Import file not found")
+
+        elif choice == "8":  # Reset to defaults
+            confirm = get_user_input("Reset to default configuration? This cannot be undone. (yes/no): ")
+            if confirm.lower() in ['yes', 'y']:
+                # Create default configuration
+                default_config = {
+                    "agent_a": {
+                        "provider": "openai",
+                        "model": None,
+                        "system": "You are ChatGPT. Be concise, truthful, and witty. Prioritise verifiable facts and clear reasoning.",
+                        "guidelines": [
+                            "Cite sources or examples when you make factual claims.",
+                            "Favour clear structure and highlight key takeaways early.",
+                            "When comparing sources, cite examples and name key scholars or texts.",
+                            "If asked for probabilities, explain your methodology and uncertainty.",
+                            "Prefer structured answers with brief lists, then a crisp conclusion."
+                        ]
+                    },
+                    "agent_b": {
+                        "provider": "anthropic",
+                        "model": None,
+                        "system": "You are Claude. Be concise, compassionate, truthful, and reflective. Balance clarity with nuance.",
+                        "guidelines": [
+                            "Surface competing perspectives fairly before choosing a stance.",
+                            "Make uncertainty explicit and flag assumptions.",
+                            "Surface connections across traditions without overclaiming equivalence.",
+                            "Offer metaphors to illuminate abstract ideas, but keep them tight.",
+                            "State uncertainty explicitly when evidence is thin or contested."
+                        ]
+                    },
+                    "persona_library": {},
+                    "stop_words": ["wrap up", "end chat", "terminate"],
+                    "temp_a": 0.6,
+                    "temp_b": 0.7
+                }
+
+                if save_roles_file(default_config, roles_path):
+                    print_success("Configuration reset to defaults")
+
+        elif choice == "9":  # Back
+            break
+
+
+async def ping_provider(provider_key: str) -> Dict[str, any]:
+    """Test connectivity to a specific provider"""
+    spec = get_spec(provider_key)
+    result = {
+        "provider": provider_key,
+        "label": spec.label,
+        "status": "unknown",
+        "message": "",
+        "response_time": None,
+        "model": spec.default_model,
+        "error": None
+    }
+
+    try:
+        import time
+        start_time = time.time()
+
+        # Create a minimal test agent
+        if provider_key == "openai":
+            try:
+                api_key = ensure_credentials(provider_key)
+                client = OpenAIChat(model=spec.default_model, api_key=api_key)
+                test_messages = [{"role": "user", "content": "Hello"}]
+
+                # Try to get a minimal response
+                response_started = False
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", test_messages, temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break  # We got a response, that's enough
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ API key valid, model accessible"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                result["message"] = f"❌ {str(e)}"
+                result["error"] = str(e)
+
+        elif provider_key == "anthropic":
+            try:
+                api_key = ensure_credentials(provider_key)
+                client = AnthropicChat(api_key=api_key, model=spec.default_model)
+
+                response_started = False
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ API key valid, model accessible"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                result["message"] = f"❌ {str(e)}"
+                result["error"] = str(e)
+
+        elif provider_key == "gemini":
+            try:
+                api_key = ensure_credentials(provider_key)
+                client = GeminiChat(api_key=api_key, model=spec.default_model)
+
+                response_started = False
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ API key valid, model accessible"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                result["message"] = f"❌ {str(e)}"
+                result["error"] = str(e)
+
+        elif provider_key == "ollama":
+            try:
+                client = OllamaChat(model=spec.default_model)
+
+                response_started = False
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ Ollama server accessible, model available"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                if "Connection refused" in str(e) or "connection error" in str(e).lower():
+                    result["message"] = "❌ Ollama server not running or unreachable"
+                else:
+                    result["message"] = f"❌ {str(e)}"
+                result["error"] = str(e)
+
+        elif provider_key == "lmstudio":
+            try:
+                base_url = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+                client = OpenAIChat(model=spec.default_model, api_key=None, base_url=base_url)
+
+                response_started = False
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = f"✅ LM Studio server accessible at {base_url}"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                if "Connection refused" in str(e) or "connection error" in str(e).lower():
+                    result["message"] = f"❌ LM Studio server not running at {os.getenv('LMSTUDIO_BASE_URL', 'http://localhost:1234/v1')}"
+                else:
+                    result["message"] = f"❌ {str(e)}"
+                result["error"] = str(e)
+
+        else:
+            result["status"] = "unsupported"
+            result["message"] = f"❓ Provider {provider_key} not supported for ping test"
+
+        end_time = time.time()
+        result["response_time"] = round((end_time - start_time) * 1000, 2)  # Convert to milliseconds
+
+    except Exception as e:
+        result["status"] = "error"
+        result["message"] = f"❌ Unexpected error: {str(e)}"
+        result["error"] = str(e)
+
+    return result
+
+
+async def ping_all_providers() -> Dict[str, Dict]:
+    """Test connectivity to all available providers"""
+    print_section_header("Provider Connectivity Test", "🌐")
+    print_info("Testing connectivity to all providers...")
+
+    results = {}
+    providers = provider_choices()
+
+    for provider_key in providers:
+        print(f"\n{colorize('Testing', Colors.YELLOW)} {colorize(get_spec(provider_key).label, Colors.WHITE)}...")
+        try:
+            result = await ping_provider(provider_key)
+            results[provider_key] = result
+
+            # Show immediate result
+            status_color = Colors.GREEN if result["status"] == "online" else Colors.RED
+            if result["response_time"]:
+                time_info = f" ({result['response_time']}ms)"
+            else:
+                time_info = ""
+
+            print(f"  {colorize(result['message'], status_color)}{time_info}")
+
+        except Exception as e:
+            results[provider_key] = {
+                "provider": provider_key,
+                "label": get_spec(provider_key).label,
+                "status": "error",
+                "message": f"❌ Test failed: {str(e)}",
+                "error": str(e),
+                "response_time": None
+            }
+            print(f"  {colorize(f'❌ Test failed: {str(e)}', Colors.RED)}")
+
+    return results
+
+
+def show_provider_status_summary(results: Dict[str, Dict]):
+    """Display a comprehensive summary of provider status"""
+    print_section_header("Provider Status Summary", "📊")
+
+    online_count = sum(1 for r in results.values() if r["status"] == "online")
+    total_count = len(results)
+
+    print(f"{colorize('Overall Status:', Colors.WHITE, bold=True)} {online_count}/{total_count} providers online")
+    print()
+
+    # Group by status
+    online_providers = []
+    offline_providers = []
+    error_providers = []
+
+    for result in results.values():
+        if result["status"] == "online":
+            online_providers.append(result)
+        elif result["status"] == "error":
+            error_providers.append(result)
+        else:
+            offline_providers.append(result)
+
+    # Show online providers
+    if online_providers:
+        print(f"{colorize('🟢 ONLINE PROVIDERS:', Colors.GREEN, bold=True)}")
+        for provider in online_providers:
+            time_info = f" - {provider['response_time']}ms" if provider.get("response_time") else ""
+            print(f"  • {colorize(provider['label'], Colors.GREEN)} ({provider['model']}){time_info}")
+        print()
+
+    # Show error providers
+    if error_providers:
+        print(f"{colorize('🔴 PROVIDERS WITH ISSUES:', Colors.RED, bold=True)}")
+        for provider in error_providers:
+            print(f"  • {colorize(provider['label'], Colors.RED)}: {provider['message']}")
+        print()
+
+    # Show offline providers
+    if offline_providers:
+        print(f"{colorize('⚪ OTHER PROVIDERS:', Colors.YELLOW, bold=True)}")
+        for provider in offline_providers:
+            print(f"  • {colorize(provider['label'], Colors.YELLOW)}: {provider['message']}")
+        print()
+
+    # Recommendations
+    print(f"{colorize('💡 RECOMMENDATIONS:', Colors.CYAN, bold=True)}")
+    if online_count == 0:
+        print("  • No providers are currently available")
+        print("  • Check your API keys and network connectivity")
+        print("  • Verify local services (Ollama, LM Studio) are running")
+    elif online_count < total_count:
+        print("  • Some providers are unavailable")
+        print("  • Consider using available providers for your conversations")
+        if any(r["provider"] in ["ollama", "lmstudio"] and r["status"] == "error" for r in results.values()):
+            print("  • Start local services (Ollama/LM Studio) if needed")
+    else:
+        print("  • All providers are online and ready to use! 🎉")
+
+
+async def provider_ping_menu():
+    """Interactive provider ping menu"""
+    while True:
+        print_section_header("Provider Connectivity Test", "🌐")
+
+        options = [
+            ("1", "Test all providers"),
+            ("2", "Test specific provider"),
+            ("3", "Show detailed diagnostics"),
+            ("4", "Back to main menu")
+        ]
+
+        choice = select_from_menu(options, "Provider Test Options")
+        if not choice:
+            break
+
+        if choice == "1":  # Test all providers
+            results = await ping_all_providers()
+            print()
+            show_provider_status_summary(results)
+            input(colorize("\nPress Enter to continue...", Colors.GREEN))
+
+        elif choice == "2":  # Test specific provider
+            providers = provider_choices()
+            provider_options = [(p, get_spec(p).label) for p in providers]
+            print_info("Select provider to test:")
+            prov_choice = select_from_menu(provider_options, "Provider")
+            if prov_choice:
+                provider_key = provider_options[int(prov_choice) - 1][0]
+                print(f"\n{colorize('Testing', Colors.YELLOW)} {colorize(get_spec(provider_key).label, Colors.WHITE)}...")
+                result = await ping_provider(provider_key)
+
+                print(f"\n{colorize('DETAILED RESULTS:', Colors.WHITE, bold=True)}")
+                print(f"Provider: {colorize(result['label'], Colors.CYAN)}")
+                print(f"Model: {colorize(result['model'], Colors.YELLOW)}")
+                print(f"Status: {colorize(result['status'].upper(), Colors.GREEN if result['status'] == 'online' else Colors.RED)}")
+                print(f"Message: {result['message']}")
+                if result.get("response_time"):
+                    response_time_str = f"{result['response_time']}ms"
+                    print(f"Response Time: {colorize(response_time_str, Colors.CYAN)}")
+                if result.get("error"):
+                    print(f"Error Details: {colorize(result['error'], Colors.RED)}")
+
+                input(colorize("\nPress Enter to continue...", Colors.GREEN))
+
+        elif choice == "3":  # Show detailed diagnostics
+            print_section_header("System Diagnostics", "🔧")
+
+            print(f"{colorize('ENVIRONMENT VARIABLES:', Colors.WHITE, bold=True)}")
+            env_vars = [
+                "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
+                "LMSTUDIO_BASE_URL", "OLLAMA_HOST", "OPENAI_MODEL", "ANTHROPIC_MODEL"
+            ]
+
+            for env_var in env_vars:
+                value = os.getenv(env_var)
+                if value:
+                    # Mask API keys for security
+                    if "API_KEY" in env_var and len(value) > 8:
+                        masked_value = value[:4] + "*" * (len(value) - 8) + value[-4:]
+                        print(f"  {env_var}: {colorize(masked_value, Colors.GREEN)}")
+                    else:
+                        print(f"  {env_var}: {colorize(value, Colors.GREEN)}")
+                else:
+                    print(f"  {env_var}: {colorize('Not set', Colors.RED)}")
+
+            print(f"\n{colorize('PROVIDER SPECIFICATIONS:', Colors.WHITE, bold=True)}")
+            for provider_key in provider_choices():
+                spec = get_spec(provider_key)
+                print(f"  {spec.label} ({provider_key}):")
+                print(f"    Default Model: {colorize(spec.default_model, Colors.YELLOW)}")
+                print(f"    Needs Key: {colorize(str(spec.needs_key), Colors.CYAN)}")
+                if spec.key_env:
+                    key_status = "✅ Set" if os.getenv(spec.key_env) else "❌ Missing"
+                    print(f"    API Key ({spec.key_env}): {colorize(key_status, Colors.GREEN if '✅' in key_status else Colors.RED)}")
+
+            input(colorize("\nPress Enter to continue...", Colors.GREEN))
+
+        elif choice == "4":  # Back
+            break
+
+
 # ───────────────────────── Main Bridge Logic ─────────────────────────
+
+async def show_main_menu() -> str:
+    """Show main menu and return user choice"""
+    print_section_header("Main Menu", "🚀")
+
+    options = [
+        ("1", "Start Chat Bridge Conversation"),
+        ("2", "Manage Roles & Personas"),
+        ("3", "Test Provider Connectivity"),
+        ("4", "Exit")
+    ]
+
+    return select_from_menu(options, "What would you like to do?")
+
 
 async def run_bridge(args):
     """Main bridge execution with beautiful progress display"""
 
     print_banner()
+
+    # Check if we should show main menu (interactive mode only)
+    if not (args.provider_a and args.provider_b and getattr(args, 'starter', None)):
+        while True:
+            choice = await show_main_menu()
+
+            if choice == "1":  # Start conversation
+                break
+            elif choice == "2":  # Manage roles
+                roles_path = getattr(args, 'roles', 'roles.json')
+                manage_roles_configuration(roles_path)
+                continue
+            elif choice == "3":  # Test provider connectivity
+                await provider_ping_menu()
+                continue
+            elif choice == "4":  # Exit
+                print(f"\n{colorize('👋 Goodbye!', Colors.YELLOW)}")
+                return
+            else:
+                print_error("Invalid choice. Please try again.")
+                continue
 
     # Load roles if specified
     roles_data = load_roles_file(getattr(args, 'roles', None))
@@ -505,7 +1309,11 @@ async def run_bridge(args):
         persona_a, persona_b = None, None
         starter = args.starter
 
-    show_session_summary(provider_a, provider_b, args.max_rounds, args.mem_rounds)
+    # Get temperature values from roles data if available
+    temp_a = roles_data.get('temp_a', args.temp_a) if roles_data else args.temp_a
+    temp_b = roles_data.get('temp_b', args.temp_b) if roles_data else args.temp_b
+
+    show_session_summary(provider_a, provider_b, args.max_rounds, args.mem_rounds, roles_data, temp_a, temp_b)
 
     # Setup logging and database
     bridge_logger, _ = setup_logging()
@@ -521,8 +1329,8 @@ async def run_bridge(args):
 
     # Create agents
     try:
-        agent_a = create_agent(provider_a, "a", resolve_model(provider_a, args.model_a), args.temp_a)
-        agent_b = create_agent(provider_b, "b", resolve_model(provider_b, args.model_b), args.temp_b)
+        agent_a = create_agent("a", provider_a, resolve_model(provider_a, args.model_a), temp_a, get_spec(provider_a).default_system)
+        agent_b = create_agent("b", provider_b, resolve_model(provider_b, args.model_b), temp_b, get_spec(provider_b).default_system)
 
         # Apply personas if specified
         if roles_data:
