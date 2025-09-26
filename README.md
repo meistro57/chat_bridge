@@ -1,16 +1,32 @@
-# Chat Bridge
+# 🌉 Chat Bridge - Unified Edition
 
-Chat Bridge lets you watch two AI assistants riff back and forth while everything is
-logged to disk. Both entry points ship with the same features—live token streaming,
-SQLite logging, Markdown transcripts—but differ in how you configure personas:
+A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
-- **`chat_bridge_pro.py`** – quick-start edition with interactive provider selection and
-  sensible defaults.
-- **`chat_bridge_roles.py`** – reads structured personas from `roles.json` before the
-  chat begins.
+## ✨ What's New in the Unified Edition
 
-Under the hood you can mix and match the latest "turbo" models from OpenAI, Anthropic,
-Gemini, Ollama, or LM Studio on either side of the bridge.
+- **🎨 Beautiful colorful interface** with styled menus and progress indicators
+- **🚀 Single unified script** combining all previous functionality
+- **🎯 Interactive mode** with guided setup and provider selection
+- **🎭 Persona system** supporting custom AI personalities from `roles.json`
+- **⚡ Quick launcher** with preset configurations
+- **🔒 Enhanced security** with proper API key management
+
+## 🚀 Quick Start
+
+**Option 1: Interactive Launcher (Recommended)**
+```bash
+python launch.py
+```
+
+**Option 2: Direct Interactive Mode**
+```bash
+python chat_bridge.py
+```
+
+**Option 3: Command Line**
+```bash
+python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What is consciousness?"
+```
 
 ## Features at a Glance
 
@@ -71,38 +87,64 @@ Set provider-specific default models with environment variables such as
 
 ## Running the Bridge
 
-### Default personas (`chat_bridge_pro.py`)
+### Interactive Mode (Recommended)
 
 ```bash
-python chat_bridge_pro.py --max-rounds 40 --mem-rounds 12
+python chat_bridge.py
 ```
 
-You'll be prompted for a starter message and then offered a multiple-choice picker for
-both agents. Press Enter to accept the CLI/env defaults or enter values such as `1,3` to
-pair OpenAI with Gemini. Additional prompts allow quick model overrides.
+You'll see beautiful colored menus guiding you through:
+1. **Provider Selection** - Choose AI providers for both agents
+2. **Persona Selection** - Optional personas from `roles.json`
+3. **Conversation Starter** - Enter your discussion topic
+4. **Live Conversation** - Watch the AI assistants converse with real-time streaming
 
-### Role-driven personas (`chat_bridge_roles.py`)
+### Command Line Mode
 
 ```bash
-python chat_bridge_roles.py --roles roles.json --max-rounds 40 --mem-rounds 12
+python chat_bridge.py --provider-a openai --provider-b anthropic --max-rounds 40 --mem-rounds 12
 ```
 
-This variant loads system prompts, provider preferences, stop words, and default
-temperatures from `roles.json`. See [docs/roles.md](docs/roles.md) for the schema. The
-same interactive provider picker appears after the starter prompt.
+Skip the interactive setup by providing all parameters via command line.
 
-### Shared CLI Options
+### CLI Options
 
-- `--provider-a` / `--provider-b` – select providers for the first and second agent
-  (defaults come from env vars or roles file).
-- `--model-a` / `--model-b` – model overrides for each agent (`--openai-model` and
-  `--anthropic-model` remain as aliases for backwards compatibility).
-- `--max-rounds` – maximum number of assistant replies across the session (default `30`).
-- `--mem-rounds` – how many recent turns each provider can see (default `8`).
-- `--temp-a` / `--temp-b` – sampling temperatures (roles edition may override them via the
-  JSON file).
-- `--version` – print the current Chat Bridge version and exit.
-- `--roles` – path to a roles JSON file (roles edition only).
+- `--provider-a` / `--provider-b` – select providers for agents A and B
+- `--model-a` / `--model-b` – model overrides for each agent
+- `--max-rounds` – maximum conversation rounds (default: 30)
+- `--mem-rounds` – context memory rounds (default: 8)
+- `--temp-a` / `--temp-b` – sampling temperatures (default: 0.7)
+- `--roles` – path to personas JSON file
+- `--starter` – conversation starter (skips interactive mode)
+- `--version` – show version and exit
+
+**Legacy aliases:** `--openai-model`, `--anthropic-model`
+
+## 🎭 Persona System
+
+Create custom AI personalities in `roles.json` - see [docs/roles.md](docs/roles.md) for full details:
+
+```json
+{
+  "persona_library": {
+    "philosopher": {
+      "provider": "anthropic",
+      "system": "You are a thoughtful philosopher...",
+      "guidelines": [
+        "Question assumptions deeply",
+        "Explore multiple perspectives"
+      ]
+    }
+  }
+}
+```
+
+## 🎨 Visual Features
+
+- **🌈 Colorful menus** - Beautiful ANSI colors and formatting
+- **📊 Real-time progress** - Live conversation streaming
+- **💬 Styled output** - Clear agent identification and formatting
+- **⚡ Quick launcher** - Preset configurations for common scenarios
 
 ## Outputs & Logs
 

@@ -1,62 +1,138 @@
-# Roles Configuration Guide
+# 🎭 Roles & Personas Configuration Guide
 
-The roles edition (`chat_bridge_roles.py`) loads a JSON file before each session to
-decide which providers, models, system prompts, and safeguards to use. The file is
-merged with built-in defaults so you can override only the pieces you care about.
+The unified Chat Bridge (`chat_bridge.py`) can load personas from a JSON file to customize
+AI personalities, system prompts, and conversation behavior. This guide explains how to
+create and use custom personas in your conversations.
 
 ## File Structure
+
+The `roles.json` file contains two main sections: **agent defaults** and **persona library**.
 
 ```json
 {
   "agent_a": {
     "provider": "openai",
     "model": null,
-    "system": "System prompt for the first agent",
-    "guidelines": ["Optional bullet points appended to the system prompt"]
+    "system": "Default system prompt for agent A",
+    "guidelines": ["Optional bullet points appended to system prompt"]
   },
   "agent_b": {
     "provider": "anthropic",
     "model": null,
-    "system": "System prompt for the second agent",
-    "guidelines": ["Optional bullet points for the second agent"]
+    "system": "Default system prompt for agent B",
+    "guidelines": ["Optional guidelines for agent B"]
   },
-  "stop_words": ["wrap up", "end chat"],
+  "persona_library": {
+    "philosopher": {
+      "provider": "anthropic",
+      "model": null,
+      "system": "You are a thoughtful philosopher who explores deep questions.",
+      "guidelines": [
+        "Question assumptions and explore multiple perspectives",
+        "Use concrete examples to illustrate abstract concepts",
+        "Acknowledge uncertainty when appropriate"
+      ]
+    },
+    "scientist": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "system": "You are a rigorous scientist focused on evidence and methodology.",
+      "guidelines": [
+        "Cite sources and explain methodology",
+        "Distinguish between hypotheses and established facts",
+        "Suggest experiments to test claims"
+      ]
+    }
+  },
+  "stop_words": ["wrap up", "end chat", "terminate"],
   "temp_a": 0.6,
   "temp_b": 0.7
 }
 ```
 
-### Keys
+### Configuration Keys
 
-- **`agent_a.provider` / `agent_b.provider`** – which backend drives each side of the
-  conversation. Supported values are `openai`, `anthropic`, `gemini`, `ollama`, and
-  `lmstudio`.
-- **`model`** – optional explicit model name for that provider. Leave it `null` (or omit it)
-  to fall back to the latest turbo default or any `BRIDGE_MODEL_*` / provider-specific
-  environment overrides.
-- **`system`** – base system prompt injected into the provider before the chat begins.
-- **`guidelines`** – optional bullet points appended to the system prompt.
-- **`stop_words`** – list of phrases that will halt the run if either agent says them.
-- **`temp_a` / `temp_b`** – default temperatures if you do not provide CLI overrides.
+#### Agent Defaults
+- **`agent_a` / `agent_b`** – Default settings for each agent
+- **`provider`** – Backend provider: `openai`, `anthropic`, `gemini`, `ollama`, or `lmstudio`
+- **`model`** – Specific model name (optional, uses provider defaults if null)
+- **`system`** – Base system prompt for the agent
+- **`guidelines`** – List of behavioral guidelines appended to system prompt
 
-All fields are optional. Missing properties inherit from the defaults bundled with the
-repository.
+#### Persona Library
+- **`persona_library`** – Collection of reusable AI personalities
+- Each persona has the same structure as agent defaults
+- Personas can override provider, model, system prompt, and guidelines
+- Selected interactively during conversation setup
 
-## Legacy Format
+#### Global Settings
+- **`stop_words`** – Phrases that end the conversation when detected
+- **`temp_a` / `temp_b`** – Default sampling temperatures (0.0-1.0)
 
-Older versions of the project used top-level `openai` / `anthropic` keys. Those files
-continue to work—the loader automatically upgrades them to the new schema.
+All fields are optional and fall back to built-in defaults.
 
-## Workflow
+## Usage Examples
 
-1. Duplicate `roles.json` or point `--roles` to a new file.
-2. Edit the JSON to capture the providers, tones, and safeguards you need.
-3. Run the bridge:
-   ```bash
-   python chat_bridge_roles.py --roles my_roles.json --max-rounds 40 --mem-rounds 10
-   ```
-4. Use the interactive prompt (or CLI flags) to switch providers or models on the fly.
+### Interactive Mode with Personas
+```bash
+python chat_bridge.py --roles roles.json
+```
+The script will show beautiful menus where you can select personas from your library.
 
-If the roles file is missing the script writes the default configuration to help you get
-started.
+### Command Line with Roles
+```bash
+python chat_bridge.py --roles custom_personas.json --max-rounds 50 --mem-rounds 15
+```
+
+### Quick Launcher with Personas
+```bash
+python launch.py
+# Select option [5] 🎭 Persona Mode
+```
+
+## Creating Custom Personas
+
+### Step 1: Edit roles.json
+Add new personas to the `persona_library` section:
+
+```json
+{
+  "persona_library": {
+    "debate_coach": {
+      "provider": "anthropic",
+      "system": "You are a skilled debate coach who helps structure arguments.",
+      "guidelines": [
+        "Break down complex arguments into logical components",
+        "Identify logical fallacies and suggest improvements",
+        "Encourage evidence-based reasoning"
+      ]
+    },
+    "creative_writer": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "system": "You are an imaginative writer who crafts vivid stories.",
+      "guidelines": [
+        "Use descriptive language and sensory details",
+        "Develop interesting characters with clear motivations",
+        "Build narrative tension through pacing"
+      ]
+    }
+  }
+}
+```
+
+### Step 2: Test Your Personas
+Run the interactive mode and select your new personas to see them in action!
+
+## Best Practices
+
+- **Clear Identity**: Give each persona a distinct personality and role
+- **Specific Guidelines**: Use concrete, actionable guidelines rather than vague instructions
+- **Provider Matching**: Choose providers that work well with your persona's style
+- **Model Selection**: Specify models when you need specific capabilities
+- **Testing**: Always test new personas in short conversations first
+
+## Legacy Compatibility
+
+The current system maintains backward compatibility with older role configurations. Files using the old format will continue to work seamlessly.
 
