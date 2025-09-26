@@ -1,0 +1,221 @@
+{
+  "metadata": {
+    "timestamp": "2025-09-26T15:11:54.753390",
+    "version": "1.0",
+    "platform": "linux",
+    "python_version": "3.11.2 (main, Apr 28 2025, 14:11:48) [GCC 12.2.0]"
+  },
+  "summary": {
+    "total": 29,
+    "passed": 26,
+    "failed": 3,
+    "warnings": 0,
+    "duration": 6.931093,
+    "success_rate": 89.65517241379311
+  },
+  "tests": [
+    {
+      "name": "Import: bridge_agents",
+      "status": "PASS",
+      "details": "Successfully imported provider_choices, get_spec, create_agent",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822316"
+    },
+    {
+      "name": "Import: chat_bridge",
+      "status": "PASS",
+      "details": "Successfully imported ping_provider, ConversationHistory, Transcript",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822333"
+    },
+    {
+      "name": "Import: version",
+      "status": "PASS",
+      "details": "Successfully imported __version__",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822341"
+    },
+    {
+      "name": "Required file: chat_bridge.py",
+      "status": "PASS",
+      "details": "File exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822351"
+    },
+    {
+      "name": "Required file: bridge_agents.py",
+      "status": "PASS",
+      "details": "File exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822354"
+    },
+    {
+      "name": "Required file: version.py",
+      "status": "PASS",
+      "details": "File exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822357"
+    },
+    {
+      "name": "Required file: README.md",
+      "status": "PASS",
+      "details": "File exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822360"
+    },
+    {
+      "name": "Required directory: transcripts",
+      "status": "PASS",
+      "details": "Directory exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822363"
+    },
+    {
+      "name": "Required directory: logs",
+      "status": "PASS",
+      "details": "Directory exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822367"
+    },
+    {
+      "name": "Required directory: docs",
+      "status": "PASS",
+      "details": "Directory exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822370"
+    },
+    {
+      "name": "Provider spec: openai",
+      "status": "PASS",
+      "details": "Label: OpenAI, Model: gpt-4.1-mini",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822377"
+    },
+    {
+      "name": "Provider spec: anthropic",
+      "status": "PASS",
+      "details": "Label: Anthropic, Model: claude-3-5-sonnet-20240620",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822380"
+    },
+    {
+      "name": "Provider spec: gemini",
+      "status": "PASS",
+      "details": "Label: Gemini, Model: gemini-1.5-pro-latest",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822383"
+    },
+    {
+      "name": "Provider spec: ollama",
+      "status": "PASS",
+      "details": "Label: Ollama, Model: llama3.1:8b-instruct",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822384"
+    },
+    {
+      "name": "Provider spec: lmstudio",
+      "status": "PASS",
+      "details": "Label: LM Studio, Model: lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822386"
+    },
+    {
+      "name": "Database Setup",
+      "status": "PASS",
+      "details": "Database created successfully",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822556"
+    },
+    {
+      "name": "Database table: conversations",
+      "status": "PASS",
+      "details": "Table exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822574"
+    },
+    {
+      "name": "Database table: messages",
+      "status": "PASS",
+      "details": "Table exists",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822576"
+    },
+    {
+      "name": "Roles File Loading",
+      "status": "PASS",
+      "details": "Roles loaded successfully",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822754"
+    },
+    {
+      "name": "Roles structure: agent_a",
+      "status": "PASS",
+      "details": "Key present",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822767"
+    },
+    {
+      "name": "Roles structure: agent_b",
+      "status": "PASS",
+      "details": "Key present",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822769"
+    },
+    {
+      "name": "Roles structure: persona_library",
+      "status": "PASS",
+      "details": "Key present",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822770"
+    },
+    {
+      "name": "Persona Library",
+      "status": "PASS",
+      "details": "Found 1 personas",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:47.822772"
+    },
+    {
+      "name": "Provider Connectivity - OpenAI",
+      "status": "PASS",
+      "details": "Status: online, Message: \u2705 API key valid, model accessible, Response time: 6023.3ms",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753238"
+    },
+    {
+      "name": "Provider Connectivity - Anthropic",
+      "status": "PASS",
+      "details": "Status: online, Message: \u2705 API key valid, model accessible, Response time: 692.92ms",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753244"
+    },
+    {
+      "name": "Provider Connectivity - Gemini",
+      "status": "FAIL",
+      "details": "Status: error, Message: \u274c Rate limit exceeded or quota exhausted, Response time: 186.33ms",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753246"
+    },
+    {
+      "name": "Provider Connectivity - Ollama",
+      "status": "FAIL",
+      "details": "Status: error, Message: \u274c Ollama model not found or API endpoint incorrect, Response time: 15.07ms",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753248"
+    },
+    {
+      "name": "Provider Connectivity - LM Studio",
+      "status": "FAIL",
+      "details": "Status: error, Message: \u274c All connection attempts failed, Response time: 12.73ms",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753249"
+    },
+    {
+      "name": "Overall Provider Connectivity",
+      "status": "PASS",
+      "details": "2/5 providers online",
+      "duration": 0.0,
+      "timestamp": "2025-09-26T15:11:54.753250"
+    }
+  ]
+}

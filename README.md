@@ -176,14 +176,15 @@ Create custom AI personalities in `roles.json`:
 
 ## 🌐 Provider Connectivity Testing
 
-Diagnose connection issues and verify API keys before starting conversations:
+Diagnose connection issues and verify API keys before starting conversations. The enhanced error reporting system provides detailed troubleshooting guidance for each provider.
 
 ### 🔍 Testing Features:
 - **Test All Providers** - Comprehensive connectivity check for all configured providers
 - **Test Specific Provider** - Detailed diagnostics for individual providers
 - **System Diagnostics** - Environment variables and configuration overview
 - **Real-time Results** - Response times and connection status
-- **Error Diagnosis** - Specific troubleshooting recommendations
+- **Enhanced Error Diagnosis** - Specific troubleshooting recommendations with step-by-step solutions
+- **Troubleshooting Tips** - Contextual help based on specific error types
 
 ### 📊 What Gets Tested:
 - ✅ **API Key Validity** - Authentication with each provider
@@ -258,12 +259,35 @@ Use the built-in **Provider Connectivity Test** from the main menu to quickly di
 - Check the per-session log and the global `chat_bridge.log` for request IDs and errors.
 - Missing API keys raise clear runtime errors—set them in `.env` or your shell.
 
-### Provider-Specific Tips
-- **OpenAI**: Verify `OPENAI_API_KEY` and check quota limits
-- **Anthropic**: Ensure `ANTHROPIC_API_KEY` is valid and active
-- **Gemini**: Check `GEMINI_API_KEY` and API access permissions
-- **Ollama**: Start server with `ollama serve` and verify models are installed
-- **LM Studio**: Ensure local server is running and `LMSTUDIO_BASE_URL` is correct
+### Provider-Specific Troubleshooting
+
+#### 🔑 OpenAI
+- **Invalid API Key (401)**: Verify `OPENAI_API_KEY` is set correctly, check credits, ensure key hasn't expired
+- **Access Forbidden (403)**: API key lacks model permissions, try different model (e.g., gpt-3.5-turbo)
+- **Rate Limited (429)**: Wait for reset, check usage limits in OpenAI dashboard, consider upgrading plan
+- **Network Issues**: Check internet connection, verify firewall/proxy settings
+
+#### 🤖 Anthropic
+- **Invalid API Key (401)**: Verify `ANTHROPIC_API_KEY` is set correctly, ensure key is valid and active
+- **Access Forbidden (403)**: Check API key permissions, verify account status
+- **Rate Limited (429)**: Wait before retrying, check usage limits, consider API tier upgrade
+
+#### 🔮 Gemini
+- **Invalid API Key (401)**: Verify `GEMINI_API_KEY`, enable Gemini API in Google Cloud Console
+- **Rate Limited (429)**: Wait for reset, check quota in Google Cloud Console, enable billing for higher limits
+- **Access Forbidden (403)**: Enable Gemini API, check permissions, verify billing is enabled
+
+#### 🦙 Ollama
+- **Connection Refused**: Start Ollama with `ollama serve` or `systemctl start ollama`
+- **Model Not Found (404)**: Pull model with `ollama pull llama3.1:8b-instruct`, check `OLLAMA_MODEL`
+- **Port Issues**: Verify Ollama runs on port 11434, check `OLLAMA_HOST` variable
+- **Firewall**: Ensure firewall allows connections to Ollama port
+
+#### 🏠 LM Studio
+- **Connection Refused**: Start LM Studio application and load a model
+- **Server Not Started**: Enable local server in LM Studio (usually port 1234)
+- **API Endpoint (404)**: Verify server is running, check if model is loaded
+- **Port Conflicts**: Check if another application uses port 1234, verify `LMSTUDIO_BASE_URL`
 
 Happy bridging!
 

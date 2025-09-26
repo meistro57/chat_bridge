@@ -941,7 +941,7 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
                 # Try to get a minimal response
                 response_started = False
-                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", test_messages, temperature=0.1, max_tokens=5):
+                async for chunk in client.stream(test_messages, temperature=0.1, max_tokens=5):
                     if chunk.strip():
                         response_started = True
                         break  # We got a response, that's enough
@@ -955,8 +955,43 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
             except Exception as e:
                 result["status"] = "error"
-                result["message"] = f"❌ {str(e)}"
-                result["error"] = str(e)
+                error_str = str(e)
+                if "401" in error_str or "unauthorized" in error_str.lower():
+                    result["message"] = "❌ Invalid API key - Check OPENAI_API_KEY environment variable"
+                    result["troubleshooting"] = [
+                        "1. Verify OPENAI_API_KEY is set correctly",
+                        "2. Check if API key has sufficient credits",
+                        "3. Ensure API key has not expired"
+                    ]
+                elif "403" in error_str or "forbidden" in error_str.lower():
+                    result["message"] = "❌ Access forbidden - API key lacks permissions for this model"
+                    result["troubleshooting"] = [
+                        "1. Verify your API key has access to the model",
+                        "2. Check if your account has the required tier access",
+                        "3. Try with a different model (e.g., gpt-3.5-turbo)"
+                    ]
+                elif "429" in error_str:
+                    result["message"] = "❌ Rate limit exceeded - Too many requests"
+                    result["troubleshooting"] = [
+                        "1. Wait before retrying (rate limits reset over time)",
+                        "2. Check your usage limits in OpenAI dashboard",
+                        "3. Consider upgrading your API plan"
+                    ]
+                elif "connection" in error_str.lower() or "network" in error_str.lower():
+                    result["message"] = "❌ Network connection failed"
+                    result["troubleshooting"] = [
+                        "1. Check your internet connection",
+                        "2. Verify firewall/proxy settings",
+                        "3. Try again in a few moments"
+                    ]
+                else:
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Check your API key and network connection",
+                        "2. Verify the model name is correct",
+                        "3. Check OpenAI service status"
+                    ]
+                result["error"] = error_str
 
         elif provider_key == "anthropic":
             try:
@@ -978,8 +1013,36 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
             except Exception as e:
                 result["status"] = "error"
-                result["message"] = f"❌ {str(e)}"
-                result["error"] = str(e)
+                error_str = str(e)
+                if "401" in error_str or "unauthorized" in error_str.lower():
+                    result["message"] = "❌ Invalid API key - Check ANTHROPIC_API_KEY environment variable"
+                    result["troubleshooting"] = [
+                        "1. Verify ANTHROPIC_API_KEY is set correctly",
+                        "2. Ensure API key is valid and active",
+                        "3. Check if you have sufficient credits"
+                    ]
+                elif "403" in error_str:
+                    result["message"] = "❌ Access forbidden - Check API key permissions"
+                    result["troubleshooting"] = [
+                        "1. Verify your API key has access to Claude models",
+                        "2. Check your account status",
+                        "3. Try a different model version"
+                    ]
+                elif "429" in error_str:
+                    result["message"] = "❌ Rate limit exceeded"
+                    result["troubleshooting"] = [
+                        "1. Wait before retrying",
+                        "2. Check your usage limits",
+                        "3. Consider API tier upgrade"
+                    ]
+                else:
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Check ANTHROPIC_API_KEY environment variable",
+                        "2. Verify network connectivity",
+                        "3. Check Anthropic service status"
+                    ]
+                result["error"] = error_str
 
         elif provider_key == "gemini":
             try:
@@ -987,7 +1050,8 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
                 client = GeminiChat(api_key=api_key, model=spec.default_model)
 
                 response_started = False
-                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                test_contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", test_contents, temperature=0.1, max_tokens=5):
                     if chunk.strip():
                         response_started = True
                         break
@@ -1001,15 +1065,45 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
             except Exception as e:
                 result["status"] = "error"
-                result["message"] = f"❌ {str(e)}"
-                result["error"] = str(e)
+                error_str = str(e)
+                if "401" in error_str or "invalid" in error_str.lower():
+                    result["message"] = "❌ Invalid API key - Check GEMINI_API_KEY environment variable"
+                    result["troubleshooting"] = [
+                        "1. Verify GEMINI_API_KEY is set correctly",
+                        "2. Enable Gemini API in Google Cloud Console",
+                        "3. Ensure API key has Generative AI permissions"
+                    ]
+                elif "429" in error_str:
+                    result["message"] = "❌ Rate limit exceeded or quota exhausted"
+                    result["troubleshooting"] = [
+                        "1. Wait for rate limit to reset (usually hourly/daily)",
+                        "2. Check your Gemini API quota in Google Cloud Console",
+                        "3. Enable billing if using free tier limits",
+                        "4. Consider requesting quota increase"
+                    ]
+                elif "403" in error_str:
+                    result["message"] = "❌ API access forbidden"
+                    result["troubleshooting"] = [
+                        "1. Enable Gemini API in Google Cloud Console",
+                        "2. Check API key permissions",
+                        "3. Verify billing is enabled for your project"
+                    ]
+                else:
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Check GEMINI_API_KEY environment variable",
+                        "2. Enable Gemini API in Google Cloud Console",
+                        "3. Verify network connectivity"
+                    ]
+                result["error"] = error_str
 
         elif provider_key == "ollama":
             try:
                 client = OllamaChat(model=spec.default_model)
 
                 response_started = False
-                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                test_messages = [{"role": "user", "content": "Hello"}]
+                async for chunk in client.stream(test_messages, "You are a test assistant. Respond with just 'OK'.", temperature=0.1, max_tokens=5):
                     if chunk.strip():
                         response_started = True
                         break
@@ -1023,11 +1117,32 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
             except Exception as e:
                 result["status"] = "error"
-                if "Connection refused" in str(e) or "connection error" in str(e).lower():
+                error_str = str(e)
+                if "Connection refused" in error_str or "connection error" in error_str.lower():
                     result["message"] = "❌ Ollama server not running or unreachable"
+                    result["troubleshooting"] = [
+                        "1. Start Ollama: 'ollama serve' or 'systemctl start ollama'",
+                        "2. Check if Ollama is running on correct port (default: 11434)",
+                        "3. Verify OLLAMA_HOST environment variable if using custom host",
+                        "4. Ensure firewall allows connections to Ollama port"
+                    ]
+                elif "404" in error_str:
+                    result["message"] = "❌ Ollama model not found or API endpoint incorrect"
+                    result["troubleshooting"] = [
+                        "1. Pull the model: 'ollama pull llama3.1:8b-instruct'",
+                        "2. List available models: 'ollama list'",
+                        "3. Check model name in OLLAMA_MODEL environment variable",
+                        "4. Verify Ollama API is accessible at /api/chat"
+                    ]
                 else:
-                    result["message"] = f"❌ {str(e)}"
-                result["error"] = str(e)
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Start Ollama server: 'ollama serve'",
+                        "2. Pull required model: 'ollama pull llama3.1:8b-instruct'",
+                        "3. Check Ollama logs for errors",
+                        "4. Verify OLLAMA_HOST and OLLAMA_MODEL settings"
+                    ]
+                result["error"] = error_str
 
         elif provider_key == "lmstudio":
             try:
@@ -1035,7 +1150,8 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
                 client = OpenAIChat(model=spec.default_model, api_key=None, base_url=base_url)
 
                 response_started = False
-                async for chunk in client.stream("You are a test assistant. Respond with just 'OK'.", [{"role": "user", "content": "Hello"}], temperature=0.1, max_tokens=5):
+                test_messages = [{"role": "user", "content": "Hello"}]
+                async for chunk in client.stream(test_messages, temperature=0.1, max_tokens=5):
                     if chunk.strip():
                         response_started = True
                         break
@@ -1049,11 +1165,33 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
 
             except Exception as e:
                 result["status"] = "error"
-                if "Connection refused" in str(e) or "connection error" in str(e).lower():
+                error_str = str(e)
+                if "Connection refused" in error_str or "connection error" in error_str.lower():
                     result["message"] = f"❌ LM Studio server not running at {os.getenv('LMSTUDIO_BASE_URL', 'http://localhost:1234/v1')}"
+                    result["troubleshooting"] = [
+                        "1. Start LM Studio application",
+                        "2. Load a model in LM Studio",
+                        "3. Start the local server in LM Studio (usually port 1234)",
+                        "4. Verify LMSTUDIO_BASE_URL environment variable",
+                        "5. Check if another application is using port 1234"
+                    ]
+                elif "404" in error_str:
+                    result["message"] = "❌ LM Studio API endpoint not found"
+                    result["troubleshooting"] = [
+                        "1. Ensure local server is started in LM Studio",
+                        "2. Verify the correct API endpoint URL",
+                        "3. Check if model is loaded and ready",
+                        "4. Try restarting the LM Studio server"
+                    ]
                 else:
-                    result["message"] = f"❌ {str(e)}"
-                result["error"] = str(e)
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Start LM Studio and load a model",
+                        "2. Enable local server in LM Studio settings",
+                        "3. Check LMSTUDIO_BASE_URL and LMSTUDIO_MODEL",
+                        "4. Verify firewall allows connections to LM Studio"
+                    ]
+                result["error"] = error_str
 
         else:
             result["status"] = "unsupported"
@@ -1143,6 +1281,11 @@ def show_provider_status_summary(results: Dict[str, Dict]):
         print(f"{colorize('🔴 PROVIDERS WITH ISSUES:', Colors.RED, bold=True)}")
         for provider in error_providers:
             print(f"  • {colorize(provider['label'], Colors.RED)}: {provider['message']}")
+            if provider.get("troubleshooting"):
+                print(f"    {colorize('💡 Troubleshooting:', Colors.YELLOW, bold=True)}")
+                for tip in provider["troubleshooting"]:
+                    print(f"      {colorize(tip, Colors.YELLOW)}")
+                print()
         print()
 
     # Show offline providers
@@ -1371,7 +1514,7 @@ async def run_bridge(args):
 
             # Stream response
             full_reply = ""
-            async for chunk in agent.stream_response(recent_context):
+            async for chunk in agent.stream_reply(recent_context, args.mem_rounds):
                 if chunk:
                     print(chunk, end="", flush=True)
                     full_reply += chunk
