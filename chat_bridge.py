@@ -161,8 +161,17 @@ def get_user_input(prompt: str, default: str = "") -> str:
     except KeyboardInterrupt:
         print(f"\n{colorize('👋 Goodbye!', Colors.YELLOW)}")
         sys.exit(0)
+    except EOFError:
+        # Handle non-interactive mode - return default or exit gracefully
+        if default:
+            print(f"\n{colorize('ℹ️ Non-interactive mode detected, using default:', Colors.BLUE)} {default}")
+            return default
+        else:
+            print(f"\n{colorize('❌ Non-interactive mode detected but no default provided', Colors.RED)}")
+            print(f"{colorize('💡 Tip: Use command line arguments to skip interactive mode', Colors.YELLOW)}")
+            sys.exit(1)
 
-def select_from_menu(options: List[Tuple[str, str]], title: str, allow_multiple: bool = False) -> str:
+def select_from_menu(options: List[Tuple[str, str]], title: str, allow_multiple: bool = False, default: str = "") -> str:
     """Display a menu and get user selection"""
     print_section_header(title)
 
@@ -175,7 +184,7 @@ def select_from_menu(options: List[Tuple[str, str]], title: str, allow_multiple:
         prompt = f"Select option (1-{len(options)})"
 
     while True:
-        choice = get_user_input(prompt)
+        choice = get_user_input(prompt, default)
         if not choice:
             continue
 
@@ -207,9 +216,19 @@ def select_providers() -> Tuple[str, str]:
     for key, spec in specs.items():
         providers.append((key, f"{spec.label} - {spec.description}"))
 
+    # Find default indices based on environment variables
+    default_a_index = "1"  # Default to first option
+    default_b_index = "2"  # Default to second option
+
+    for i, (key, _) in enumerate(providers, 1):
+        if key == DEFAULT_PROVIDER_A:
+            default_a_index = str(i)
+        if key == DEFAULT_PROVIDER_B:
+            default_b_index = str(i)
+
     # Select Agent A
     print(colorize("🔹 SELECT AGENT A (First Speaker)", Colors.BLUE, bold=True))
-    choice_a = select_from_menu(providers, "Agent A Provider")
+    choice_a = select_from_menu(providers, "Agent A Provider", default=default_a_index)
     provider_a = providers[int(choice_a) - 1][0]
     spec_a = specs[provider_a]
     print_success(f"Agent A: {spec_a.label} ({spec_a.default_model})")
@@ -218,7 +237,7 @@ def select_providers() -> Tuple[str, str]:
 
     # Select Agent B
     print(colorize("🔸 SELECT AGENT B (Second Speaker)", Colors.MAGENTA, bold=True))
-    choice_b = select_from_menu(providers, "Agent B Provider")
+    choice_b = select_from_menu(providers, "Agent B Provider", default=default_b_index)
     provider_b = providers[int(choice_b) - 1][0]
     spec_b = specs[provider_b]
     print_success(f"Agent B: {spec_b.label} ({spec_b.default_model})")
@@ -246,12 +265,12 @@ def select_personas(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional
     # Agent A persona
     print(colorize("🔹 PERSONA FOR AGENT A", Colors.BLUE, bold=True))
     personas_with_skip = [("skip", "Use default system prompt")] + personas
-    choice_a = select_from_menu(personas_with_skip, "Agent A Persona")
+    choice_a = select_from_menu(personas_with_skip, "Agent A Persona", default="1")
     persona_a = None if choice_a == "1" else personas[int(choice_a) - 2][0]
 
     # Agent B persona
     print(colorize("🔸 PERSONA FOR AGENT B", Colors.MAGENTA, bold=True))
-    choice_b = select_from_menu(personas_with_skip, "Agent B Persona")
+    choice_b = select_from_menu(personas_with_skip, "Agent B Persona", default="1")
     persona_b = None if choice_b == "1" else personas[int(choice_b) - 2][0]
 
     return persona_a, persona_b
@@ -262,11 +281,11 @@ def get_conversation_starter() -> str:
     print_info("Enter a topic or question to start the conversation between the AI assistants.")
     print()
 
-    while True:
-        starter = get_user_input("Conversation topic")
-        if starter:
-            return starter
-        print_error("Please enter a conversation starter")
+    default_starter = "What is the nature of artificial intelligence and consciousness?"
+    starter = get_user_input("Conversation topic", default_starter)
+    if starter:
+        return starter
+    return default_starter
 
 def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_rounds: int):
     """Show a summary of the session configuration"""
@@ -281,7 +300,11 @@ def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_
     print(f"  {colorize('Memory Rounds:', Colors.WHITE)} {colorize(str(mem_rounds), Colors.CYAN)}")
 
     print()
-    input(colorize("Press Enter to start the conversation... ", Colors.GREEN))
+    try:
+        input(colorize("Press Enter to start the conversation... ", Colors.GREEN))
+    except (EOFError, KeyboardInterrupt):
+        # In non-interactive mode, just continue
+        print(colorize("Starting conversation...", Colors.GREEN))
 
 # ───────────────────────── Core Logic (from existing scripts) ─────────────────────────
 
