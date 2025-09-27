@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, Dict, Iterable, List, Optional
 
 import httpx
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 STALL_TIMEOUT_SEC = 90
 MAX_TOKENS = 800
@@ -287,13 +288,15 @@ class AnthropicChat:
 
 
 class GeminiChat:
-    """Wrapper using google-generativeai library with async generator interface."""
+    """Wrapper using google-genai library with async generator interface."""
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
         self.model = model
-        genai.configure(api_key=api_key)
-        self.client = genai.GenerativeModel(model)
+        # Set the API key in environment for the client
+        import os
+        os.environ["GEMINI_API_KEY"] = api_key
+        self.client = genai.Client()
 
     async def stream(
         self,
@@ -302,33 +305,35 @@ class GeminiChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
-        # Convert contents format to google-generativeai format
-        messages = []
+        # Convert contents format to text
+        conversation_parts = []
+        
+        if system_instruction:
+            conversation_parts.append(f"System: {system_instruction}")
+        
         for content in contents:
             if content.get("role") == "user":
-                messages.append({"role": "user", "parts": [content.get("parts", [{}])[0].get("text", "")]})
+                text = content.get("parts", [{}])[0].get("text", "")
+                conversation_parts.append(f"User: {text}")
             elif content.get("role") == "model":
-                messages.append({"role": "model", "parts": [content.get("parts", [{}])[0].get("text", "")]})
+                text = content.get("parts", [{}])[0].get("text", "")
+                conversation_parts.append(f"Assistant: {text}")
         
-        generation_config = genai.GenerationConfig(
-            temperature=temperature,
-            max_output_tokens=max_tokens
-        )
+        # Add prompt for the assistant to respond
+        conversation_parts.append("Assistant:")
+        conversation_text = "\n".join(conversation_parts)
         
         try:
-            # Use generate_content with the system instruction
-            if system_instruction:
-                self.client = genai.GenerativeModel(self.model, system_instruction=system_instruction)
+            # Create generation config
+            config = types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens
+            )
             
-            # Convert messages to text format for the client
-            conversation_text = ""
-            for msg in messages:
-                role = "Human" if msg["role"] == "user" else "Assistant"
-                conversation_text += f"{role}: {msg['parts'][0]}\n"
-            
-            response = self.client.generate_content(
-                conversation_text,
-                generation_config=generation_config
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=conversation_text,
+                config=config
             )
             
             if response.text:
