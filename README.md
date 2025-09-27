@@ -48,7 +48,7 @@ python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What
 ## Requirements
 
 - Python 3.10 or newer.
-- Dependencies: `httpx`, `python-dotenv` (install via `pip install httpx python-dotenv`).
+- Dependencies: `httpx`, `python-dotenv`, `google-generativeai` (install via `pip install httpx python-dotenv google-generativeai`).
 - API keys for whichever cloud providers you plan to use.
   - `OPENAI_API_KEY` for OpenAI.
   - `ANTHROPIC_API_KEY` for Anthropic.
@@ -70,7 +70,7 @@ Set provider-specific default models with environment variables such as
 2. (Optional) create and activate a virtual environment.
 3. Install dependencies:
    ```bash
-   pip install httpx python-dotenv
+   pip install httpx python-dotenv google-generativeai
    ```
 4. Create a `.env` file alongside the scripts and add your secrets:
    ```bash

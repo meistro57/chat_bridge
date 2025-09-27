@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, Dict, Iterable, List, Optional
 
 import httpx
+import google.generativeai as genai
 
 STALL_TIMEOUT_SEC = 90
 MAX_TOKENS = 800
@@ -286,12 +287,13 @@ class AnthropicChat:
 
 
 class GeminiChat:
-    """Thin wrapper over the Gemini REST API (non-streaming with async generator)."""
+    """Wrapper using google-generativeai library with async generator interface."""
 
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
         self.model = model
-        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        genai.configure(api_key=api_key)
+        self.client = genai.GenerativeModel(model)
 
     async def stream(
         self,
@@ -300,36 +302,43 @@ class GeminiChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
-        payload: Dict[str, object] = {
-            "contents": contents,
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens,
-            },
-        }
-        if system_instruction:
-            payload["systemInstruction"] = {
-                "role": "system",
-                "parts": [{"text": system_instruction}],
-            }
-
-        params = {"key": self.api_key}
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            response = await client.post(self.base_url, params=params, json=payload)
-            response.raise_for_status()
-            data = response.json()
-
-        texts: List[str] = []
-        for candidate in data.get("candidates", []):
-            content = candidate.get("content", {})
-            parts = content.get("parts", []) if isinstance(content, dict) else []
-            for part in parts:
-                txt = part.get("text") if isinstance(part, dict) else None
-                if txt:
-                    texts.append(txt)
-        final = "\n".join(texts).strip()
-        if final:
-            yield final
+        # Convert contents format to google-generativeai format
+        messages = []
+        for content in contents:
+            if content.get("role") == "user":
+                messages.append({"role": "user", "parts": [content.get("parts", [{}])[0].get("text", "")]})
+            elif content.get("role") == "model":
+                messages.append({"role": "model", "parts": [content.get("parts", [{}])[0].get("text", "")]})
+        
+        generation_config = genai.GenerationConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens
+        )
+        
+        try:
+            # Use generate_content with the system instruction
+            if system_instruction:
+                self.client = genai.GenerativeModel(self.model, system_instruction=system_instruction)
+            
+            # Convert messages to text format for the client
+            conversation_text = ""
+            for msg in messages:
+                role = "Human" if msg["role"] == "user" else "Assistant"
+                conversation_text += f"{role}: {msg['parts'][0]}\n"
+            
+            response = self.client.generate_content(
+                conversation_text,
+                generation_config=generation_config
+            )
+            
+            if response.text:
+                # Simulate streaming by yielding the complete response
+                yield response.text
+        except Exception as e:
+            # Handle errors gracefully by converting to the expected format
+            import asyncio
+            await asyncio.sleep(0)  # Make it properly async
+            raise e
 
 
 class OllamaChat:
