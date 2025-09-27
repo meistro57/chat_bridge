@@ -10,8 +10,7 @@ from dataclasses import dataclass
 from typing import AsyncGenerator, Dict, Iterable, List, Optional
 
 import httpx
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 STALL_TIMEOUT_SEC = 90
 MAX_TOKENS = 800
@@ -72,7 +71,7 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         key="gemini",
         label="Gemini",
         kind="gemini",
-        default_model=_env("GEMINI_MODEL") or "gemini-1.5-pro-latest",
+        default_model=_env("GEMINI_MODEL") or "gemini-1.5-flash",
         default_system="You are Gemini. Respond with structured, thoughtful, and well-cited answers when possible.",
         needs_key=True,
         key_env="GEMINI_API_KEY",
@@ -293,10 +292,9 @@ class GeminiChat:
     def __init__(self, api_key: str, model: str):
         self.api_key = api_key
         self.model = model
-        # Set the API key in environment for the client
-        import os
-        os.environ["GEMINI_API_KEY"] = api_key
-        self.client = genai.Client()
+        # Configure the client with API key
+        genai.configure(api_key=api_key)
+        self.client = genai.GenerativeModel(model)
 
     async def stream(
         self,
@@ -305,45 +303,54 @@ class GeminiChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
-        # Convert contents format to text
-        conversation_parts = []
-        
-        if system_instruction:
-            conversation_parts.append(f"System: {system_instruction}")
-        
-        for content in contents:
-            if content.get("role") == "user":
-                text = content.get("parts", [{}])[0].get("text", "")
-                conversation_parts.append(f"User: {text}")
-            elif content.get("role") == "model":
-                text = content.get("parts", [{}])[0].get("text", "")
-                conversation_parts.append(f"Assistant: {text}")
-        
-        # Add prompt for the assistant to respond
-        conversation_parts.append("Assistant:")
-        conversation_text = "\n".join(conversation_parts)
-        
         try:
-            # Create generation config
-            config = types.GenerateContentConfig(
+            # Convert contents to Gemini format
+            history = []
+            current_message = None
+            
+            # Process conversation history
+            for content in contents:
+                role = content.get("role")
+                parts = content.get("parts", [])
+                
+                if parts and len(parts) > 0:
+                    text = parts[0].get("text", "")
+                    if text.strip():
+                        if role == "user":
+                            history.append({"role": "user", "parts": [{"text": text}]})
+                        elif role == "model":
+                            history.append({"role": "model", "parts": [{"text": text}]})
+            
+            # Get the last user message as the current prompt
+            if history and history[-1]["role"] == "user":
+                current_message = history[-1]["parts"][0]["text"]
+                history = history[:-1]  # Remove last message from history
+            else:
+                current_message = "Hello"
+            
+            # Create chat session
+            chat = self.client.start_chat(history=history)
+            
+            # Generate config
+            generation_config = genai.GenerationConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens
             )
             
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=conversation_text,
-                config=config
+            # Send message and get response
+            response = chat.send_message(
+                current_message, 
+                generation_config=generation_config,
+                stream=False  # Use non-streaming for now
             )
             
             if response.text:
-                # Simulate streaming by yielding the complete response
                 yield response.text
+            
         except Exception as e:
-            # Handle errors gracefully by converting to the expected format
             import asyncio
             await asyncio.sleep(0)  # Make it properly async
-            raise e
+            raise RuntimeError(f"Gemini API error: {str(e)}")
 
 
 class OllamaChat:
