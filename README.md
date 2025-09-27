@@ -246,7 +246,29 @@ write to `transcripts/` automatically.
 
 ## Troubleshooting
 
-### 🔧 Quick Diagnostics
+### 🏆 Comprehensive Certification
+
+Run the automated certification script to validate your entire Chat Bridge installation:
+
+```bash
+python certify.py
+```
+
+**Enhanced Features:**
+- 🔍 **Detailed provider identification** with specific AI model names (ChatGPT, Claude, Gemini, etc.)
+- ⏱️ **Comprehensive timestamps** for all test operations
+- 📊 **Enhanced reporting** with provider-specific statistics
+- 🎯 **Structured JSON reports** saved to `certification_report_YYYYMMDD_HHMMSS.json`
+
+The certification covers:
+- ✅ Module imports and dependencies
+- ✅ File structure validation
+- ✅ Database operations (SQLite)
+- ✅ Provider connectivity (OpenAI, Anthropic, Gemini, Ollama, LM Studio)
+- ✅ Roles and personas system
+- ✅ Error handling and recovery
+
+## 🔧 Quick Diagnostics
 Use the built-in **Provider Connectivity Test** from the main menu to quickly diagnose issues:
 - Check API key validity
 - Test network connectivity

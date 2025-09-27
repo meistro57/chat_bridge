@@ -246,33 +246,90 @@ A Chat Bridge installation is considered **certified** when:
 5. **Interactive features function** (menus, roles management)
 6. **Documentation is accurate** and troubleshooting tips work
 
-## 🏆 Certification Command
+## 🏆 Automated Certification Script
 
-Run this comprehensive test to certify your installation:
+Chat Bridge now includes a comprehensive automated certification script that tests all functionality with enhanced logging and detailed reporting.
+
+### Running Certification
 
 ```bash
-# Comprehensive certification test
-echo "🧪 Running Chat Bridge Certification Test"
-echo "1. Testing provider connectivity..."
-python chat_bridge.py << EOF
-3
-1
-4
-4
-EOF
-
-echo "2. Testing conversation flow..."
-python chat_bridge.py \
-  --provider-a anthropic \
-  --provider-b openai \
-  --starter "Please introduce yourselves and discuss AI capabilities" \
-  --max-rounds 4
-
-echo "3. Checking file outputs..."
-ls -la transcripts/ logs/ bridge.db chat_bridge.log
-
-echo "✅ Certification complete!"
+# Run complete certification suite
+python certify.py
 ```
+
+### Enhanced Features
+
+The certification script now provides:
+
+**🔍 Detailed Provider Identification**
+- Shows specific provider names (OpenAI, Anthropic, Gemini, Ollama, LM Studio)
+- Displays provider types (CHATML, ANTHROPIC, GEMINI, etc.)
+- Includes default model information
+- Shows API endpoint details for local providers
+
+**⏱️ Comprehensive Timestamps**
+- Millisecond-precision timestamps for all test entries
+- Real-time logging of test progress
+- Duration tracking for performance analysis
+- Test completion timestamps
+
+**📊 Enhanced Reporting**
+- Tests grouped by provider/component type
+- Provider-specific pass/fail statistics
+- Detailed JSON reports with metadata
+- Color-coded console output with status indicators
+
+### Certification Report Structure
+
+The generated `certification_report_YYYYMMDD_HHMMSS.json` includes:
+
+```json
+{
+  "metadata": {
+    "timestamp": "ISO format timestamp",
+    "total_duration_seconds": "Total test time",
+    "platform": "Operating system",
+    "python_version": "Python version details"
+  },
+  "tests_by_provider": {
+    "OpenAI": [...],
+    "Anthropic": [...],
+    "Gemini": [...],
+    "File System": [...],
+    "SQLite Database": [...]
+  },
+  "summary": {
+    "total": 29,
+    "passed": 27,
+    "failed": 2,
+    "success_rate": 93.1
+  }
+}
+```
+
+### Sample Output
+
+```
+[2025-09-26 22:02:45] Starting comprehensive certification tests...
+[2025-09-26 22:02:45] Running test suite: Provider connectivity
+[2025-09-26 22:02:50] Testing Provider: OpenAI (CHATML), Model: gpt-4.1-mini - PASS
+[2025-09-26 22:02:50] Testing Provider: Gemini (GEMINI), Model: gemini-1.5-pro-latest - FAIL
+[2025-09-26 22:02:50] Overall connectivity: PASS - Total providers tested: 5, Online: 3
+
+🏆 CERTIFICATION: PASSED
+Your Chat Bridge installation is fully certified!
+
+Provider Test Summary:
+  OpenAI: 1 passed, 0 failed, 0 warnings
+  Anthropic: 1 passed, 0 failed, 0 warnings  
+  Gemini: 0 passed, 1 failed, 0 warnings
+```
+
+### Certification Levels
+
+- **🏆 PASSED** (85%+ success, ≤3 failures): Full certification
+- **⚠️ CONDITIONAL PASS** (70%+ success, ≤5 failures): Works with limitations  
+- **❌ FAILED** (<70% success): Needs fixes before certification
 
 ## 📞 Support & Troubleshooting
 

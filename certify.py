@@ -38,14 +38,16 @@ class CertificationReport:
         self.tests = []
         self.start_time = datetime.now()
 
-    def add_test(self, name: str, status: str, details: str = "", duration: float = 0.0):
+    def add_test(self, name: str, status: str, details: str = "", duration: float = 0.0, provider_info: str = ""):
         """Add a test result"""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         self.tests.append({
             'name': name,
             'status': status,
             'details': details,
             'duration': duration,
-            'timestamp': datetime.now().isoformat()
+            'timestamp': timestamp,
+            'provider_info': provider_info
         })
 
     def get_summary(self) -> Dict:
@@ -67,9 +69,10 @@ class CertificationReport:
     def print_summary(self):
         """Print colored test summary"""
         summary = self.get_summary()
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         print_section_header("Certification Results", "🏆")
-
+        print(f"  {colorize('Completed at:', Colors.WHITE)} {colorize(current_time, Colors.CYAN)}")
         print(f"  {colorize('Total Tests:', Colors.WHITE)} {colorize(str(summary['total']), Colors.CYAN)}")
         print(f"  {colorize('Passed:', Colors.GREEN)} {colorize(str(summary['passed']), Colors.GREEN, bold=True)}")
         if summary['failed'] > 0:
@@ -85,33 +88,63 @@ class CertificationReport:
         print()
 
         # Overall certification status
+        cert_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if summary['success_rate'] >= 85 and summary['failed'] <= 3:
+            print(f"[{cert_timestamp}] CERTIFICATION STATUS: PASSED")
             print_success("🏆 CERTIFICATION: PASSED")
             print_info("Your Chat Bridge installation is fully certified!")
         elif summary['success_rate'] >= 70 and summary['failed'] <= 5:
+            print(f"[{cert_timestamp}] CERTIFICATION STATUS: CONDITIONAL PASS")
             print_warning("⚠️ CERTIFICATION: CONDITIONAL PASS")
             print_info("Your installation works but has some limitations.")
         else:
+            print(f"[{cert_timestamp}] CERTIFICATION STATUS: FAILED")
             print_error("❌ CERTIFICATION: FAILED")
             print_error("Your installation needs fixes before certification.")
 
     def save_report(self, filepath: str):
         """Save detailed report to JSON file"""
         summary = self.get_summary()
+        
+        # Group tests by provider/component for better organization
+        provider_tests = {}
+        system_tests = []
+        
+        for test in self.tests:
+            provider_info = test.get('provider_info', 'System')
+            if provider_info not in provider_tests:
+                provider_tests[provider_info] = []
+            provider_tests[provider_info].append(test)
+        
         report = {
             'metadata': {
                 'timestamp': datetime.now().isoformat(),
                 'version': '1.0',
                 'platform': sys.platform,
-                'python_version': sys.version
+                'python_version': sys.version,
+                'total_duration_seconds': summary['duration']
             },
             'summary': summary,
-            'tests': self.tests
+            'tests_by_provider': provider_tests,
+            'all_tests': self.tests
         }
 
         with open(filepath, 'w') as f:
             json.dump(report, f, indent=2)
         print_info(f"Detailed report saved: {colorize(filepath, Colors.CYAN)}")
+        
+        # Print brief summary of providers tested
+        provider_summary = {}
+        for provider, tests in provider_tests.items():
+            passed = sum(1 for t in tests if t['status'] == 'PASS')
+            failed = sum(1 for t in tests if t['status'] == 'FAIL')
+            warned = sum(1 for t in tests if t['status'] == 'WARN')
+            provider_summary[provider] = {'passed': passed, 'failed': failed, 'warned': warned}
+        
+        print(f"\n{colorize('Provider Test Summary:', Colors.WHITE)}")
+        for provider, stats in provider_summary.items():
+            status_color = Colors.GREEN if stats['failed'] == 0 else Colors.RED if stats['failed'] > stats['passed'] else Colors.YELLOW
+            print(f"  {colorize(provider + ':', status_color)} {stats['passed']} passed, {stats['failed']} failed, {stats['warned']} warnings")
 
 
 async def test_provider_connectivity(report: CertificationReport) -> int:
@@ -127,34 +160,58 @@ async def test_provider_connectivity(report: CertificationReport) -> int:
             if result["status"] == "online":
                 online_count += 1
 
+            # Get provider spec for detailed info
+            try:
+                spec = get_spec(provider_key)
+                provider_name = spec.label
+                model_info = spec.default_model
+                provider_type = spec.kind.upper()
+                provider_details = f"Provider: {provider_name} ({provider_type}), Model: {model_info}"
+            except:
+                provider_details = f"Provider: {provider_key}"
+
             details = f"Status: {result['status']}, Message: {result['message']}"
             if result.get("response_time"):
                 details += f", Response time: {result['response_time']}ms"
 
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{timestamp}] Testing {provider_details} - {status}")
+
             report.add_test(
                 f"Provider Connectivity - {result['label']}",
                 status,
-                details
+                details,
+                provider_info=provider_details
             )
 
         # Overall connectivity test
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        overall_details = f"Total providers tested: {len(results)}, Online: {online_count}"
+        
         if online_count >= 2:
-            report.add_test("Overall Provider Connectivity", "PASS", f"{online_count}/5 providers online")
+            report.add_test("Overall Provider Connectivity", "PASS", f"{online_count}/{len(results)} providers online", provider_info="All Providers")
+            print(f"[{timestamp}] Overall connectivity: PASS - {overall_details}")
         elif online_count >= 1:
-            report.add_test("Overall Provider Connectivity", "WARN", f"Only {online_count}/5 providers online")
+            report.add_test("Overall Provider Connectivity", "WARN", f"Only {online_count}/{len(results)} providers online", provider_info="All Providers")
+            print(f"[{timestamp}] Overall connectivity: WARN - {overall_details}")
         else:
-            report.add_test("Overall Provider Connectivity", "FAIL", "No providers online")
+            report.add_test("Overall Provider Connectivity", "FAIL", "No providers online", provider_info="All Providers")
+            print(f"[{timestamp}] Overall connectivity: FAIL - {overall_details}")
 
         return online_count
 
     except Exception as e:
-        report.add_test("Provider Connectivity Test", "FAIL", f"Exception: {str(e)}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Provider connectivity test failed: {str(e)}")
+        report.add_test("Provider Connectivity Test", "FAIL", f"Exception: {str(e)}", provider_info="System Error")
         return 0
 
 
 def test_file_structure(report: CertificationReport):
     """Test required files and directories exist"""
     print_section_header("File Structure Tests", "📁")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Starting file structure validation...")
 
     required_files = [
         'chat_bridge.py',
@@ -170,32 +227,42 @@ def test_file_structure(report: CertificationReport):
     ]
 
     for file in required_files:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if os.path.exists(file):
-            report.add_test(f"Required file: {file}", "PASS", "File exists")
+            report.add_test(f"Required file: {file}", "PASS", "File exists", provider_info="File System")
+            print(f"[{timestamp}] File check: {file} - FOUND")
             print_success(f"✅ {file}")
         else:
-            report.add_test(f"Required file: {file}", "FAIL", "File missing")
+            report.add_test(f"Required file: {file}", "FAIL", "File missing", provider_info="File System")
+            print(f"[{timestamp}] File check: {file} - MISSING")
             print_error(f"❌ {file} - MISSING")
 
     for directory in required_dirs:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if os.path.exists(directory):
-            report.add_test(f"Required directory: {directory}", "PASS", "Directory exists")
+            report.add_test(f"Required directory: {directory}", "PASS", "Directory exists", provider_info="File System")
+            print(f"[{timestamp}] Directory check: {directory}/ - EXISTS")
             print_success(f"✅ {directory}/")
         else:
             # Create directory and warn
             os.makedirs(directory, exist_ok=True)
-            report.add_test(f"Required directory: {directory}", "WARN", "Directory created")
+            report.add_test(f"Required directory: {directory}", "WARN", "Directory created", provider_info="File System")
+            print(f"[{timestamp}] Directory check: {directory}/ - CREATED")
             print_warning(f"⚠️ {directory}/ - Created")
 
 
 def test_database_operations(report: CertificationReport):
     """Test SQLite database operations"""
     print_section_header("Database Operations Tests", "🗄️")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Starting database operations test...")
 
     try:
         # Test database setup
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         conn = setup_database()
-        report.add_test("Database Setup", "PASS", "Database created successfully")
+        report.add_test("Database Setup", "PASS", "Database created successfully", provider_info="SQLite Database")
+        print(f"[{timestamp}] Database setup: SUCCESS")
         print_success("✅ Database setup")
 
         # Test table creation
@@ -205,23 +272,30 @@ def test_database_operations(report: CertificationReport):
 
         required_tables = ['conversations', 'messages']
         for table in required_tables:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             if table in tables:
-                report.add_test(f"Database table: {table}", "PASS", "Table exists")
+                report.add_test(f"Database table: {table}", "PASS", "Table exists", provider_info="SQLite Database")
+                print(f"[{timestamp}] Table check: {table} - EXISTS")
                 print_success(f"✅ Table '{table}'")
             else:
-                report.add_test(f"Database table: {table}", "FAIL", "Table missing")
+                report.add_test(f"Database table: {table}", "FAIL", "Table missing", provider_info="SQLite Database")
+                print(f"[{timestamp}] Table check: {table} - MISSING")
                 print_error(f"❌ Table '{table}' - MISSING")
 
         conn.close()
 
     except Exception as e:
-        report.add_test("Database Operations", "FAIL", f"Exception: {str(e)}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        report.add_test("Database Operations", "FAIL", f"Exception: {str(e)}", provider_info="SQLite Database")
+        print(f"[{timestamp}] Database operations: ERROR - {str(e)}")
         print_error(f"❌ Database error: {e}")
 
 
 def test_roles_system(report: CertificationReport):
     """Test roles and personas system"""
     print_section_header("Roles System Tests", "🎭")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Starting roles system test...")
 
     # Test with sample roles file
     sample_roles = {
@@ -255,35 +329,48 @@ def test_roles_system(report: CertificationReport):
             json.dump(sample_roles, f, indent=2)
 
         # Test loading
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         roles = load_roles_file(test_roles_file)
         if roles:
-            report.add_test("Roles File Loading", "PASS", "Roles loaded successfully")
+            report.add_test("Roles File Loading", "PASS", "Roles loaded successfully", provider_info="Roles System")
+            print(f"[{timestamp}] Roles loading: SUCCESS")
             print_success("✅ Roles file loading")
 
             # Test structure
             required_keys = ["agent_a", "agent_b", "persona_library"]
             for key in required_keys:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if key in roles:
-                    report.add_test(f"Roles structure: {key}", "PASS", "Key present")
+                    report.add_test(f"Roles structure: {key}", "PASS", "Key present", provider_info="Roles System")
+                    print(f"[{timestamp}] Roles key check: {key} - FOUND")
                     print_success(f"✅ Roles key '{key}'")
                 else:
-                    report.add_test(f"Roles structure: {key}", "FAIL", "Key missing")
+                    report.add_test(f"Roles structure: {key}", "FAIL", "Key missing", provider_info="Roles System")
+                    print(f"[{timestamp}] Roles key check: {key} - MISSING")
                     print_error(f"❌ Roles key '{key}' - MISSING")
 
             # Test persona library
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             if "persona_library" in roles and len(roles["persona_library"]) > 0:
-                report.add_test("Persona Library", "PASS", f"Found {len(roles['persona_library'])} personas")
-                print_success(f"✅ Persona library ({len(roles['persona_library'])} personas)")
+                persona_count = len(roles['persona_library'])
+                report.add_test("Persona Library", "PASS", f"Found {persona_count} personas", provider_info="Roles System")
+                print(f"[{timestamp}] Persona library: {persona_count} personas found")
+                print_success(f"✅ Persona library ({persona_count} personas)")
             else:
-                report.add_test("Persona Library", "WARN", "No personas found")
+                report.add_test("Persona Library", "WARN", "No personas found", provider_info="Roles System")
+                print(f"[{timestamp}] Persona library: No personas found")
                 print_warning("⚠️ No personas in library")
 
         else:
-            report.add_test("Roles File Loading", "FAIL", "Failed to load roles")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            report.add_test("Roles File Loading", "FAIL", "Failed to load roles", provider_info="Roles System")
+            print(f"[{timestamp}] Roles loading: FAILED")
             print_error("❌ Roles file loading failed")
 
     except Exception as e:
-        report.add_test("Roles System", "FAIL", f"Exception: {str(e)}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        report.add_test("Roles System", "FAIL", f"Exception: {str(e)}", provider_info="Roles System")
+        print(f"[{timestamp}] Roles system: ERROR - {str(e)}")
         print_error(f"❌ Roles system error: {e}")
 
     finally:
@@ -295,6 +382,8 @@ def test_roles_system(report: CertificationReport):
 def test_import_functionality(report: CertificationReport):
     """Test that all modules can be imported"""
     print_section_header("Import Tests", "📦")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Starting module import tests...")
 
     modules = [
         ('bridge_agents', 'provider_choices, get_spec, create_agent'),
@@ -303,72 +392,114 @@ def test_import_functionality(report: CertificationReport):
     ]
 
     for module_name, imports in modules:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             exec(f"from {module_name} import {imports}")
-            report.add_test(f"Import: {module_name}", "PASS", f"Successfully imported {imports}")
+            report.add_test(f"Import: {module_name}", "PASS", f"Successfully imported {imports}", provider_info="Python Module")
+            print(f"[{timestamp}] Module import: {module_name} - SUCCESS")
             print_success(f"✅ {module_name}")
         except Exception as e:
-            report.add_test(f"Import: {module_name}", "FAIL", f"Import error: {str(e)}")
+            report.add_test(f"Import: {module_name}", "FAIL", f"Import error: {str(e)}", provider_info="Python Module")
+            print(f"[{timestamp}] Module import: {module_name} - FAILED: {str(e)}")
             print_error(f"❌ {module_name} - {e}")
 
 
 def test_provider_specs(report: CertificationReport):
     """Test all provider specifications are valid"""
     print_section_header("Provider Specification Tests", "⚙️")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Starting provider specification tests...")
 
     try:
         providers = provider_choices()
 
         for provider_key in providers:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             try:
                 spec = get_spec(provider_key)
+                provider_info = f"Provider: {spec.label if hasattr(spec, 'label') else provider_key}"
 
                 # Check required attributes
                 if all(hasattr(spec, attr) for attr in ['label', 'default_model', 'needs_key']):
-                    report.add_test(f"Provider spec: {provider_key}", "PASS",
-                                  f"Label: {spec.label}, Model: {spec.default_model}")
+                    details = f"Label: {spec.label}, Model: {spec.default_model}, Type: {spec.kind.upper() if hasattr(spec, 'kind') else 'Unknown'}"
+                    report.add_test(f"Provider spec: {provider_key}", "PASS", details, provider_info=provider_info)
+                    print(f"[{timestamp}] Provider spec: {spec.label} ({provider_key}) - VALID")
                     print_success(f"✅ {spec.label} ({provider_key})")
                 else:
-                    report.add_test(f"Provider spec: {provider_key}", "FAIL", "Missing required attributes")
+                    report.add_test(f"Provider spec: {provider_key}", "FAIL", "Missing required attributes", provider_info=provider_info)
+                    print(f"[{timestamp}] Provider spec: {provider_key} - INVALID")
                     print_error(f"❌ {provider_key} - Invalid spec")
 
             except Exception as e:
-                report.add_test(f"Provider spec: {provider_key}", "FAIL", f"Exception: {str(e)}")
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                report.add_test(f"Provider spec: {provider_key}", "FAIL", f"Exception: {str(e)}", provider_info=f"Provider: {provider_key}")
+                print(f"[{timestamp}] Provider spec: {provider_key} - ERROR: {str(e)}")
                 print_error(f"❌ {provider_key} - {e}")
 
     except Exception as e:
-        report.add_test("Provider Specifications", "FAIL", f"Exception: {str(e)}")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        report.add_test("Provider Specifications", "FAIL", f"Exception: {str(e)}", provider_info="System Error")
+        print(f"[{timestamp}] Provider specifications: ERROR - {str(e)}")
         print_error(f"❌ Provider specs error: {e}")
 
 
 async def run_certification():
     """Run complete certification suite"""
+    start_time = datetime.now()
+    timestamp = start_time.strftime("%Y-%m-%d %H:%M:%S")
+    
     print_banner()
     print_section_header("Chat Bridge Certification", "🏆")
+    print(f"[{timestamp}] Starting comprehensive certification tests...")
     print_info("Running comprehensive tests to certify your installation...")
     print()
 
     report = CertificationReport()
 
     # Run all test suites
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: Module imports")
     test_import_functionality(report)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: File structure")
     test_file_structure(report)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: Provider specifications")
     test_provider_specs(report)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: Database operations")
     test_database_operations(report)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: Roles system")
     test_roles_system(report)
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Running test suite: Provider connectivity")
     online_providers = await test_provider_connectivity(report)
 
     # Generate and display results
+    end_time = datetime.now()
+    total_duration = (end_time - start_time).total_seconds()
+    timestamp = end_time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"\n[{timestamp}] All tests completed in {total_duration:.2f} seconds")
     print()
     report.print_summary()
 
     # Save detailed report
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_file = f"certification_report_{timestamp}.json"
+    report_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    report_file = f"certification_report_{report_timestamp}.json"
+    print(f"[{current_timestamp}] Saving detailed certification report...")
     report.save_report(report_file)
 
     # Additional recommendations
     print()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] Generating recommendations based on test results...")
     print_section_header("Recommendations", "💡")
 
     if online_providers == 0:
@@ -385,6 +516,8 @@ async def run_certification():
         print_info("💡 Consider creating a roles.json file for custom personas.")
 
     print()
+    final_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{final_timestamp}] Certification process completed")
     print_info("Run the certification anytime with: python certify.py")
     print_info("For detailed troubleshooting, see: docs/TESTING.md")
 
