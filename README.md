@@ -15,6 +15,7 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 - **🌐 Provider connectivity testing** - Ping and diagnose AI provider connections
 - **⚡ Quick launcher** with preset configurations
 - **🔒 Enhanced security** with proper API key management
+- **🔄 Stop Word Detection Toggle** - Enable/disable conversation termination on stop words
 
 ## 🚀 Quick Start
 
@@ -163,6 +164,7 @@ The Chat Bridge includes a comprehensive roles management interface accessible f
 - **🤖 Edit Default Agents** - Configure Agent A and Agent B defaults
 - **🌡️ Temperature Settings** - Adjust creativity levels for each agent
 - **🛑 Stop Words Management** - Configure conversation termination phrases
+- **🔄 Stop Word Detection Toggle** - Enable/disable stop word detection during conversations
 - **📁 Import/Export** - Backup and restore configurations
 - **🔄 Reset to Defaults** - Restore original settings
 
@@ -221,7 +223,8 @@ Create custom AI personalities in `roles.json`:
   },
   "temp_a": 0.6,
   "temp_b": 0.7,
-  "stop_words": ["wrap up", "end chat", "terminate"]
+  "stop_words": ["wrap up", "end chat", "terminate"],
+  "stop_word_detection_enabled": true
 }
 ```
 

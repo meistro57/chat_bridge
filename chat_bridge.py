@@ -490,6 +490,12 @@ def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_
     print(f"  {colorize('Temperature A:', Colors.WHITE)} {colorize(f'{display_temp_a:.1f}', Colors.CYAN)}")
     print(f"  {colorize('Temperature B:', Colors.WHITE)} {colorize(f'{display_temp_b:.1f}', Colors.CYAN)}")
 
+    # Show stop word detection status
+    stop_detection_enabled = roles_data.get('stop_word_detection_enabled', True) if roles_data else True
+    status_text = "enabled" if stop_detection_enabled else "disabled"
+    status_color = Colors.GREEN if stop_detection_enabled else Colors.RED
+    print(f"  {colorize('Stop Word Detection:', Colors.WHITE)} {colorize(status_text, status_color)}")
+
     print()
     try:
         input(colorize("Press Enter to start the conversation... ", Colors.GREEN))
@@ -529,15 +535,34 @@ class ConversationHistory:
         return self.turns[-limit:]
 
 def setup_logging() -> Tuple[logging.Logger, logging.Logger]:
-    """Set up loggers"""
+    """Set up comprehensive logging with error tracking"""
     bridge_logger = logging.getLogger("bridge")
-    bridge_logger.setLevel(logging.INFO)
+    bridge_logger.setLevel(logging.DEBUG)  # More detailed logging
 
     if not bridge_logger.handlers:
+        # Main log file with detailed format
         handler = logging.FileHandler(GLOBAL_LOG)
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s"
+        )
         handler.setFormatter(formatter)
         bridge_logger.addHandler(handler)
+
+        # Error-only log file for quick debugging
+        error_handler = logging.FileHandler("chat_bridge_errors.log")
+        error_handler.setLevel(logging.ERROR)
+        error_formatter = logging.Formatter(
+            "%(asctime)s [ERROR] %(name)s:%(funcName)s:%(lineno)d\n%(message)s\n%(exc_info)s\n" + "-"*80
+        )
+        error_handler.setFormatter(error_formatter)
+        bridge_logger.addHandler(error_handler)
+
+        # Console handler for immediate feedback
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.WARNING)
+        console_formatter = logging.Formatter("[%(levelname)s] %(message)s")
+        console_handler.setFormatter(console_formatter)
+        bridge_logger.addHandler(console_handler)
 
     session_logger = logging.getLogger("session")
     return bridge_logger, session_logger
@@ -873,6 +898,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
                 },
                 "persona_library": {},
                 "stop_words": ["wrap up", "end chat", "terminate"],
+                "stop_word_detection_enabled": True,
                 "temp_a": 0.6,
                 "temp_b": 0.7
             }
@@ -887,10 +913,11 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
             ("3", "Edit default agents (A & B)"),
             ("4", "Edit temperature settings"),
             ("5", "Edit stop words"),
-            ("6", "Export configuration"),
-            ("7", "Import configuration"),
-            ("8", "Reset to defaults"),
-            ("9", "Back to main menu")
+            ("6", "Toggle stop word detection"),
+            ("7", "Export configuration"),
+            ("8", "Import configuration"),
+            ("9", "Reset to defaults"),
+            ("10", "Back to main menu")
         ]
 
         choice = select_from_menu(options, "Roles Management")
@@ -1042,7 +1069,24 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
                 if save_roles_file(roles_data, roles_path):
                     print_success("Stop words updated")
 
-        elif choice == "6":  # Export configuration
+        elif choice == "6":  # Toggle stop word detection
+            print_section_header("Stop Word Detection", "🔄")
+            current_enabled = roles_data.get('stop_word_detection_enabled', True)
+            status_text = "enabled" if current_enabled else "disabled"
+            status_color = Colors.GREEN if current_enabled else Colors.RED
+            print_info(f"Stop word detection is currently {colorize(status_text, status_color)}")
+
+            new_status = not current_enabled
+            new_status_text = "enabled" if new_status else "disabled"
+            new_status_color = Colors.GREEN if new_status else Colors.RED
+
+            confirm = get_user_input(f"Change to {colorize(new_status_text, new_status_color)}? (y/n): ").lower()
+            if confirm in ['y', 'yes']:
+                roles_data['stop_word_detection_enabled'] = new_status
+                if save_roles_file(roles_data, roles_path):
+                    print_success(f"Stop word detection {new_status_text}")
+
+        elif choice == "7":  # Export configuration
             export_path = get_user_input("Export to file (default: roles_backup.json): ").strip()
             if not export_path:
                 export_path = "roles_backup.json"
@@ -1050,7 +1094,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
             if save_roles_file(roles_data, export_path):
                 print_success(f"Configuration exported to {export_path}")
 
-        elif choice == "7":  # Import configuration
+        elif choice == "8":  # Import configuration
             import_path = get_user_input("Import from file: ").strip()
             if import_path and os.path.exists(import_path):
                 imported_data = load_roles_file(import_path)
@@ -1066,7 +1110,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
             else:
                 print_error("Import file not found")
 
-        elif choice == "8":  # Reset to defaults
+        elif choice == "9":  # Reset to defaults
             confirm = get_user_input("Reset to default configuration? This cannot be undone. (yes/no): ")
             if confirm.lower() in ['yes', 'y']:
                 # Create default configuration
@@ -1097,6 +1141,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
                     },
                     "persona_library": {},
                     "stop_words": ["wrap up", "end chat", "terminate"],
+                    "stop_word_detection_enabled": True,
                     "temp_a": 0.6,
                     "temp_b": 0.7
                 }
@@ -1104,7 +1149,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
                 if save_roles_file(default_config, roles_path):
                     print_success("Configuration reset to defaults")
 
-        elif choice == "9":  # Back
+        elif choice == "10":  # Back
             break
 
 
@@ -1680,22 +1725,38 @@ async def run_bridge(args):
 
     # Create agents
     try:
-        agent_a = create_agent("a", provider_a, resolve_model(provider_a, args.model_a), temp_a, get_spec(provider_a).default_system)
-        agent_b = create_agent("b", provider_b, resolve_model(provider_b, args.model_b), temp_b, get_spec(provider_b).default_system)
+        bridge_logger.info(f"Creating agents: {provider_a} ({args.model_a or 'default'}) vs {provider_b} ({args.model_b or 'default'})")
+
+        model_a = resolve_model(provider_a, args.model_a)
+        model_b = resolve_model(provider_b, args.model_b)
+
+        bridge_logger.info(f"Resolved models: Agent A = {model_a}, Agent B = {model_b}")
+
+        agent_a = create_agent("a", provider_a, model_a, temp_a, get_spec(provider_a).default_system)
+        agent_b = create_agent("b", provider_b, model_b, temp_b, get_spec(provider_b).default_system)
+
+        bridge_logger.info(f"Successfully created agents")
 
         # Apply personas if specified and handle custom temperatures
         if roles_data:
+            bridge_logger.info(f"Applying personas: Agent A = {persona_a}, Agent B = {persona_b}")
             agent_a, custom_temp_a = apply_persona(agent_a, persona_a, roles_data)
             agent_b, custom_temp_b = apply_persona(agent_b, persona_b, roles_data)
-            
+
             # Override temperatures if custom roles specify them
             if custom_temp_a is not None:
+                bridge_logger.info(f"Agent A temperature override: {temp_a} -> {custom_temp_a}")
                 temp_a = custom_temp_a
                 agent_a.temperature = custom_temp_a
             if custom_temp_b is not None:
+                bridge_logger.info(f"Agent B temperature override: {temp_b} -> {custom_temp_b}")
                 temp_b = custom_temp_b
                 agent_b.temperature = custom_temp_b
+
     except Exception as e:
+        bridge_logger.error(f"Failed to create agents: {e}", exc_info=True)
+        bridge_logger.error(f"Provider A: {provider_a}, Provider B: {provider_b}")
+        bridge_logger.error(f"Model A: {args.model_a}, Model B: {args.model_b}")
         print_error(f"Failed to create agents: {e}")
         return
 
@@ -1723,34 +1784,57 @@ async def run_bridge(args):
             agent = agents[current_id]
             label = f"Agent {current_id.upper()}"
 
+            bridge_logger.info(f"Round {round_num}: {label} ({agent.provider_key}) starting turn")
             print(f"{colorize(f'Round {round_num}', Colors.CYAN)} - {colorize(label, Colors.GREEN, bold=True)} ({colorize(agent.provider_key, Colors.YELLOW)}) is thinking...")
 
             # Get recent context
             recent_context = history.recent_turns(args.mem_rounds * 2)
+            bridge_logger.debug(f"Context size for {label}: {len(recent_context)} turns")
 
-            # Stream response
+            # Stream response with error handling
             full_reply = ""
-            async for chunk in agent.stream_reply(recent_context, args.mem_rounds):
-                if chunk:
-                    print(chunk, end="", flush=True)
-                    full_reply += chunk
+            try:
+                chunk_count = 0
+                async for chunk in agent.stream_reply(recent_context, args.mem_rounds):
+                    if chunk:
+                        print(chunk, end="", flush=True)
+                        full_reply += chunk
+                        chunk_count += 1
+
+                bridge_logger.debug(f"{label} generated {chunk_count} chunks, {len(full_reply)} characters")
+
+            except Exception as stream_error:
+                bridge_logger.error(f"Streaming error for {label} in round {round_num}: {stream_error}", exc_info=True)
+                bridge_logger.error(f"Context: {len(recent_context)} turns, Agent: {agent.provider_key}:{agent.model}")
+                print_error(f"\n❌ {label} encountered an error: {stream_error}")
+                break
 
             print()  # New line after response
 
             if not full_reply.strip():
+                bridge_logger.warning(f"{label} produced empty response in round {round_num}")
                 print_warning(f"{label} had no response")
                 break
 
             # Log the response
-            log_message_sql(cid, agent.provider_key, "assistant", full_reply)
-            history.add_turn(agent.agent_id, full_reply)
+            try:
+                log_message_sql(cid, agent.provider_key, "assistant", full_reply)
+                history.add_turn(agent.agent_id, full_reply)
 
-            nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            transcript.add(label, "assistant", nowt, full_reply)
-            session_logger.info(f"{label}: {full_reply[:1000]}")
+                nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                transcript.add(label, "assistant", nowt, full_reply)
+                session_logger.info(f"{label}: {full_reply[:1000]}")
 
-            # Check for stop conditions
-            if contains_stop_word(full_reply, stop_words):
+                bridge_logger.info(f"Round {round_num} completed successfully for {label}")
+
+            except Exception as log_error:
+                bridge_logger.error(f"Logging error for {label} in round {round_num}: {log_error}", exc_info=True)
+                print_warning(f"Failed to log response from {label}: {log_error}")
+
+            # Check for stop conditions (only after 10 rounds)
+            stop_detection_enabled = roles_data.get('stop_word_detection_enabled', True) if roles_data else True
+            if round_num > 10 and stop_detection_enabled and contains_stop_word(full_reply, stop_words):
+                bridge_logger.info(f"Stop word detected in round {round_num}, ending conversation")
                 print(f"\n{colorize('🛑 Stop word detected. Ending conversation.', Colors.RED)}")
                 break
 
@@ -1759,6 +1843,7 @@ async def run_bridge(args):
 
             # Check for repetitive content
             if is_repetitive(history.flat_texts):
+                bridge_logger.warning(f"Repetitive content detected in round {round_num}, ending conversation")
                 print(f"\n{colorize('⚠️  Loop detected. Ending conversation.', Colors.YELLOW)}")
                 break
 
@@ -1772,13 +1857,21 @@ async def run_bridge(args):
         print_info(f"Global log: {colorize(GLOBAL_LOG, Colors.CYAN)}")
 
     except KeyboardInterrupt:
+        bridge_logger.info("Conversation interrupted by user")
         print(f"\n{colorize('👋 Interrupted by user. Saving transcript...', Colors.YELLOW)}")
     except Exception as exc:
-        bridge_logger.exception("Unhandled error: %s", exc)
+        bridge_logger.error(f"Unhandled error in conversation loop: {exc}", exc_info=True)
+        bridge_logger.error(f"Current round: {round_num if 'round_num' in locals() else 'unknown'}")
+        bridge_logger.error(f"Current agent: {current_id if 'current_id' in locals() else 'unknown'}")
+        bridge_logger.error(f"History length: {len(history.turns) if 'history' in locals() else 'unknown'}")
         print_error(f"Unexpected error: {exc}")
     finally:
-        with contextlib.suppress(Exception):
+        try:
             transcript.dump(md_path)
+            bridge_logger.info(f"Transcript saved to {md_path}")
+        except Exception as save_error:
+            bridge_logger.error(f"Failed to save transcript: {save_error}", exc_info=True)
+            print_error(f"Failed to save transcript: {save_error}")
             
         # Save custom roles if any were created and marked for saving
         if roles_data and '_custom_roles_to_save' in roles_data:

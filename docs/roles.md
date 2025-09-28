@@ -45,6 +45,7 @@ The `roles.json` file contains two main sections: **agent defaults** and **perso
     }
   },
   "stop_words": ["wrap up", "end chat", "terminate"],
+  "stop_word_detection_enabled": true,
   "temp_a": 0.6,
   "temp_b": 0.7
 }
@@ -67,6 +68,7 @@ The `roles.json` file contains two main sections: **agent defaults** and **perso
 
 #### Global Settings
 - **`stop_words`** – Phrases that end the conversation when detected
+- **`stop_word_detection_enabled`** – Boolean flag to enable/disable stop word detection (default: true)
 - **`temp_a` / `temp_b`** – Default sampling temperatures (0.0-1.0)
 
 All fields are optional and fall back to built-in defaults.
@@ -107,6 +109,7 @@ python chat_bridge.py
 - **🤖 Edit Default Agents** - Configure Agent A and Agent B defaults
 - **🌡️ Temperature Settings** - Adjust creativity levels (0.0-2.0)
 - **🛑 Stop Words Management** - Configure conversation termination phrases
+- **🔄 Stop Word Detection Toggle** - Enable/disable stop word detection during conversations
 - **📁 Import/Export** - Backup and restore configurations
 - **🔄 Reset to Defaults** - Restore original settings
 
@@ -170,6 +173,30 @@ Before creating personas for specific providers, use the **Provider Connectivity
 - **Connection Health** - Diagnose any issues
 
 This helps ensure your personas will work smoothly with their assigned providers.
+
+## 🔄 Stop Word Detection Control
+
+The Chat Bridge includes a flexible stop word detection system that can be controlled through the roles configuration:
+
+### Configuration
+- **`stop_words`** - Array of phrases that trigger conversation termination
+- **`stop_word_detection_enabled`** - Boolean flag to enable/disable detection (default: `true`)
+
+### Interactive Toggle
+Access the stop word detection toggle through the Roles & Personas Manager:
+1. Run `python chat_bridge.py`
+2. Select "Manage Roles & Personas" from the main menu
+3. Choose "Toggle stop word detection" (option 6)
+4. Confirm to enable or disable the feature
+
+### Behavior
+- When **enabled**: Conversations automatically end when stop words are detected (after round 10)
+- When **disabled**: Stop words are ignored and conversations continue until max rounds or manual termination
+- The current status is displayed in the session configuration summary
+
+### Use Cases
+- **Enable** for natural conversation flow with graceful endings
+- **Disable** for extended research sessions or when stop words might appear naturally in discussion
 
 ## Legacy Compatibility
 
