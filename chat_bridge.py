@@ -251,6 +251,180 @@ def select_providers() -> Tuple[str, str]:
 
     return provider_a, provider_b
 
+def create_custom_role() -> Dict:
+    """Create a custom role with user-defined settings"""
+    print_section_header("Create Custom Role", "✨")
+    
+    # Get role name
+    role_name = get_user_input("Enter custom role name (e.g., 'detective', 'teacher'): ").strip()
+    if not role_name:
+        role_name = "custom_role"
+    
+    # Select provider
+    providers = provider_choices()
+    provider_options = [(p, get_spec(p).label) for p in providers]
+    print_info("Select AI provider for this role:")
+    choice = select_from_menu(provider_options, "Provider")
+    provider = provider_options[int(choice) - 1][0]
+    
+    # Get model (optional)
+    default_model = get_spec(provider).default_model
+    model_input = get_user_input(f"Model (optional, default: {default_model}): ").strip()
+    model = model_input if model_input else None
+    
+    # Get system prompt
+    print_info("Enter the system prompt for this role:")
+    print_info("This defines the AI's personality, expertise, and behavior.")
+    system_prompt = get_user_input("System prompt: ").strip()
+    if not system_prompt:
+        system_prompt = f"You are a {role_name}. Be helpful, knowledgeable, and stay in character."
+    
+    # Get guidelines
+    print_info("Enter behavioral guidelines (one per line, empty line to finish):")
+    print_info("These are specific instructions for how the AI should behave.")
+    guidelines = []
+    while True:
+        guideline = get_user_input(f"Guideline {len(guidelines)+1}> ")
+        if not guideline.strip():
+            break
+        guidelines.append(guideline.strip())
+    
+    if not guidelines:
+        guidelines = [f"Stay in character as a {role_name}", "Be helpful and informative", "Use appropriate language for the role"]
+    
+    # Get temperature (optional)
+    temp_input = get_user_input("Temperature (0.0-2.0, optional, default: 0.7): ").strip()
+    temperature = None
+    if temp_input:
+        try:
+            temp_val = float(temp_input)
+            if 0 <= temp_val <= 2:
+                temperature = temp_val
+            else:
+                print_warning("Temperature must be between 0.0 and 2.0. Using default.")
+        except ValueError:
+            print_warning("Invalid temperature value. Using default.")
+    
+    # Get notes (optional)
+    notes = get_user_input("Notes (optional description): ").strip()
+    
+    # Build the custom role
+    custom_role = {
+        "provider": provider,
+        "model": model,
+        "system": system_prompt,
+        "guidelines": guidelines
+    }
+    
+    if temperature is not None:
+        custom_role["temperature"] = temperature
+    if notes:
+        custom_role["notes"] = notes
+    
+    # Show summary
+    print_section_header("Custom Role Summary", "📋")
+    print(f"Name: {colorize(role_name, Colors.CYAN, bold=True)}")
+    print(f"Provider: {colorize(get_spec(provider).label, Colors.GREEN)}")
+    print(f"Model: {colorize(str(model or default_model), Colors.YELLOW)}")
+    if temperature is not None:
+        print(f"Temperature: {colorize(str(temperature), Colors.MAGENTA)}")
+    print(f"System: {system_prompt[:100]}{'...' if len(system_prompt) > 100 else ''}")
+    print(f"Guidelines: {len(guidelines)} items")
+    if notes:
+        print(f"Notes: {notes[:50]}{'...' if len(notes) > 50 else ''}")
+    
+    # Ask if user wants to save permanently
+    print()
+    save_choice = get_user_input("Save this role permanently to roles.json? (y/n): ").lower()
+    custom_role_data = {role_name: custom_role}
+    
+    if save_choice in ['y', 'yes']:
+        custom_role_data["_save_permanently"] = True
+        print_success("Role will be saved permanently after the session.")
+    else:
+        print_info("Role will only be used for this session.")
+    
+    return custom_role_data
+
+def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional[str]]:
+    """Quick selection of role modes (scientist, philosopher, comedian, steel_worker)"""
+    if not roles_data or 'persona_library' not in roles_data:
+        return None, None
+
+    print_section_header("Role Mode Selection", "🎭")
+
+    # Define the 4 role modes
+    role_modes = [
+        ("scientist", "🔬 Scientist - Evidence-based, analytical, methodical"),
+        ("philosopher", "🤔 Philosopher - Deep thinking, ethical, existential"),
+        ("comedian", "😂 Comedian - Witty, observational, entertaining"),
+        ("steel_worker", "🏭 Steel Worker - Practical, hands-on, blue-collar wisdom"),
+        ("custom", "✨ Create Custom Role - Define your own role")
+    ]
+
+    # Check if preset role modes exist
+    available_roles = []
+    for role_key, description in role_modes[:-1]:  # Exclude custom for now
+        if role_key in roles_data['persona_library']:
+            available_roles.append((role_key, description))
+    
+    # Always add custom option
+    available_roles.append(("custom", "✨ Create Custom Role - Define your own role"))
+
+    if len(available_roles) == 1:  # Only custom available
+        print_warning("No preset role modes found in persona library.")
+
+    print_info("Choose role modes for your AI assistants:")
+
+    # Agent A role mode
+    print(colorize("🔹 ROLE MODE FOR AGENT A", Colors.BLUE, bold=True))
+    roles_with_skip = [("skip", "Use default system prompt")] + available_roles
+    choice_a = select_from_menu(roles_with_skip, "Agent A Role Mode", default="1")
+    
+    if choice_a == "1":
+        role_a = None
+    else:
+        selected_role = available_roles[int(choice_a) - 2][0]
+        if selected_role == "custom":
+            print_info("Creating custom role for Agent A...")
+            custom_role = create_custom_role()
+            role_key = list(custom_role.keys())[0]
+            # Add to roles_data temporarily for this session
+            roles_data['persona_library'][role_key] = custom_role[role_key]
+            # Check if user wants to save permanently
+            if custom_role.get("_save_permanently"):
+                if not hasattr(roles_data, '_custom_roles_to_save'):
+                    roles_data['_custom_roles_to_save'] = {}
+                roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
+            role_a = role_key
+        else:
+            role_a = selected_role
+
+    # Agent B role mode
+    print(colorize("🔸 ROLE MODE FOR AGENT B", Colors.MAGENTA, bold=True))
+    choice_b = select_from_menu(roles_with_skip, "Agent B Role Mode", default="1")
+    
+    if choice_b == "1":
+        role_b = None
+    else:
+        selected_role = available_roles[int(choice_b) - 2][0]
+        if selected_role == "custom":
+            print_info("Creating custom role for Agent B...")
+            custom_role = create_custom_role()
+            role_key = list(custom_role.keys())[0]
+            # Add to roles_data temporarily for this session
+            roles_data['persona_library'][role_key] = custom_role[role_key]
+            # Check if user wants to save permanently
+            if custom_role.get("_save_permanently"):
+                if '_custom_roles_to_save' not in roles_data:
+                    roles_data['_custom_roles_to_save'] = {}
+                roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
+            role_b = role_key
+        else:
+            role_b = selected_role
+
+    return role_a, role_b
+
 def select_personas(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional[str]]:
     """Select personas from roles.json if available"""
     if not roles_data or 'persona_library' not in roles_data:
@@ -421,6 +595,23 @@ def contains_stop_word(text: str, stop_words: set) -> bool:
     lower_text = text.lower()
     return any(word in lower_text for word in stop_words)
 
+def lessen_stop_word_weight(text: str, stop_words: set, weight_factor: float = 0.5) -> bool:
+    """Check if text contains stop words with lessened weight/influence"""
+    lower_text = text.lower()
+    stop_word_matches = [word for word in stop_words if word in lower_text]
+    
+    if not stop_word_matches:
+        return False
+    
+    # Calculate weight based on stop word density and context
+    text_length = len(text.split())
+    stop_word_density = len(stop_word_matches) / max(text_length, 1)
+    
+    # Apply weight factor - higher density or multiple matches increase likelihood
+    weighted_threshold = weight_factor * (1 + stop_word_density)
+    
+    return stop_word_density >= weighted_threshold
+
 def is_repetitive(texts: List[str], window: int = REPEAT_WINDOW, threshold: float = REPEAT_THRESHOLD) -> bool:
     """Detect if recent messages are too repetitive"""
     if len(texts) < window:
@@ -479,14 +670,14 @@ def load_roles_file(roles_path: Optional[str]) -> Optional[Dict]:
         print_warning(f"Could not load roles file {roles_path}: {e}")
         return None
 
-def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: Optional[Dict]) -> AgentRuntime:
-    """Apply persona from roles data if specified"""
+def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: Optional[Dict]) -> tuple[AgentRuntime, Optional[float]]:
+    """Apply persona from roles data if specified, returns (agent, custom_temperature)"""
     if not persona_key or not roles_data or 'persona_library' not in roles_data:
-        return agent
+        return agent, None
 
     persona = roles_data['persona_library'].get(persona_key)
     if not persona:
-        return agent
+        return agent, None
 
     # Update agent with persona settings
     if persona.get('system'):
@@ -495,7 +686,9 @@ def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: O
             guidelines_text = "\n".join(f"• {g}" for g in persona['guidelines'])
             agent.system_prompt += f"\n\nGuidelines:\n{guidelines_text}"
 
-    return agent
+    # Return custom temperature if specified in persona
+    custom_temp = persona.get('temperature')
+    return agent, custom_temp
 
 
 def save_roles_file(roles_data: Dict, roles_path: str) -> bool:
@@ -1442,7 +1635,22 @@ async def run_bridge(args):
         provider_a, provider_b = select_providers()
 
         if roles_data:
-            persona_a, persona_b = select_personas(roles_data)
+            # Ask user if they want to use role modes or full persona selection
+            print_section_header("Persona Options", "🎭")
+            mode_options = [
+                ("1", "Quick Role Modes (Scientist, Philosopher, Comedian, Steel Worker)"),
+                ("2", "Full Persona Library"),
+                ("3", "Skip - Use default prompts")
+            ]
+            
+            mode_choice = select_from_menu(mode_options, "Select persona mode", default="1")
+            
+            if mode_choice == "1":
+                persona_a, persona_b = select_role_modes(roles_data)
+            elif mode_choice == "2":
+                persona_a, persona_b = select_personas(roles_data)
+            else:
+                persona_a, persona_b = None, None
         else:
             persona_a, persona_b = None, None
 
@@ -1475,10 +1683,18 @@ async def run_bridge(args):
         agent_a = create_agent("a", provider_a, resolve_model(provider_a, args.model_a), temp_a, get_spec(provider_a).default_system)
         agent_b = create_agent("b", provider_b, resolve_model(provider_b, args.model_b), temp_b, get_spec(provider_b).default_system)
 
-        # Apply personas if specified
+        # Apply personas if specified and handle custom temperatures
         if roles_data:
-            agent_a = apply_persona(agent_a, persona_a, roles_data)
-            agent_b = apply_persona(agent_b, persona_b, roles_data)
+            agent_a, custom_temp_a = apply_persona(agent_a, persona_a, roles_data)
+            agent_b, custom_temp_b = apply_persona(agent_b, persona_b, roles_data)
+            
+            # Override temperatures if custom roles specify them
+            if custom_temp_a is not None:
+                temp_a = custom_temp_a
+                agent_a.temperature = custom_temp_a
+            if custom_temp_b is not None:
+                temp_b = custom_temp_b
+                agent_b.temperature = custom_temp_b
     except Exception as e:
         print_error(f"Failed to create agents: {e}")
         return
@@ -1563,6 +1779,24 @@ async def run_bridge(args):
     finally:
         with contextlib.suppress(Exception):
             transcript.dump(md_path)
+            
+        # Save custom roles if any were created and marked for saving
+        if roles_data and '_custom_roles_to_save' in roles_data:
+            roles_path = getattr(args, 'roles', 'roles.json')
+            try:
+                # Load current roles file to preserve existing data
+                current_roles = load_roles_file(roles_path) or roles_data
+                # Add custom roles to persona library
+                for role_name, role_data in roles_data['_custom_roles_to_save'].items():
+                    current_roles['persona_library'][role_name] = role_data
+                # Save updated roles file
+                if save_roles_file(current_roles, roles_path):
+                    print_success(f"Custom roles saved to {roles_path}")
+                else:
+                    print_error("Failed to save custom roles")
+            except Exception as e:
+                print_error(f"Error saving custom roles: {e}")
+                
         conn.close()
 
 # ───────────────────────── CLI ─────────────────────────

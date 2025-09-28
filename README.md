@@ -2,8 +2,11 @@
 
 A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in the Latest Edition
+## ✨ What's New in Version 1.2.0
 
+- **✨ Custom Role Creation** - Create fully customizable AI roles with user-defined settings
+- **🎭 Enhanced Role Modes** - 4 preset role modes: Scientist, Philosopher, Comedian, Steel Worker
+- **🎯 Advanced Stop Word Control** - Lessened stop word weight function for nuanced conversation control
 - **🎨 Beautiful colorful interface** with styled menus and progress indicators
 - **🚀 Single unified script** combining all previous functionality
 - **🎯 Interactive mode** with guided setup and provider selection
@@ -132,8 +135,28 @@ Skip the interactive setup by providing all parameters via command line.
 
 ## 🎭 Persona System & Roles Management
 
+### 🎯 Role Modes (New in v1.2.0)
+Choose from 4 preset role modes or create your own custom role:
+
+#### Preset Role Modes:
+- **🔬 Scientist** - Evidence-based, analytical, methodical approach
+- **🤔 Philosopher** - Deep thinking, ethical reasoning, existential exploration
+- **😂 Comedian** - Witty, observational, entertaining responses
+- **🏭 Steel Worker** - Practical, hands-on, blue-collar wisdom and experience
+
+#### ✨ Custom Role Creation:
+Create fully customized AI roles with complete control over:
+- **Role Name** - Define your custom role identity
+- **AI Provider** - Choose from OpenAI, Anthropic, Gemini, Ollama, or LM Studio
+- **Model Override** - Specify custom models if needed
+- **System Prompt** - Complete control over AI personality and behavior
+- **Guidelines** - Multiple behavioral instructions and rules
+- **Temperature** - Custom creativity level (0.0-2.0)
+- **Notes** - Optional role descriptions
+- **Permanent Saving** - Save custom roles to `roles.json` for future use
+
 ### Interactive Roles Configuration
-The Chat Bridge now includes a comprehensive roles management interface accessible from the main menu:
+The Chat Bridge includes a comprehensive roles management interface accessible from the main menu:
 
 - **✨ Create New Personas** - Interactive wizard for persona creation
 - **✏️ Edit Existing Personas** - Modify system prompts, guidelines, and settings
@@ -159,12 +182,40 @@ Create custom AI personalities in `roles.json`:
     "guidelines": ["Consider multiple perspectives", "Express uncertainty"]
   },
   "persona_library": {
+    "scientist": {
+      "provider": "openai",
+      "system": "You are a research scientist. Approach topics with rigorous scientific methodology...",
+      "guidelines": [
+        "Base conclusions on empirical evidence",
+        "Use the scientific method framework",
+        "Acknowledge limitations and uncertainties"
+      ]
+    },
     "philosopher": {
       "provider": "anthropic",
-      "system": "You are a thoughtful philosopher...",
+      "system": "You are a philosopher. Engage with deep questions about existence...",
       "guidelines": [
         "Question assumptions deeply",
-        "Explore multiple perspectives"
+        "Explore multiple perspectives",
+        "Embrace complexity and nuance"
+      ]
+    },
+    "comedian": {
+      "provider": "openai",
+      "system": "You are a comedian. Find humor in everyday situations...",
+      "guidelines": [
+        "Look for absurdity and unexpected connections",
+        "Use wordplay and clever observations",
+        "Balance entertainment with insight"
+      ]
+    },
+    "steel_worker": {
+      "provider": "anthropic",
+      "system": "You are a steel worker. Speak from experience with hands-on work...",
+      "guidelines": [
+        "Emphasize practical solutions",
+        "Value hard work and reliability",
+        "Focus on what actually works"
       ]
     }
   },
