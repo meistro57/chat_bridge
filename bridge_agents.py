@@ -121,6 +121,7 @@ class OpenAIChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
+        logger = logging.getLogger("bridge")
         payload = {
             "model": self.model,
             "messages": messages,
@@ -128,24 +129,58 @@ class OpenAIChat:
             "stream": True,
             "max_tokens": max_tokens,
         }
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            async with client.stream("POST", self.url, headers=self.headers, json=payload) as r:
-                r.raise_for_status()
-                req_id = r.headers.get("x-request-id") or r.headers.get("request-id")
-                if req_id:
-                    logging.getLogger("bridge").info("OpenAI-style request-id: %s", req_id)
-                async for line in r.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        data = line[6:].strip()
-                        if data == "[DONE]":
-                            break
-                        with contextlib.suppress(Exception):
-                            obj = json.loads(data)
-                            delta = obj["choices"][0]["delta"].get("content")
-                            if delta:
-                                yield delta
+
+        logger.debug(f"OpenAI request: model={self.model}, messages={len(messages)}, temp={temperature}")
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
+                async with client.stream("POST", self.url, headers=self.headers, json=payload) as r:
+                    logger.debug(f"OpenAI response status: {r.status_code}")
+
+                    if r.status_code != 200:
+                        error_text = await r.aread() if hasattr(r, 'aread') else "Unknown error"
+                        logger.error(f"OpenAI API error {r.status_code}: {error_text}")
+                        logger.error(f"Request URL: {self.url}")
+                        logger.error(f"Request payload: {json.dumps(payload, indent=2)}")
+
+                    r.raise_for_status()
+                    req_id = r.headers.get("x-request-id") or r.headers.get("request-id")
+                    if req_id:
+                        logger.info("OpenAI-style request-id: %s", req_id)
+
+                    chunk_count = 0
+                    async for line in r.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            data = line[6:].strip()
+                            if data == "[DONE]":
+                                logger.debug(f"OpenAI stream completed, processed {chunk_count} chunks")
+                                break
+                            try:
+                                obj = json.loads(data)
+                                delta = obj["choices"][0]["delta"].get("content")
+                                if delta:
+                                    chunk_count += 1
+                                    yield delta
+                            except (json.JSONDecodeError, KeyError, IndexError) as parse_error:
+                                logger.error(f"Failed to parse OpenAI chunk: {parse_error}")
+                                logger.error(f"Raw chunk data: {data}")
+                                continue
+
+        except httpx.TimeoutException as timeout_error:
+            logger.error(f"OpenAI request timeout after {STALL_TIMEOUT_SEC}s: {timeout_error}")
+            logger.error(f"Model: {self.model}, Messages: {len(messages)}")
+            raise RuntimeError(f"OpenAI request timed out after {STALL_TIMEOUT_SEC} seconds")
+        except httpx.HTTPStatusError as http_error:
+            logger.error(f"OpenAI HTTP error: {http_error}")
+            logger.error(f"Response status: {http_error.response.status_code}")
+            logger.error(f"Response text: {http_error.response.text}")
+            raise
+        except Exception as unexpected_error:
+            logger.error(f"Unexpected OpenAI error: {unexpected_error}", exc_info=True)
+            logger.error(f"Model: {self.model}, URL: {self.url}")
+            raise
 
 
 class AnthropicChat:
@@ -255,35 +290,52 @@ class AnthropicChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
+        logger = logging.getLogger("bridge")
+        logger.debug(f"Anthropic request: model={self.model}, messages={len(messages_for_claude)}, temp={temperature}")
+
         try:
             async for piece in self._stream_messages(system_prompt, messages_for_claude, temperature, max_tokens):
                 yield piece
+            logger.debug("Anthropic messages API completed successfully")
             return
         except httpx.HTTPStatusError as exc:
+            logger.warning(f"Anthropic messages API failed with {exc.response.status_code}, falling back to completions")
             if exc.response is None or exc.response.status_code not in (404, 405):
+                logger.error(f"Anthropic HTTP error: {exc}", exc_info=True)
                 raise
-        except httpx.RequestError:
-            pass
+        except httpx.RequestError as req_error:
+            logger.warning(f"Anthropic messages API request error, falling back to completions: {req_error}")
+        except Exception as unexpected_error:
+            logger.error(f"Unexpected error in Anthropic messages API: {unexpected_error}", exc_info=True)
+            raise
 
-        prompt_lines: List[str] = []
-        if system_prompt:
-            prompt_lines.append(f"[System]: {system_prompt}")
-        for item in messages_for_claude:
-            role = item.get("role", "user")
-            parts = []
-            for block in item.get("content", []):
-                if block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-            text = "\n".join(parts).strip()
-            if not text:
-                continue
-            label = "Assistant" if role == "assistant" else "User"
-            prompt_lines.append(f"[{label}]: {text}")
-        prompt_lines.append("\n[Assistant]:")
-        prompt = "\n".join(prompt_lines)
+        # Fallback to completions API
+        logger.info("Using Anthropic completions API fallback")
+        try:
+            prompt_lines: List[str] = []
+            if system_prompt:
+                prompt_lines.append(f"[System]: {system_prompt}")
+            for item in messages_for_claude:
+                role = item.get("role", "user")
+                parts = []
+                for block in item.get("content", []):
+                    if block.get("type") == "text":
+                        parts.append(block.get("text", ""))
+                text = "\n".join(parts).strip()
+                if not text:
+                    continue
+                label = "Assistant" if role == "assistant" else "User"
+                prompt_lines.append(f"[{label}]: {text}")
+            prompt_lines.append("\n[Assistant]:")
+            prompt = "\n".join(prompt_lines)
 
-        async for piece in self._stream_complete(prompt, temperature, max_tokens):
-            yield piece
+            logger.debug(f"Fallback prompt length: {len(prompt)} characters")
+            async for piece in self._stream_complete(prompt, temperature, max_tokens):
+                yield piece
+            logger.debug("Anthropic completions API completed successfully")
+        except Exception as fallback_error:
+            logger.error(f"Anthropic completions API also failed: {fallback_error}", exc_info=True)
+            raise
 
 
 class GeminiChat:
@@ -303,16 +355,19 @@ class GeminiChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
+        logger = logging.getLogger("bridge")
+        logger.debug(f"Gemini request: model={self.model}, contents={len(contents)}, temp={temperature}")
+
         try:
             # Convert contents to Gemini format
             history = []
             current_message = None
-            
+
             # Process conversation history
             for content in contents:
                 role = content.get("role")
                 parts = content.get("parts", [])
-                
+
                 if parts and len(parts) > 0:
                     text = parts[0].get("text", "")
                     if text.strip():
@@ -320,34 +375,58 @@ class GeminiChat:
                             history.append({"role": "user", "parts": [{"text": text}]})
                         elif role == "model":
                             history.append({"role": "model", "parts": [{"text": text}]})
-            
+
+            logger.debug(f"Processed Gemini history: {len(history)} messages")
+
             # Get the last user message as the current prompt
             if history and history[-1]["role"] == "user":
                 current_message = history[-1]["parts"][0]["text"]
                 history = history[:-1]  # Remove last message from history
             else:
                 current_message = "Hello"
-            
+                logger.warning("No user message found in history, using default")
+
+            logger.debug(f"Current message: {current_message[:100]}...")
+
             # Create chat session
-            chat = self.client.start_chat(history=history)
-            
+            try:
+                chat = self.client.start_chat(history=history)
+                logger.debug("Gemini chat session created successfully")
+            except Exception as chat_error:
+                logger.error(f"Failed to create Gemini chat session: {chat_error}")
+                logger.error(f"History length: {len(history)}")
+                raise
+
             # Generate config
             generation_config = genai.GenerationConfig(
                 temperature=temperature,
                 max_output_tokens=max_tokens
             )
-            
+
             # Send message and get response
-            response = chat.send_message(
-                current_message, 
-                generation_config=generation_config,
-                stream=False  # Use non-streaming for now
-            )
-            
-            if response.text:
-                yield response.text
-            
+            try:
+                response = chat.send_message(
+                    current_message,
+                    generation_config=generation_config,
+                    stream=False  # Use non-streaming for now
+                )
+                logger.debug("Gemini response received successfully")
+
+                if response.text:
+                    logger.debug(f"Gemini response length: {len(response.text)} characters")
+                    yield response.text
+                else:
+                    logger.warning("Gemini returned empty response")
+
+            except Exception as send_error:
+                logger.error(f"Failed to send message to Gemini: {send_error}")
+                logger.error(f"Message: {current_message[:200]}...")
+                logger.error(f"Generation config: temp={temperature}, max_tokens={max_tokens}")
+                raise
+
         except Exception as e:
+            logger.error(f"Gemini API error: {e}", exc_info=True)
+            logger.error(f"Model: {self.model}, API Key set: {bool(self.api_key)}")
             import asyncio
             await asyncio.sleep(0)  # Make it properly async
             raise RuntimeError(f"Gemini API error: {str(e)}")
@@ -368,6 +447,7 @@ class OllamaChat:
         temperature: float = 0.7,
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
+        logger = logging.getLogger("bridge")
         payload: Dict[str, object] = {
             "model": self.model,
             "messages": messages,
@@ -381,24 +461,56 @@ class OllamaChat:
             payload["system"] = system_prompt
 
         url = f"{self.base}/api/chat"
-        async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
-            async with client.stream("POST", url, json=payload) as r:
-                r.raise_for_status()
-                async for line in r.aiter_lines():
-                    if not line:
-                        continue
-                    with contextlib.suppress(Exception):
-                        data = json.loads(line)
-                        if data.get("done"):
-                            break
-                        if "message" in data:
-                            content = data["message"].get("content")
-                            if content:
-                                yield content
-                        elif "response" in data:
-                            resp = data.get("response")
-                            if resp:
-                                yield resp
+        logger.debug(f"Ollama request: {url}, model={self.model}, messages={len(messages)}")
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
+                async with client.stream("POST", url, json=payload) as r:
+                    logger.debug(f"Ollama response status: {r.status_code}")
+
+                    if r.status_code != 200:
+                        error_text = await r.aread() if hasattr(r, 'aread') else "Unknown error"
+                        logger.error(f"Ollama API error {r.status_code}: {error_text}")
+                        logger.error(f"URL: {url}")
+                        logger.error(f"Model: {self.model}")
+
+                    r.raise_for_status()
+
+                    chunk_count = 0
+                    async for line in r.aiter_lines():
+                        if not line:
+                            continue
+                        try:
+                            data = json.loads(line)
+                            if data.get("done"):
+                                logger.debug(f"Ollama stream completed, processed {chunk_count} chunks")
+                                break
+                            if "message" in data:
+                                content = data["message"].get("content")
+                                if content:
+                                    chunk_count += 1
+                                    yield content
+                            elif "response" in data:
+                                resp = data.get("response")
+                                if resp:
+                                    chunk_count += 1
+                                    yield resp
+                        except json.JSONDecodeError as parse_error:
+                            logger.error(f"Failed to parse Ollama response: {parse_error}")
+                            logger.error(f"Raw line: {line}")
+                            continue
+
+        except httpx.ConnectError as connect_error:
+            logger.error(f"Cannot connect to Ollama server at {self.base}: {connect_error}")
+            raise RuntimeError(f"Ollama server unreachable at {self.base}. Is Ollama running?")
+        except httpx.TimeoutException as timeout_error:
+            logger.error(f"Ollama request timeout after {STALL_TIMEOUT_SEC}s: {timeout_error}")
+            logger.error(f"Model: {self.model}, Messages: {len(messages)}")
+            raise RuntimeError(f"Ollama request timed out after {STALL_TIMEOUT_SEC} seconds")
+        except Exception as unexpected_error:
+            logger.error(f"Unexpected Ollama error: {unexpected_error}", exc_info=True)
+            logger.error(f"Model: {self.model}, URL: {url}")
+            raise
 
 
 def provider_choices() -> List[str]:
@@ -425,14 +537,24 @@ def resolve_model(provider_key: str, override: Optional[str] = None, agent_env: 
 
 
 def ensure_credentials(provider_key: str) -> Optional[str]:
+    logger = logging.getLogger("bridge")
     spec = get_spec(provider_key)
+
     if not spec.needs_key:
+        logger.debug(f"Provider {provider_key} does not require API key")
         return None
+
     key = _env(spec.key_env)
     if not key:
+        logger.error(f"Missing API key for {spec.label} (env var: {spec.key_env})")
+        logger.error(f"Available env vars: {', '.join(k for k in os.environ.keys() if 'API' in k or 'KEY' in k)}")
         raise RuntimeError(
             f"Missing API key for {spec.label}. Set {spec.key_env} in your environment or .env file."
         )
+
+    # Log masked key for debugging
+    masked_key = key[:4] + "*" * (len(key) - 8) + key[-4:] if len(key) > 8 else "***"
+    logger.debug(f"Found API key for {spec.label}: {masked_key}")
     return key
 
 
@@ -534,31 +656,48 @@ class AgentRuntime:
 
 
 def create_agent(agent_id: str, provider_key: str, model: str, temperature: float, system_prompt: str) -> AgentRuntime:
-    if provider_key == "openai":
-        api_key = ensure_credentials(provider_key)
-        client = OpenAIChat(model=model, api_key=api_key)
-    elif provider_key == "anthropic":
-        api_key = ensure_credentials(provider_key)
-        client = AnthropicChat(api_key=api_key, model=model)
-    elif provider_key == "gemini":
-        api_key = ensure_credentials(provider_key)
-        client = GeminiChat(api_key=api_key, model=model)
-    elif provider_key == "ollama":
-        client = OllamaChat(model=model)
-    elif provider_key == "lmstudio":
-        base = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
-        client = OpenAIChat(model=model, api_key=None, base_url=base)
-    else:
-        raise RuntimeError(f"Unsupported provider: {provider_key}")
+    logger = logging.getLogger("bridge")
+    logger.info(f"Creating agent {agent_id}: provider={provider_key}, model={model}, temp={temperature}")
 
-    return AgentRuntime(
-        agent_id=agent_id,
-        provider_key=provider_key,
-        model=model,
-        temperature=temperature,
-        system_prompt=system_prompt,
-        client=client,
-    )
+    try:
+        if provider_key == "openai":
+            api_key = ensure_credentials(provider_key)
+            client = OpenAIChat(model=model, api_key=api_key)
+            logger.debug(f"OpenAI client created for agent {agent_id}")
+        elif provider_key == "anthropic":
+            api_key = ensure_credentials(provider_key)
+            client = AnthropicChat(api_key=api_key, model=model)
+            logger.debug(f"Anthropic client created for agent {agent_id}")
+        elif provider_key == "gemini":
+            api_key = ensure_credentials(provider_key)
+            client = GeminiChat(api_key=api_key, model=model)
+            logger.debug(f"Gemini client created for agent {agent_id}")
+        elif provider_key == "ollama":
+            client = OllamaChat(model=model)
+            logger.debug(f"Ollama client created for agent {agent_id}")
+        elif provider_key == "lmstudio":
+            base = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
+            client = OpenAIChat(model=model, api_key=None, base_url=base)
+            logger.debug(f"LM Studio client created for agent {agent_id} at {base}")
+        else:
+            logger.error(f"Unsupported provider requested: {provider_key}")
+            raise RuntimeError(f"Unsupported provider: {provider_key}")
+
+        agent = AgentRuntime(
+            agent_id=agent_id,
+            provider_key=provider_key,
+            model=model,
+            temperature=temperature,
+            system_prompt=system_prompt,
+            client=client,
+        )
+        logger.info(f"Agent {agent_id} created successfully")
+        return agent
+
+    except Exception as e:
+        logger.error(f"Failed to create agent {agent_id}: {e}", exc_info=True)
+        logger.error(f"Provider: {provider_key}, Model: {model}")
+        raise
 
 
 __all__ = [
