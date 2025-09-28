@@ -75,21 +75,87 @@ All fields are optional and fall back to built-in defaults.
 
 ## Usage Examples
 
-### Interactive Mode with Personas
+### Simplified Menu Structure (New!)
+
+The Chat Bridge now offers three streamlined setup modes for different use cases:
+
+#### 🚀 Quick Start Mode
 ```bash
+python chat_bridge.py
+# Select Option 1: Quick Start - Default Conversation
+```
+- Instantly starts with OpenAI vs Anthropic
+- No persona selection, uses default system prompts
+- Perfect for quick discussions and testing
+
+#### 🎭 Role Personality Mode
+```bash
+python chat_bridge.py
+# Select Option 2: Start with Role Personalities
+```
+- **Role-first approach**: Choose personalities before providers
+- **Auto-provider selection**: Providers automatically chosen based on role preferences
+- **Streamlined flow**: Direct access to scientist, philosopher, comedian, steel worker
+- **Fallback creation**: Creates basic personas if no roles.json exists
+
+#### ⚙️ Advanced Setup Mode
+```bash
+python chat_bridge.py
+# Select Option 3: Advanced Setup
+```
+- Full control over providers, models, and personas (original functionality)
+- Choose from Quick Role Modes, Full Persona Library, or skip personas
+- Maximum customization for power users
+
+### Legacy Usage (Still Supported)
+```bash
+# Interactive mode with roles file
 python chat_bridge.py --roles roles.json
-```
-The script will show beautiful menus where you can select personas from your library.
 
-### Command Line with Roles
-```bash
+# Command line with roles
 python chat_bridge.py --roles custom_personas.json --max-rounds 50 --mem-rounds 15
-```
 
-### Quick Launcher with Personas
-```bash
+# Quick Launcher with personas
 python launch.py
 # Select option [5] 🎭 Persona Mode
+```
+
+### Benefits of the New Role-First Flow
+
+The new **Role Personality Mode** offers several advantages over the traditional provider-first approach:
+
+#### 🎭 **Personality-Focused Conversations**
+- **Direct Role Selection**: Choose "Scientist vs Philosopher" without worrying about technical providers
+- **Meaningful Interactions**: Conversations center around personality traits rather than AI model capabilities
+- **Intuitive Setup**: Natural flow that matches how humans think about conversations
+
+#### 🚀 **Simplified User Experience**
+- **Fewer Steps**: From 4 menu navigation steps down to 2 for role-based conversations
+- **Auto-Configuration**: Providers, models, and settings automatically optimized for each role
+- **Smart Defaults**: Built-in personas created automatically if no roles.json exists
+
+#### ⚡ **Quick Access to Popular Combinations**
+- **Scientist + Philosopher**: Empirical evidence meets ethical reasoning
+- **Comedian + Steel Worker**: Humor meets practical wisdom
+- **Any Combination**: Mix and match the 4 core personalities
+
+#### 🔄 **Flow Comparison**
+
+**Traditional Flow** (Advanced Setup):
+```
+1. Select Provider A (OpenAI/Anthropic/etc.)
+2. Select Provider B (OpenAI/Anthropic/etc.)
+3. Choose persona mode (Quick/Full/None)
+4. Select personas if chosen Quick mode
+5. Enter conversation topic
+```
+
+**New Role-First Flow**:
+```
+1. Select Role Personality mode
+2. Choose Role A and Role B
+3. Enter conversation topic
+   (Providers auto-selected based on roles)
 ```
 
 ## Creating Custom Personas

@@ -1637,10 +1637,12 @@ async def show_main_menu() -> str:
     print_section_header("Main Menu", "🚀")
 
     options = [
-        ("1", "Start Chat Bridge Conversation"),
-        ("2", "Manage Roles & Personas"),
-        ("3", "Test Provider Connectivity"),
-        ("4", "Exit")
+        ("1", "Quick Start - Default Conversation"),
+        ("2", "Start with Role Personalities"),
+        ("3", "Advanced Setup"),
+        ("4", "Manage Roles & Personas"),
+        ("5", "Test Provider Connectivity"),
+        ("6", "Exit")
     ]
 
     return select_from_menu(options, "What would you like to do?")
@@ -1652,20 +1654,28 @@ async def run_bridge(args):
     print_banner()
 
     # Check if we should show main menu (interactive mode only)
+    setup_mode = None
     if not (args.provider_a and args.provider_b and getattr(args, 'starter', None)):
         while True:
             choice = await show_main_menu()
 
-            if choice == "1":  # Start conversation
+            if choice == "1":  # Quick Start
+                setup_mode = "quick"
                 break
-            elif choice == "2":  # Manage roles
+            elif choice == "2":  # Start with Role Personalities
+                setup_mode = "roles"
+                break
+            elif choice == "3":  # Advanced Setup
+                setup_mode = "advanced"
+                break
+            elif choice == "4":  # Manage roles
                 roles_path = getattr(args, 'roles', 'roles.json')
                 manage_roles_configuration(roles_path)
                 continue
-            elif choice == "3":  # Test provider connectivity
+            elif choice == "5":  # Test provider connectivity
                 await provider_ping_menu()
                 continue
-            elif choice == "4":  # Exit
+            elif choice == "6":  # Exit
                 print(f"\n{colorize('👋 Goodbye!', Colors.YELLOW)}")
                 return
             else:
@@ -1675,31 +1685,91 @@ async def run_bridge(args):
     # Load roles if specified
     roles_data = load_roles_file(getattr(args, 'roles', None))
 
-    # Interactive setup
+    # Interactive setup based on selected mode
     if not (args.provider_a and args.provider_b and getattr(args, 'starter', None)):
-        provider_a, provider_b = select_providers()
+        if setup_mode == "quick":
+            # Quick setup with defaults
+            provider_a, provider_b = DEFAULT_PROVIDER_A, DEFAULT_PROVIDER_B
+            persona_a, persona_b = None, None
+            print_success(f"Quick setup: {get_spec(provider_a).label} vs {get_spec(provider_b).label}")
+            starter = get_conversation_starter()
 
-        if roles_data:
-            # Ask user if they want to use role modes or full persona selection
-            print_section_header("Persona Options", "🎭")
-            mode_options = [
-                ("1", "Quick Role Modes (Scientist, Philosopher, Comedian, Steel Worker)"),
-                ("2", "Full Persona Library"),
-                ("3", "Skip - Use default prompts")
-            ]
-            
-            mode_choice = select_from_menu(mode_options, "Select persona mode", default="1")
-            
-            if mode_choice == "1":
-                persona_a, persona_b = select_role_modes(roles_data)
-            elif mode_choice == "2":
-                persona_a, persona_b = select_personas(roles_data)
+        elif setup_mode == "roles":
+            # Role personalities first, then providers
+            if not roles_data:
+                print_warning("No roles.json found. Creating basic role configuration...")
+                roles_data = {
+                    "persona_library": {
+                        "scientist": {
+                            "provider": "openai",
+                            "model": None,
+                            "system": "You are a rigorous scientist focused on evidence-based reasoning.",
+                            "guidelines": ["Cite sources", "Question assumptions", "Use data and examples"]
+                        },
+                        "philosopher": {
+                            "provider": "anthropic",
+                            "model": None,
+                            "system": "You are a thoughtful philosopher exploring deep questions.",
+                            "guidelines": ["Consider multiple perspectives", "Acknowledge uncertainty", "Use clear reasoning"]
+                        },
+                        "comedian": {
+                            "provider": "openai",
+                            "model": None,
+                            "system": "You are a witty comedian with observational humor.",
+                            "guidelines": ["Be entertaining but insightful", "Use timing and wordplay", "Stay positive"]
+                        },
+                        "steel_worker": {
+                            "provider": "anthropic",
+                            "model": None,
+                            "system": "You are a practical steel worker with blue-collar wisdom.",
+                            "guidelines": ["Focus on practical solutions", "Use straightforward language", "Value hard work"]
+                        }
+                    }
+                }
+
+            persona_a, persona_b = select_role_modes(roles_data)
+
+            # Auto-select providers based on personas, or prompt if needed
+            if persona_a and persona_b:
+                provider_a = roles_data['persona_library'][persona_a]['provider']
+                provider_b = roles_data['persona_library'][persona_b]['provider']
+                print_success(f"Role setup: {persona_a} ({get_spec(provider_a).label}) vs {persona_b} ({get_spec(provider_b).label})")
+            else:
+                provider_a, provider_b = select_providers()
+
+            starter = get_conversation_starter()
+
+        elif setup_mode == "advanced":
+            # Full advanced setup (original flow)
+            provider_a, provider_b = select_providers()
+
+            if roles_data:
+                # Ask user if they want to use role modes or full persona selection
+                print_section_header("Persona Options", "🎭")
+                mode_options = [
+                    ("1", "Quick Role Modes (Scientist, Philosopher, Comedian, Steel Worker)"),
+                    ("2", "Full Persona Library"),
+                    ("3", "Skip - Use default prompts")
+                ]
+
+                mode_choice = select_from_menu(mode_options, "Select persona mode", default="1")
+
+                if mode_choice == "1":
+                    persona_a, persona_b = select_role_modes(roles_data)
+                elif mode_choice == "2":
+                    persona_a, persona_b = select_personas(roles_data)
+                else:
+                    persona_a, persona_b = None, None
             else:
                 persona_a, persona_b = None, None
-        else:
-            persona_a, persona_b = None, None
 
-        starter = get_conversation_starter()
+            starter = get_conversation_starter()
+
+        else:
+            # Fallback to original behavior
+            provider_a, provider_b = select_providers()
+            persona_a, persona_b = None, None
+            starter = get_conversation_starter()
     else:
         provider_a, provider_b = args.provider_a, args.provider_b
         persona_a, persona_b = None, None

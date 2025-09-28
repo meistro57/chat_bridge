@@ -4,6 +4,14 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ## ✨ What's New in Version 1.2.0
 
+### 🚀 **Simplified Menu Structure & Role Personality Flow (Latest)**
+- **🎯 Quick Start Option** - Get conversations running in seconds with sensible defaults
+- **🎭 Role Personality First Flow** - Choose personalities first, providers auto-selected
+- **⚙️ Streamlined Navigation** - Fewer menu levels for common use cases
+- **🎪 Enhanced Role Selection** - Direct access to scientist, philosopher, comedian, steel worker personas
+- **🚀 Three Setup Modes** - Quick Start, Role Personalities, or Advanced Setup to match your needs
+
+### 🛠️ **Core Features**
 - **✨ Custom Role Creation** - Create fully customizable AI roles with user-defined settings
 - **🎭 Enhanced Role Modes** - 4 preset role modes: Scientist, Philosopher, Comedian, Steel Worker
 - **🎯 Advanced Stop Word Control** - Lessened stop word weight function for nuanced conversation control
@@ -101,15 +109,30 @@ python chat_bridge.py
 
 You'll see beautiful colored menus guiding you through:
 
-### 🚀 Main Menu Options:
-1. **Start Chat Bridge Conversation** - Begin an AI-to-AI conversation
-2. **Manage Roles & Personas** - Interactive roles.json configuration
-3. **Test Provider Connectivity** - Diagnose and test AI provider connections
-4. **Exit** - Gracefully exit the application
+### 🚀 Simplified Main Menu Options:
+1. **Quick Start - Default Conversation** - Start immediately with OpenAI vs Anthropic and default settings
+2. **Start with Role Personalities** - Choose scientist, philosopher, comedian, or steel worker first (providers auto-selected)
+3. **Advanced Setup** - Full configuration with provider and persona selection (original functionality)
+4. **Manage Roles & Personas** - Interactive roles.json configuration and persona creation
+5. **Test Provider Connectivity** - Diagnose and test AI provider connections
+6. **Exit** - Gracefully exit the application
 
-### 💬 Conversation Flow:
+### 💬 Conversation Flow Options:
+
+#### 🚀 Quick Start Flow:
+1. **Instant Setup** - Uses sensible defaults (OpenAI vs Anthropic)
+2. **Conversation Starter** - Enter your discussion topic
+3. **Live Conversation** - Watch the AI assistants converse immediately
+
+#### 🎭 Role Personality Flow (New!):
+1. **Role Selection** - Choose personalities for both agents (scientist, philosopher, comedian, steel worker)
+2. **Auto Provider Assignment** - Providers automatically selected based on role preferences
+3. **Conversation Starter** - Enter your discussion topic
+4. **Live Conversation** - Watch personality-driven conversations
+
+#### ⚙️ Advanced Setup Flow:
 1. **Provider Selection** - Choose AI providers for both agents
-2. **Persona Selection** - Optional personas from `roles.json`
+2. **Persona Selection** - Optional personas from `roles.json` (Quick Modes, Full Library, or Skip)
 3. **Conversation Starter** - Enter your discussion topic
 4. **Live Conversation** - Watch the AI assistants converse with real-time streaming
 
