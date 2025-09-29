@@ -126,7 +126,7 @@ python chat_bridge.py
 ## 📋 Certification Checklist
 
 ### Core Functionality ✅
-- [ ] All 5 providers (OpenAI, Anthropic, Gemini, Ollama, LM Studio) connect successfully
+- [ ] All 6 providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio) connect successfully
 - [ ] Conversations flow naturally between agents
 - [ ] Streaming output works correctly
 - [ ] Conversation termination works (stop words, max rounds)
@@ -190,6 +190,12 @@ python chat_bridge.py
 - [ ] Chat API format correct
 - [ ] Custom host with `OLLAMA_HOST`
 
+#### DeepSeek
+- [ ] DeepSeek API accessible
+- [ ] Chat completion streaming works
+- [ ] Rate limiting handled
+- [ ] Custom models work with `DEEPSEEK_MODEL`
+
 #### LM Studio
 - [ ] Local server detection works
 - [ ] OpenAI-compatible API works
@@ -208,6 +214,7 @@ python chat_bridge.py
 - OpenAI: 3 RPM on free tier, 3500 RPM on paid
 - Anthropic: Varies by tier, usually 5-50 RPM
 - Gemini: 15 RPM free tier, 300 RPM with billing
+- DeepSeek: Varies by tier and model
 - Local providers: No API limits
 
 ## 🔧 Development Testing
@@ -239,7 +246,7 @@ python chat_bridge.py \
 
 A Chat Bridge installation is considered **certified** when:
 
-1. **All provider tests pass** (at least 3 out of 5 providers online)
+1. **All provider tests pass** (at least 3 out of 6 providers online)
 2. **Conversations complete successfully** without errors
 3. **All data persistence works** (files, database, logs)
 4. **Error handling is comprehensive** with helpful messages

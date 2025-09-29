@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Anthropic: `claude-3-5-sonnet-20240620` → `claude-3-5-sonnet-20241022`
   - Gemini: `gemini-flash-latest` → `gemini-2.5-flash`
 - **Documentation Updates**: Corrected all model references across README.md, TESTING.md, and ENHANCEMENTS.md
+- **DeepSeek Documentation**: Enhanced documentation to include DeepSeek provider in testing checklist and troubleshooting
 - **Certification Status**: PASSED (90.3% success rate) with updated model names
 
 ### Technical Details
 - Modified `bridge_agents.py:52,63,74` to use current API-verified model names
 - Updated documentation to reflect current provider capabilities and model names
+- Added DeepSeek provider to testing checklist (6 providers total)
+- Added DeepSeek-specific troubleshooting section in README.md
+- Updated rate limiting documentation to include DeepSeek
 - All changes maintain backward compatibility through environment variable overrides
 
 ## [1.2.1] - 2025-09-29

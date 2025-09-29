@@ -431,6 +431,12 @@ Use the built-in **Provider Connectivity Test** from the main menu to quickly di
 - **Rate Limited (429)**: Wait for reset, check quota in Google Cloud Console, enable billing for higher limits
 - **Access Forbidden (403)**: Enable Gemini API, check permissions, verify billing is enabled
 
+#### 🔍 DeepSeek
+- **Invalid API Key (401)**: Verify `DEEPSEEK_API_KEY` is set correctly, ensure key is valid and active
+- **Access Forbidden (403)**: Check API key permissions, verify account status
+- **Rate Limited (429)**: Wait before retrying, check usage limits, consider API tier upgrade
+- **Network Issues**: Verify connection to DeepSeek API endpoint
+
 #### 🦙 Ollama
 - **Connection Refused**: Start Ollama with `ollama serve` or `systemctl start ollama`
 - **Model Not Found (404)**: Pull model with `ollama pull llama3.1:8b-instruct`, check `OLLAMA_MODEL`
