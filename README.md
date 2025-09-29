@@ -89,7 +89,7 @@ Comprehensive automated testing and certification system for validating the enti
 ## Features at a Glance
 
 - **Multi-provider bridge** – choose any combination of OpenAI, Anthropic, Gemini,
-  Ollama, or LM Studio for Agent A and Agent B.
+  DeepSeek, Ollama, or LM Studio for Agent A and Agent B.
 - **Turbo defaults** – out of the box the scripts target GPT-4o Mini, Claude 3.5 Sonnet (Oct 2024),
   Gemini 2.5 Flash, llama3.1 8B (Ollama), and LM Studio's meta-llama3 instruct build.
 - **Interactive setup** – each run offers a multiple-choice picker for providers and
@@ -109,13 +109,14 @@ Comprehensive automated testing and certification system for validating the enti
   - `OPENAI_API_KEY` for OpenAI.
   - `ANTHROPIC_API_KEY` for Anthropic.
   - `GEMINI_API_KEY` for Gemini.
+  - `DEEPSEEK_API_KEY` for DeepSeek.
 - Local endpoints for on-device models (optional):
   - Ollama running on `http://localhost:11434` (override with `OLLAMA_HOST`).
   - LM Studio's OpenAI-compatible server on `http://localhost:1234/v1`
     (override with `LMSTUDIO_BASE_URL`).
 
 Set provider-specific default models with environment variables such as
-`OPENAI_MODEL`, `ANTHROPIC_MODEL`, `GEMINI_MODEL`, `OLLAMA_MODEL`, or
+`OPENAI_MODEL`, `ANTHROPIC_MODEL`, `GEMINI_MODEL`, `DEEPSEEK_MODEL`, `OLLAMA_MODEL`, or
 `LMSTUDIO_MODEL`. You can also target particular agents with `BRIDGE_MODEL_A` and
 `BRIDGE_MODEL_B`, plus override system prompts with `BRIDGE_SYSTEM_A` /
 `BRIDGE_SYSTEM_B`.
@@ -133,12 +134,15 @@ Set provider-specific default models with environment variables such as
    OPENAI_API_KEY=sk-...
    ANTHROPIC_API_KEY=ak-...
    GEMINI_API_KEY=gm-...
+   DEEPSEEK_API_KEY=sk-...
    # Optional local hosts / model overrides
    OLLAMA_HOST=http://localhost:11434
    LMSTUDIO_BASE_URL=http://localhost:1234/v1
+   DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
    OPENAI_MODEL=gpt-4o-mini
    ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
    GEMINI_MODEL=gemini-2.5-flash
+   DEEPSEEK_MODEL=deepseek-chat
    OLLAMA_MODEL=llama3.1:8b-instruct
    LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
    ```

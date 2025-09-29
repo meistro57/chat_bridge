@@ -639,7 +639,7 @@ class AgentRuntime:
 
     def stream_reply(self, turns: Iterable[Turn], mem_rounds: int) -> AsyncGenerator[str, None]:
         recent = select_turns(turns, mem_rounds)
-        if self.provider_key in {"openai", "lmstudio"}:
+        if self.provider_key in {"openai", "lmstudio", "deepseek"}:
             messages = build_chatml(recent, self.agent_id, self.system_prompt)
             return self.client.stream(messages, temperature=self.temperature)
         if self.provider_key == "anthropic":
