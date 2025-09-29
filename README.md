@@ -4,6 +4,12 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ## ✨ What's New in Version 1.2.1
 
+### 🔧 **Latest Updates**
+- **🎭 Enhanced Persona Library** - Added DeepSeek, ADHD Kid, and Complainer personas for diverse conversation dynamics
+- **⚙️ Improved Roles Management** - Updated roles_manager.py with better persona handling and configuration options
+- **🛠️ Additional Utilities** - Added check_port.py for database connectivity testing
+- **📦 Version Management** - Centralized version string in version.py for better release tracking
+
 ### 🔧 **Roles Manager Integration Fix (Latest)**
 - **🎭 Full Persona Compatibility** - All roles created with the roles manager are now properly selectable in the main app
 - **🔗 Unified Role Selection** - Both hardcoded and custom roles appear in the same selection menu
@@ -25,7 +31,7 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ### 🛠️ **Core Features**
 - **✨ Custom Role Creation** - Create fully customizable AI roles with user-defined settings
-- **🎭 Enhanced Role Modes** - 4 preset role modes: Scientist, Philosopher, Comedian, Steel Worker
+- **🎭 Enhanced Role Modes** - Multiple preset personas including Scientist, Philosopher, Comedian, Steel Worker, DeepSeek Strategist, ADHD Kid, and more
 - **🎯 Advanced Stop Word Control** - Lessened stop word weight function for nuanced conversation control
 - **🎨 Beautiful colorful interface** with styled menus and progress indicators
 - **🚀 Single unified script** combining all previous functionality
@@ -36,6 +42,7 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 - **⚡ Quick launcher** with preset configurations
 - **🔒 Enhanced security** with proper API key management
 - **🔄 Stop Word Detection Toggle** - Enable/disable conversation termination on stop words
+- **🛠️ Utility Scripts** - Standalone roles manager, port connectivity checker, and comprehensive certification suite
 
 ## 🚀 Quick Start
 
@@ -44,7 +51,12 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 python launch.py
 ```
 
-**Option 2: Direct Interactive Mode**
+**Option 2: Roles Manager (Standalone)**
+```bash
+python roles_manager.py
+```
+
+**Option 3: Direct Interactive Mode**
 ```bash
 python chat_bridge.py
 ```
@@ -53,6 +65,26 @@ python chat_bridge.py
 ```bash
 python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What is consciousness?"
 ```
+
+## 🛠️ Utility Scripts
+
+### Roles Manager (Standalone)
+```bash
+python roles_manager.py
+```
+Dedicated interface for creating, editing, and managing AI personas independently of the main chat bridge.
+
+### Port Connectivity Checker
+```bash
+python check_port.py
+```
+Database connectivity tester for MySQL/MariaDB connections with detailed diagnostics.
+
+### Certification Suite
+```bash
+python certify.py
+```
+Comprehensive automated testing and certification system for validating the entire Chat Bridge installation.
 
 ## Features at a Glance
 

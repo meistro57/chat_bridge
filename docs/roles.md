@@ -137,7 +137,8 @@ The new **Role Personality Mode** offers several advantages over the traditional
 #### ⚡ **Quick Access to Popular Combinations**
 - **Scientist + Philosopher**: Empirical evidence meets ethical reasoning
 - **Comedian + Steel Worker**: Humor meets practical wisdom
-- **Any Combination**: Mix and match the 4 core personalities
+- **DeepSeek + ADHD Kid**: Strategic analysis meets intuitive pattern recognition
+- **Any Combination**: Mix and match from multiple preset personalities including new additions
 
 #### 🔄 **Flow Comparison**
 
