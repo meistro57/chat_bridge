@@ -1,5 +1,5 @@
 # 🌉 Chat Bridge - Unified Edition
-
+https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
 ## ✨ What's New in Version 1.2.0
