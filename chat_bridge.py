@@ -508,16 +508,61 @@ def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_
 @dataclass
 class Transcript:
     turns: List[Dict] = field(default_factory=list)
+    session_config: Optional[Dict] = field(default_factory=dict)
 
     def add(self, agent: str, role: str, timestamp: str, content: str):
         self.turns.append({"agent": agent, "role": role, "timestamp": timestamp, "content": content})
+
+    def set_session_config(self, config: Dict):
+        """Set the session configuration for the transcript"""
+        self.session_config = config
 
     def dump(self, path: str):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write("# Chat Bridge Transcript\n\n")
+
+            # Write session configuration
+            if self.session_config:
+                f.write("## Session Configuration\n\n")
+                f.write(f"**Session ID:** {self.session_config.get('session_id', 'N/A')}\n")
+                f.write(f"**Started:** {self.session_config.get('session_start', 'N/A')}\n")
+                f.write(f"**Conversation Starter:** {self.session_config.get('starter', 'N/A')}\n\n")
+
+                # Agent configurations
+                f.write("### Agent Configuration\n\n")
+                f.write(f"**Agent A Provider:** {self.session_config.get('provider_a', 'N/A')}\n")
+                f.write(f"**Agent A Model:** {self.session_config.get('model_a', 'N/A')}\n")
+                f.write(f"**Agent A Temperature:** {self.session_config.get('temp_a', 'N/A')}\n")
+                if self.session_config.get('persona_a'):
+                    f.write(f"**Agent A Persona:** {self.session_config.get('persona_a')}\n")
+                if self.session_config.get('system_prompt_a'):
+                    f.write(f"**Agent A System Prompt:** {self.session_config.get('system_prompt_a')}\n")
+
+                f.write(f"\n**Agent B Provider:** {self.session_config.get('provider_b', 'N/A')}\n")
+                f.write(f"**Agent B Model:** {self.session_config.get('model_b', 'N/A')}\n")
+                f.write(f"**Agent B Temperature:** {self.session_config.get('temp_b', 'N/A')}\n")
+                if self.session_config.get('persona_b'):
+                    f.write(f"**Agent B Persona:** {self.session_config.get('persona_b')}\n")
+                if self.session_config.get('system_prompt_b'):
+                    f.write(f"**Agent B System Prompt:** {self.session_config.get('system_prompt_b')}\n")
+
+                # Session settings
+                f.write("\n### Session Settings\n\n")
+                f.write(f"**Max Rounds:** {self.session_config.get('max_rounds', 'N/A')}\n")
+                f.write(f"**Memory Rounds:** {self.session_config.get('mem_rounds', 'N/A')}\n")
+                f.write(f"**Stop Word Detection:** {'Enabled' if self.session_config.get('stop_word_detection_enabled', True) else 'Disabled'}\n")
+
+                if self.session_config.get('stop_words'):
+                    stop_words_str = ', '.join(self.session_config.get('stop_words', []))
+                    f.write(f"**Stop Words:** {stop_words_str}\n")
+
+                f.write("\n---\n\n")
+
+            # Write conversation turns
+            f.write("## Conversation\n\n")
             for turn in self.turns:
-                f.write(f"## {turn['agent']} ({turn['timestamp']})\n")
+                f.write(f"### {turn['agent']} ({turn['timestamp']})\n\n")
                 f.write(f"{turn['content']}\n\n")
 
 @dataclass
@@ -1833,6 +1878,38 @@ async def run_bridge(args):
     # Initialize conversation
     history = ConversationHistory()
     transcript = Transcript()
+
+    # Set session configuration for the transcript
+    session_config = {
+        'session_id': cid,
+        'session_start': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'starter': starter,
+        'provider_a': provider_a,
+        'provider_b': provider_b,
+        'model_a': model_a,
+        'model_b': model_b,
+        'temp_a': temp_a,
+        'temp_b': temp_b,
+        'max_rounds': args.max_rounds,
+        'mem_rounds': args.mem_rounds,
+        'stop_word_detection_enabled': roles_data.get('stop_word_detection_enabled', True) if roles_data else True,
+        'stop_words': list(roles_data.get('stop_words', [])) if roles_data else list(STOP_WORDS_DEFAULT)
+    }
+
+    # Add personas if they exist
+    if 'persona_a' in locals() and persona_a:
+        session_config['persona_a'] = persona_a
+    if 'persona_b' in locals() and persona_b:
+        session_config['persona_b'] = persona_b
+
+    # Add system prompts if available
+    if hasattr(agent_a, 'system_prompt') and agent_a.system_prompt:
+        session_config['system_prompt_a'] = agent_a.system_prompt
+    if hasattr(agent_b, 'system_prompt') and agent_b.system_prompt:
+        session_config['system_prompt_b'] = agent_b.system_prompt
+
+    transcript.set_session_config(session_config)
+
     history.add_turn("human", starter)
 
     nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

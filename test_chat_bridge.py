@@ -74,8 +74,8 @@ class TestTranscript(unittest.TestCase):
             with open(temp_path, 'r') as f:
                 content = f.read()
                 self.assertIn("# Chat Bridge Transcript", content)
-                self.assertIn("## Agent A", content)
-                self.assertIn("## Agent B", content)
+                self.assertIn("### Agent A", content)
+                self.assertIn("### Agent B", content)
                 self.assertIn("Hello", content)
                 self.assertIn("Hi there", content)
         finally:

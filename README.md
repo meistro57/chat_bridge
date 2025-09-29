@@ -4,7 +4,13 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ## ✨ What's New in Version 1.2.0
 
-### 🚀 **Simplified Menu Structure & Role Personality Flow (Latest)**
+### 🔄 **Stop Word Detection Control & Enhanced Transcripts (Latest)**
+- **🔄 Stop Word Detection Toggle** - Enable/disable conversation termination control through interactive menu
+- **📝 Enhanced Session Transcripts** - Comprehensive session configuration tracking in transcript headers
+- **⚡ Real-time Configuration Display** - Session summaries now show stop word detection status
+- **🛡️ Backward Compatible** - All existing configurations continue working seamlessly
+
+### 🚀 **Simplified Menu Structure & Role Personality Flow**
 - **🎯 Quick Start Option** - Get conversations running in seconds with sensible defaults
 - **🎭 Role Personality First Flow** - Choose personalities first, providers auto-selected
 - **⚙️ Streamlined Navigation** - Fewer menu levels for common use cases
@@ -305,10 +311,17 @@ Overall Status: 1/2 providers online
 
 Every session produces:
 
-- `transcripts/<timestamp>__<starter-slug>.md` – the Markdown transcript.
+- `transcripts/<timestamp>__<starter-slug>.md` – Enhanced Markdown transcript with complete session configuration
 - `logs/<timestamp>__<starter-slug>.log` – optional structured per-session log.
 - `chat_bridge.log` – global append-only log capturing request IDs and errors.
 - `bridge.db` – SQLite database containing metadata plus turn-by-turn content.
+
+### 📝 Enhanced Transcript Features (New!)
+- **Session Configuration Header** - Complete configuration details including providers, models, temperatures
+- **Agent Configuration** - Detailed settings for both agents including personas and system prompts
+- **Session Settings** - Max rounds, memory rounds, and stop word detection status
+- **Stop Words List** - Active stop words with current detection status
+- **Structured Format** - Clear sections for easy navigation and analysis
 
 Legacy transcripts from earlier experiments may be stored in `chatlogs/`; current scripts
 write to `transcripts/` automatically.
