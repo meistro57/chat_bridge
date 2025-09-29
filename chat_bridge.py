@@ -1775,7 +1775,7 @@ async def run_bridge(args):
                 continue
 
     # Load roles if specified
-    roles_data = load_roles_file(getattr(args, 'roles', None))
+    roles_data = load_roles_file(getattr(args, 'roles', 'roles.json'))
 
     # Interactive setup based on selected mode
     if not (args.provider_a and args.provider_b and getattr(args, 'starter', None)):
