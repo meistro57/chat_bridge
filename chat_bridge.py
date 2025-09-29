@@ -1839,7 +1839,7 @@ async def run_bridge(args):
                 # Ask user if they want to use role modes or full persona selection
                 print_section_header("Persona Options", "🎭")
                 mode_options = [
-                    ("1", "Quick Role Modes (Scientist, Philosopher, Comedian, Steel Worker)"),
+                    ("1", "Quick Role Modes - All available personas"),
                     ("2", "Full Persona Library"),
                     ("3", "Skip - Use default prompts")
                 ]
