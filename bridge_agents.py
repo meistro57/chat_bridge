@@ -423,11 +423,34 @@ class GeminiChat:
                 )
                 logger.debug("Gemini response received successfully")
 
-                if response.text:
-                    logger.debug(f"Gemini response length: {len(response.text)} characters")
-                    yield response.text
-                else:
-                    logger.warning("Gemini returned empty response")
+                # Check if response has valid content before accessing text
+                if hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    # finish_reason: 1=STOP (normal), 2=MAX_TOKENS, 3=SAFETY, 4=RECITATION, 5=OTHER
+                    if hasattr(candidate, 'finish_reason') and candidate.finish_reason not in [1, 2]:
+                        finish_reason_map = {3: "SAFETY", 4: "RECITATION", 5: "OTHER"}
+                        reason = finish_reason_map.get(candidate.finish_reason, f"UNKNOWN({candidate.finish_reason})")
+                        logger.warning(f"Gemini blocked response due to: {reason}")
+                        yield f"[Response blocked by Gemini: {reason}]"
+                        return
+
+                try:
+                    if response.text:
+                        logger.debug(f"Gemini response length: {len(response.text)} characters")
+                        yield response.text
+                    else:
+                        logger.warning("Gemini returned empty response")
+                        yield "[Gemini returned empty response]"
+                except ValueError as ve:
+                    # Handle case where response.text accessor fails
+                    logger.warning(f"Could not access response.text: {ve}")
+                    if hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        finish_reason = getattr(candidate, 'finish_reason', 'unknown')
+                        logger.warning(f"Response finish_reason: {finish_reason}")
+                        yield f"[Gemini response unavailable, finish_reason={finish_reason}]"
+                    else:
+                        yield "[Gemini response unavailable]"
 
             except Exception as send_error:
                 logger.error(f"Failed to send message to Gemini: {send_error}")
