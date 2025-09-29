@@ -1470,6 +1470,59 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
                     ]
                 result["error"] = error_str
 
+        elif provider_key == "deepseek":
+            try:
+                api_key = ensure_credentials(provider_key)
+                base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+                client = OpenAIChat(model=spec.default_model, api_key=api_key, base_url=base_url)
+
+                response_started = False
+                test_messages = [{"role": "user", "content": "Hello"}]
+                async for chunk in client.stream(test_messages, temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ API key valid, model accessible"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                error_str = str(e)
+                if "401" in error_str or "unauthorized" in error_str.lower():
+                    result["message"] = "❌ Invalid API key - Check DEEPSEEK_API_KEY environment variable"
+                    result["troubleshooting"] = [
+                        "1. Verify DEEPSEEK_API_KEY is set correctly",
+                        "2. Check if API key has sufficient credits",
+                        "3. Ensure API key has not expired"
+                    ]
+                elif "403" in error_str:
+                    result["message"] = "❌ Access forbidden - Check API key permissions"
+                    result["troubleshooting"] = [
+                        "1. Verify your API key has access to DeepSeek models",
+                        "2. Check your account status",
+                        "3. Try a different model version"
+                    ]
+                elif "429" in error_str:
+                    result["message"] = "❌ Rate limit exceeded"
+                    result["troubleshooting"] = [
+                        "1. Wait before retrying",
+                        "2. Check your usage limits",
+                        "3. Consider API tier upgrade"
+                    ]
+                else:
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Check DEEPSEEK_API_KEY environment variable",
+                        "2. Verify network connectivity",
+                        "3. Check DeepSeek service status"
+                    ]
+                result["error"] = error_str
+
         else:
             result["status"] = "unsupported"
             result["message"] = f"❓ Provider {provider_key} not supported for ping test"

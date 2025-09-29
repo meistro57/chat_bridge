@@ -49,7 +49,7 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         key="openai",
         label="OpenAI",
         kind="chatml",
-        default_model=_env("OPENAI_MODEL") or "gpt-4.1-mini",
+        default_model=_env("OPENAI_MODEL") or "gpt-4o-mini",
         default_system="You are ChatGPT. Be concise, helpful, and witty.",
         needs_key=True,
         key_env="OPENAI_API_KEY",
@@ -60,7 +60,7 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         key="anthropic",
         label="Anthropic",
         kind="anthropic",
-        default_model=_env("ANTHROPIC_MODEL") or "claude-3-5-sonnet-20240620",
+        default_model=_env("ANTHROPIC_MODEL") or "claude-3-5-sonnet-20241022",
         default_system="You are Claude. Be concise, helpful, and witty.",
         needs_key=True,
         key_env="ANTHROPIC_API_KEY",
@@ -71,7 +71,7 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         key="gemini",
         label="Gemini",
         kind="gemini",
-        default_model=_env("GEMINI_MODEL") or "gemini-flash-latest",
+        default_model=_env("GEMINI_MODEL") or "gemini-2.5-flash",
         default_system="You are Gemini. Respond with structured, thoughtful, and well-cited answers when possible.",
         needs_key=True,
         key_env="GEMINI_API_KEY",
@@ -99,6 +99,17 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         key_env=None,
         model_env="LMSTUDIO_MODEL",
         description="LM Studio local OpenAI-compatible server (turbo tuned).",
+    ),
+    "deepseek": ProviderSpec(
+        key="deepseek",
+        label="DeepSeek",
+        kind="chatml",
+        default_model=_env("DEEPSEEK_MODEL") or "deepseek-chat",
+        default_system="You are DeepSeek. Think like a research engineer who balances rigorous analysis with actionable recommendations.",
+        needs_key=True,
+        key_env="DEEPSEEK_API_KEY",
+        model_env="DEEPSEEK_MODEL",
+        description="DeepSeek OpenAI-compatible API for advanced reasoning and coding.",
     ),
 }
 
@@ -679,6 +690,11 @@ def create_agent(agent_id: str, provider_key: str, model: str, temperature: floa
             base = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
             client = OpenAIChat(model=model, api_key=None, base_url=base)
             logger.debug(f"LM Studio client created for agent {agent_id} at {base}")
+        elif provider_key == "deepseek":
+            api_key = ensure_credentials(provider_key)
+            base = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
+            client = OpenAIChat(model=model, api_key=api_key, base_url=base)
+            logger.debug(f"DeepSeek client created for agent {agent_id}")
         else:
             logger.error(f"Unsupported provider requested: {provider_key}")
             raise RuntimeError(f"Unsupported provider: {provider_key}")

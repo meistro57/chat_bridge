@@ -58,8 +58,8 @@ python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What
 
 - **Multi-provider bridge** – choose any combination of OpenAI, Anthropic, Gemini,
   Ollama, or LM Studio for Agent A and Agent B.
-- **Turbo defaults** – out of the box the scripts target GPT-4.1 Mini, Claude 3.5 Sonnet,
-  Gemini 1.5 Pro, llama3.1 8B (Ollama), and LM Studio's meta-llama3 instruct build.
+- **Turbo defaults** – out of the box the scripts target GPT-4o Mini, Claude 3.5 Sonnet (Oct 2024),
+  Gemini 2.5 Flash, llama3.1 8B (Ollama), and LM Studio's meta-llama3 instruct build.
 - **Interactive setup** – each run offers a multiple-choice picker for providers and
   models alongside CLI flags and environment overrides.
 - **Streaming transcripts** – watch tokens arrive live, capture the Markdown transcript,
@@ -104,9 +104,9 @@ Set provider-specific default models with environment variables such as
    # Optional local hosts / model overrides
    OLLAMA_HOST=http://localhost:11434
    LMSTUDIO_BASE_URL=http://localhost:1234/v1
-   OPENAI_MODEL=gpt-4.1-mini
-   ANTHROPIC_MODEL=claude-3-5-sonnet-20240620
-   GEMINI_MODEL=gemini-1.5-pro-latest
+   OPENAI_MODEL=gpt-4o-mini
+   ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+   GEMINI_MODEL=gemini-2.5-flash
    OLLAMA_MODEL=llama3.1:8b-instruct
    LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
    ```
@@ -296,7 +296,7 @@ Testing Anthropic...
 Overall Status: 1/2 providers online
 
 🟢 ONLINE PROVIDERS:
-  • OpenAI (gpt-4.1-mini) - 245ms
+  • OpenAI (gpt-4o-mini) - 245ms
 
 🔴 PROVIDERS WITH ISSUES:
   • Anthropic: ❌ Invalid API key
@@ -337,8 +337,8 @@ write to `transcripts/` automatically.
 - Increase `--max-rounds` (e.g. `--max-rounds 200`).
 - Raise `--mem-rounds` if you want each model to retain more context (values between
   `12`–`20` work well).
-- Monitor token budgets: OpenAI GPT-4.1 Mini typically caps around 128k tokens, Anthropic
-  Claude models around 200k, and Gemini 1.5 Pro around 2M context (depending on release).
+- Monitor token budgets: OpenAI GPT-4o Mini typically caps around 128k tokens, Anthropic
+  Claude models around 200k, and Gemini 2.5 Flash around 1M context (depending on release).
 
 ## Troubleshooting
 
@@ -351,7 +351,7 @@ python certify.py
 ```
 
 **Enhanced Features:**
-- 🔍 **Detailed provider identification** with specific AI model names (ChatGPT, Claude, Gemini, etc.)
+- 🔍 **Detailed provider identification** with specific AI model names (GPT-4o Mini, Claude 3.5 Sonnet, Gemini 2.5 Flash, etc.)
 - ⏱️ **Comprehensive timestamps** for all test operations
 - 📊 **Enhanced reporting** with provider-specific statistics
 - 🎯 **Structured JSON reports** saved to `certification_report_YYYYMMDD_HHMMSS.json`
@@ -381,7 +381,7 @@ Use the built-in **Provider Connectivity Test** from the main menu to quickly di
 
 #### 🔑 OpenAI
 - **Invalid API Key (401)**: Verify `OPENAI_API_KEY` is set correctly, check credits, ensure key hasn't expired
-- **Access Forbidden (403)**: API key lacks model permissions, try different model (e.g., gpt-3.5-turbo)
+- **Access Forbidden (403)**: API key lacks model permissions, try different model (e.g., gpt-4o-mini)
 - **Rate Limited (429)**: Wait for reset, check usage limits in OpenAI dashboard, consider upgrading plan
 - **Network Issues**: Check internet connection, verify firewall/proxy settings
 

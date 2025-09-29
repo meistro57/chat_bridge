@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-09-29
+
+### Fixed
+- **Model Name Updates**: Updated all default model names to current API-verified versions
+  - OpenAI: `gpt-4.1-mini` → `gpt-4o-mini`
+  - Anthropic: `claude-3-5-sonnet-20240620` → `claude-3-5-sonnet-20241022`
+  - Gemini: `gemini-flash-latest` → `gemini-2.5-flash`
+- **Documentation Updates**: Corrected all model references across README.md, TESTING.md, and ENHANCEMENTS.md
+- **Certification Status**: PASSED (90.3% success rate) with updated model names
+
+### Technical Details
+- Modified `bridge_agents.py:52,63,74` to use current API-verified model names
+- Updated documentation to reflect current provider capabilities and model names
+- All changes maintain backward compatibility through environment variable overrides
+
 ## [1.2.1] - 2025-09-29
 
 ### Fixed

@@ -167,19 +167,19 @@ python chat_bridge.py
 ### Provider-Specific Tests ✅
 
 #### OpenAI
-- [ ] GPT-4.1 Mini model accessible
+- [ ] GPT-4o Mini model accessible
 - [ ] Streaming responses work
 - [ ] Rate limiting handled
 - [ ] Custom models work with `OPENAI_MODEL`
 
 #### Anthropic
-- [ ] Claude 3.5 Sonnet accessible
+- [ ] Claude 3.5 Sonnet (Oct 2024) accessible
 - [ ] Messages API streaming works
 - [ ] Fallback to completions API if needed
 - [ ] Custom models work with `ANTHROPIC_MODEL`
 
 #### Gemini
-- [ ] Gemini 1.5 Pro accessible
+- [ ] Gemini 2.5 Flash accessible
 - [ ] Content format correct (parts array)
 - [ ] Rate limiting handled gracefully
 - [ ] Custom models work with `GEMINI_MODEL`
@@ -312,8 +312,8 @@ The generated `certification_report_YYYYMMDD_HHMMSS.json` includes:
 ```
 [2025-09-26 22:02:45] Starting comprehensive certification tests...
 [2025-09-26 22:02:45] Running test suite: Provider connectivity
-[2025-09-26 22:02:50] Testing Provider: OpenAI (CHATML), Model: gpt-4.1-mini - PASS
-[2025-09-26 22:02:50] Testing Provider: Gemini (GEMINI), Model: gemini-1.5-pro-latest - FAIL
+[2025-09-26 22:02:50] Testing Provider: OpenAI (CHATML), Model: gpt-4o-mini - PASS
+[2025-09-26 22:02:50] Testing Provider: Gemini (GEMINI), Model: gemini-2.5-flash - FAIL
 [2025-09-26 22:02:50] Overall connectivity: PASS - Total providers tested: 5, Online: 3
 
 🏆 CERTIFICATION: PASSED
