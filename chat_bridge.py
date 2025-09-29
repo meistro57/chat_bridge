@@ -347,32 +347,27 @@ def create_custom_role() -> Dict:
     return custom_role_data
 
 def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional[str]]:
-    """Quick selection of role modes (scientist, philosopher, comedian, steel_worker)"""
+    """Quick selection of role modes - shows all available personas plus option to create custom"""
     if not roles_data or 'persona_library' not in roles_data:
         return None, None
 
     print_section_header("Role Mode Selection", "🎭")
 
-    # Define the 4 role modes
-    role_modes = [
-        ("scientist", "🔬 Scientist - Evidence-based, analytical, methodical"),
-        ("philosopher", "🤔 Philosopher - Deep thinking, ethical, existential"),
-        ("comedian", "😂 Comedian - Witty, observational, entertaining"),
-        ("steel_worker", "🏭 Steel Worker - Practical, hands-on, blue-collar wisdom"),
-        ("custom", "✨ Create Custom Role - Define your own role")
-    ]
-
-    # Check if preset role modes exist
+    # Get all available personas from the persona library
     available_roles = []
-    for role_key, description in role_modes[:-1]:  # Exclude custom for now
-        if role_key in roles_data['persona_library']:
-            available_roles.append((role_key, description))
-    
+    personas = roles_data.get('persona_library', {})
+
+    # Add all existing personas with their descriptions
+    for persona_key, persona_data in personas.items():
+        provider_name = get_spec(persona_data.get('provider', 'openai')).label
+        system_preview = persona_data.get('system', 'No description')[:60] + "..." if len(persona_data.get('system', '')) > 60 else persona_data.get('system', 'No description')
+        available_roles.append((persona_key, f"🎭 {persona_key} ({provider_name}) - {system_preview}"))
+
     # Always add custom option
     available_roles.append(("custom", "✨ Create Custom Role - Define your own role"))
 
     if len(available_roles) == 1:  # Only custom available
-        print_warning("No preset role modes found in persona library.")
+        print_warning("No personas found in persona library. You can create a custom one.")
 
     print_info("Choose role modes for your AI assistants:")
 
@@ -380,7 +375,7 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
     print(colorize("🔹 ROLE MODE FOR AGENT A", Colors.BLUE, bold=True))
     roles_with_skip = [("skip", "Use default system prompt")] + available_roles
     choice_a = select_from_menu(roles_with_skip, "Agent A Role Mode", default="1")
-    
+
     if choice_a == "1":
         role_a = None
     else:
@@ -403,7 +398,7 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
     # Agent B role mode
     print(colorize("🔸 ROLE MODE FOR AGENT B", Colors.MAGENTA, bold=True))
     choice_b = select_from_menu(roles_with_skip, "Agent B Role Mode", default="1")
-    
+
     if choice_b == "1":
         role_b = None
     else:
@@ -415,10 +410,9 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
             # Add to roles_data temporarily for this session
             roles_data['persona_library'][role_key] = custom_role[role_key]
             # Check if user wants to save permanently
-            if custom_role.get("_save_permanently"):
-                if '_custom_roles_to_save' not in roles_data:
-                    roles_data['_custom_roles_to_save'] = {}
-                roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
+            if '_custom_roles_to_save' not in roles_data:
+                roles_data['_custom_roles_to_save'] = {}
+            roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
             role_b = role_key
         else:
             role_b = selected_role

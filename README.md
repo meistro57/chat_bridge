@@ -2,9 +2,15 @@
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in Version 1.2.0
+## ✨ What's New in Version 1.2.1
 
-### 🔄 **Stop Word Detection Control & Enhanced Transcripts (Latest)**
+### 🔧 **Roles Manager Integration Fix (Latest)**
+- **🎭 Full Persona Compatibility** - All roles created with the roles manager are now properly selectable in the main app
+- **🔗 Unified Role Selection** - Both hardcoded and custom roles appear in the same selection menu
+- **📋 Enhanced Persona Display** - Persona descriptions now show provider and system prompt previews
+- **🛠️ Seamless Integration** - No more missing personas when using both roles manager and main chat bridge
+
+### 🔄 **Stop Word Detection Control & Enhanced Transcripts**
 - **🔄 Stop Word Detection Toggle** - Enable/disable conversation termination control through interactive menu
 - **📝 Enhanced Session Transcripts** - Comprehensive session configuration tracking in transcript headers
 - **⚡ Real-time Configuration Display** - Session summaries now show stop word detection status
