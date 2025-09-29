@@ -19,9 +19,13 @@ env/
 *.sqlite
 *.sqlite3
 
-# Log files
+# Log files - ignore all logs except 3 latest examples
 *.log
-logs/
+logs/*
+# Keep 3 latest log files as examples
+!logs/2025-09-28_21-45-01__posts-you-might-find-in-rwearenotyourgrandfatherss.log
+!logs/2025-09-28_21-42-38__so-ive-got-these-reddit-trolls-raveging-my-subredd.log
+!logs/2025-09-28_21-31-42__every-time-i-pull-up-on-my-motorcycle-to-a-stoplig.log
 
 # IDE and editor files
 .vscode/
@@ -39,9 +43,13 @@ logs/
 ehthumbs.db
 Thumbs.db
 
-# Output directories
+# Output directories - ignore all transcripts/chatlogs except 3 latest examples
 transcripts/
-chatlogs/
+chatlogs/*
+# Keep 3 latest chat transcripts as examples
+!chatlogs/2025-09-23_21-33-59__if-two-ais-were-debating-the-fate-of-humanityone-convinced-humans-are-obsolete-t.md
+!chatlogs/2025-09-23_15-56-13__if-a-large-language-model-doesnt-actually-understand-words-the-way-humans-do-wha.md
+!chatlogs/2025-09-23_11-40-03__discover-how-to-have-three-ai-chatting-in-a-chat-environment-simultainiusly-just.md
 
 # Backup files
 *.bak
