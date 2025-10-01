@@ -182,7 +182,7 @@ class BasicFunctionalTests(unittest.TestCase):
         import json
         test_roles = {
             "persona_library": {
-                "test": {"provider": "openai", "system": "You are helpful"}
+                "test": {"name": "test", "provider": "openai", "system": "You are helpful"}
             }
         }
 

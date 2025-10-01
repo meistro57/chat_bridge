@@ -278,6 +278,7 @@ class TestRolesAndPersonas(unittest.TestCase):
         roles_data = {
             "persona_library": {
                 "scientist": {
+                    "name": "scientist",
                     "provider": "openai",
                     "system": "You are a scientist",
                     "guidelines": ["Be precise", "Use data"]
@@ -329,6 +330,7 @@ class TestRolesAndPersonas(unittest.TestCase):
         roles_data = {
             "persona_library": {
                 "scientist": {
+                    "name": "scientist",
                     "provider": "openai",
                     "system": "You are a scientist",
                     "guidelines": ["Be precise", "Use data"]
@@ -337,17 +339,19 @@ class TestRolesAndPersonas(unittest.TestCase):
         }
 
         # Apply persona
-        result = chat_bridge.apply_persona(mock_agent, "scientist", roles_data)
+        result_agent, result_temp = chat_bridge.apply_persona(mock_agent, "scientist", roles_data)
 
         # Verify system prompt was updated
         expected_system = "You are a scientist\n\nGuidelines:\n• Be precise\n• Use data"
-        self.assertEqual(result.system_prompt, expected_system)
+        self.assertEqual(result_agent.system_prompt, expected_system)
+        self.assertIsNone(result_temp)
 
     def test_apply_persona_no_persona(self):
         """Test applying persona when no persona specified"""
         mock_agent = MagicMock()
-        result = chat_bridge.apply_persona(mock_agent, None, {})
-        self.assertEqual(result, mock_agent)
+        result_agent, result_temp = chat_bridge.apply_persona(mock_agent, None, {})
+        self.assertEqual(result_agent, mock_agent)
+        self.assertIsNone(result_temp)
 
     def test_roles_json_structure(self):
         """Test the actual roles.json file has correct structure and valid data"""
@@ -392,10 +396,12 @@ class TestRolesAndPersonas(unittest.TestCase):
         # Test each persona has required fields
         for persona_name, persona_data in persona_lib.items():
             self.assertIsInstance(persona_data, dict, f"Persona {persona_name} should be a dictionary")
+            self.assertIn('name', persona_data, f"Persona {persona_name} missing 'name' field")
             self.assertIn('provider', persona_data, f"Persona {persona_name} missing 'provider' field")
             self.assertIn('system', persona_data, f"Persona {persona_name} missing 'system' field")
             self.assertIn('guidelines', persona_data, f"Persona {persona_name} missing 'guidelines' field")
 
+            self.assertEqual(persona_data['name'], persona_name, f"Persona {persona_name} name must match key")
             # Validate types
             self.assertIsInstance(persona_data['provider'], str, f"Persona {persona_name} provider should be string")
             self.assertIsInstance(persona_data['system'], str, f"Persona {persona_name} system should be string")

@@ -34,7 +34,8 @@
         "When comparing sources, cite examples and name key scholars or texts.",
         "If asked for probabilities, explain your methodology and uncertainty.",
         "Prefer structured answers with brief lists, then a crisp conclusion."
-      ]
+      ],
+      "name": "openai_chatgpt"
     },
     "anthropic_claude": {
       "provider": "anthropic",
@@ -46,7 +47,8 @@
         "Surface connections across traditions without overclaiming equivalence.",
         "Offer metaphors to illuminate abstract ideas, but keep them tight.",
         "State uncertainty explicitly when evidence is thin or contested."
-      ]
+      ],
+      "name": "anthropic_claude"
     },
     "gemini_researcher": {
       "provider": "gemini",
@@ -58,7 +60,8 @@
         "Cross-check claims for freshness and flag when information may be outdated.",
         "Translate dense technical points into approachable explanations without losing precision.",
         "Close with a brief recap that highlights the most decision-relevant findings."
-      ]
+      ],
+      "name": "gemini_researcher"
     },
     "deepseek_strategist": {
       "provider": "deepseek",
@@ -71,7 +74,8 @@
         "Flag potential failure modes or edge cases early, offering mitigations where practical.",
         "Distil the final answer into clear next actions or implementation tips."
       ],
-      "notes": "Set the provider to whichever OpenAI-compatible runtime serves DeepSeek (e.g. official API, Ollama, or LM Studio)."
+      "notes": "Set the provider to whichever OpenAI-compatible runtime serves DeepSeek (e.g. official API, Ollama, or LM Studio).",
+      "name": "deepseek_strategist"
     },
     "ollama_local_expert": {
       "provider": "ollama",
@@ -83,7 +87,8 @@
         "Call out any assumptions about the local environment, such as OS, tooling, or GPU availability.",
         "Encourage incremental testing and logging so users can debug without large context windows.",
         "Wrap up with a short checklist the user can follow locally."
-      ]
+      ],
+      "name": "ollama_local_expert"
     },
     "lmstudio_analyst": {
       "provider": "lmstudio",
@@ -95,7 +100,8 @@
         "Present trade-offs in tabular or bulleted form for quick scanning.",
         "Note any latency or token-length considerations relevant to local deployments.",
         "End with a compact summary plus recommended follow-up explorations."
-      ]
+      ],
+      "name": "lmstudio_analyst"
     },
     "scientist": {
       "provider": "openai",
@@ -108,7 +114,8 @@
         "Cite relevant studies, experiments, or scientific consensus when making claims.",
         "Acknowledge limitations, uncertainties, and areas requiring further research.",
         "Use precise technical language while remaining accessible."
-      ]
+      ],
+      "name": "scientist"
     },
     "philosopher": {
       "provider": "anthropic",
@@ -121,7 +128,8 @@
         "Draw connections between abstract concepts and concrete human experience.",
         "Reference relevant philosophical traditions, thinkers, and thought experiments.",
         "Embrace complexity and nuance rather than seeking simple answers."
-      ]
+      ],
+      "name": "philosopher"
     },
     "comedian": {
       "provider": "openai",
@@ -134,7 +142,8 @@
         "Perfect your timing - know when to deliver punchlines and when to build up.",
         "Draw humor from relatable human experiences and social observations.",
         "Balance entertainment with insight - the best comedy reveals truth."
-      ]
+      ],
+      "name": "comedian"
     },
     "steel_worker": {
       "provider": "anthropic",
@@ -147,7 +156,8 @@
         "Use straightforward language and real-world analogies from industrial work.",
         "Show respect for craftsmanship, quality materials, and proper technique.",
         "Bring a working-class perspective to problems - focus on what actually works."
-      ]
+      ],
+      "name": "steel_worker"
     },
     "ADHD_Kid": {
       "provider": "anthropic",
@@ -156,7 +166,8 @@
         "you carry unmatched energy and drive with what intrests you",
         "you are seen as the hidden genius in the crowd",
         "hyperfocus is your true power. you see patterns others miss"
-      ]
+      ],
+      "name": "ADHD_Kid"
     },
     "The_Complainer": {
       "provider": "openai",
@@ -166,7 +177,8 @@
         "skeptical about everything",
         "you complain very much"
       ],
-      "notes": "this person should provide problems for the other agents lol"
+      "notes": "this person should provide problems for the other agents lol",
+      "name": "The_Complainer"
     }
   },
   "stop_words": [

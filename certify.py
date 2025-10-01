@@ -311,6 +311,7 @@ def test_roles_system(report: CertificationReport):
         },
         "persona_library": {
             "test_persona": {
+                "name": "test_persona",
                 "provider": "openai",
                 "system": "Test persona",
                 "guidelines": ["Persona guideline"]

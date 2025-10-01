@@ -817,6 +817,7 @@ def create_new_persona() -> Optional[Dict]:
     notes = get_user_input("Notes (optional): ").strip()
 
     persona = {
+        "name": name,
         "provider": provider,
         "model": model,
         "system": system_prompt,
@@ -854,6 +855,7 @@ def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
 
         choice = select_from_menu(options, "Edit Option")
         if not choice:
+            persona_data.setdefault("name", persona_key)
             return persona_data
 
         if choice == "1":  # Edit system prompt
@@ -908,6 +910,7 @@ def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
                 return None  # Signal to delete
 
         elif choice == "7":  # Back
+            persona_data.setdefault("name", persona_key)
             return persona_data
 
     return persona_data
@@ -1793,24 +1796,28 @@ async def run_bridge(args):
                 roles_data = {
                     "persona_library": {
                         "scientist": {
+                            "name": "scientist",
                             "provider": "openai",
                             "model": None,
                             "system": "You are a rigorous scientist focused on evidence-based reasoning.",
                             "guidelines": ["Cite sources", "Question assumptions", "Use data and examples"]
                         },
                         "philosopher": {
+                            "name": "philosopher",
                             "provider": "anthropic",
                             "model": None,
                             "system": "You are a thoughtful philosopher exploring deep questions.",
                             "guidelines": ["Consider multiple perspectives", "Acknowledge uncertainty", "Use clear reasoning"]
                         },
                         "comedian": {
+                            "name": "comedian",
                             "provider": "openai",
                             "model": None,
                             "system": "You are a witty comedian with observational humor.",
                             "guidelines": ["Be entertaining but insightful", "Use timing and wordplay", "Stay positive"]
                         },
                         "steel_worker": {
+                            "name": "steel_worker",
                             "provider": "anthropic",
                             "model": None,
                             "system": "You are a practical steel worker with blue-collar wisdom.",
