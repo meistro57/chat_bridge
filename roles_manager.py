@@ -8,7 +8,7 @@ Provides comprehensive tools for creating, editing, importing, and managing pers
 import json
 import os
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 
 # ───────────────────────── Colors & Styling ─────────────────────────
@@ -61,32 +61,186 @@ def print_warning(message: str):
 
 # ───────────────────────── Configuration Management ─────────────────────────
 
+class ConfigValidationError(Exception):
+    """Raised when a roles configuration fails schema validation."""
+
+    def __init__(self, errors: List[str]):
+        super().__init__("\n".join(errors))
+        self.errors = errors
+
+
+def _validate_guidelines(key: str, guidelines: Any, errors: List[str]) -> None:
+    if not isinstance(guidelines, list):
+        errors.append(f"{key} guidelines must be a list of strings")
+        return
+    for idx, item in enumerate(guidelines):
+        if not isinstance(item, str):
+            errors.append(f"{key} guideline #{idx + 1} must be a string")
+
+
+def validate_config_schema(config: Any, *, context: Optional[str] = None) -> None:
+    """Validate the roles configuration structure.
+
+    Args:
+        config: Parsed roles configuration.
+        context: Optional description of where the configuration came from.
+
+    Raises:
+        ConfigValidationError: If validation fails.
+    """
+
+    errors: List[str] = []
+    location = f" ({context})" if context else ""
+
+    if not isinstance(config, dict):
+        raise ConfigValidationError([f"Configuration{location} must be a JSON object"])
+
+    required_top_level = ["agent_a", "agent_b", "persona_library", "stop_words", "temp_a", "temp_b"]
+    for key in required_top_level:
+        if key not in config:
+            errors.append(f"Missing required key '{key}' in configuration{location}")
+
+    # Validate agents
+    for agent_key in ["agent_a", "agent_b"]:
+        agent = config.get(agent_key)
+        if agent is None:
+            continue
+        if not isinstance(agent, dict):
+            errors.append(f"{agent_key} configuration must be an object")
+            continue
+        for field in ["provider", "system", "guidelines"]:
+            if field not in agent:
+                errors.append(f"{agent_key} is missing required field '{field}'")
+        provider = agent.get("provider")
+        if provider is not None and not isinstance(provider, str):
+            errors.append(f"{agent_key} provider must be a string")
+        system = agent.get("system")
+        if system is not None and not isinstance(system, str):
+            errors.append(f"{agent_key} system must be a string")
+        _validate_guidelines(agent_key, agent.get("guidelines"), errors)
+        model = agent.get("model")
+        if model is not None and not isinstance(model, str):
+            errors.append(f"{agent_key} model must be a string or null")
+
+    # Validate persona library
+    persona_library = config.get("persona_library")
+    if persona_library is not None and not isinstance(persona_library, dict):
+        errors.append("persona_library must be an object mapping persona names to definitions")
+    elif isinstance(persona_library, dict):
+        for persona_key, persona_data in persona_library.items():
+            if not isinstance(persona_data, dict):
+                errors.append(f"Persona '{persona_key}' definition must be an object")
+                continue
+            for field in ["name", "provider", "system", "guidelines"]:
+                if field not in persona_data:
+                    errors.append(f"Persona '{persona_key}' is missing required field '{field}'")
+            persona_name = persona_data.get("name")
+            if persona_name is not None and not isinstance(persona_name, str):
+                errors.append(f"Persona '{persona_key}' name must be a string")
+            if isinstance(persona_name, str) and persona_name != persona_key:
+                errors.append(
+                    f"Persona '{persona_key}' name field must match its key (found '{persona_name}')"
+                )
+            provider = persona_data.get("provider")
+            if provider is not None and not isinstance(provider, str):
+                errors.append(f"Persona '{persona_key}' provider must be a string")
+            system = persona_data.get("system")
+            if system is not None and not isinstance(system, str):
+                errors.append(f"Persona '{persona_key}' system must be a string")
+            _validate_guidelines(f"Persona '{persona_key}'", persona_data.get("guidelines"), errors)
+            model = persona_data.get("model")
+            if model is not None and not isinstance(model, str):
+                errors.append(f"Persona '{persona_key}' model must be a string or null")
+
+    # Validate stop words
+    stop_words = config.get("stop_words")
+    if stop_words is not None:
+        if not isinstance(stop_words, list):
+            errors.append("stop_words must be a list of strings")
+        else:
+            for idx, word in enumerate(stop_words):
+                if not isinstance(word, str):
+                    errors.append(f"stop_words entry #{idx + 1} must be a string")
+
+    # Validate temperatures
+    for temp_key in ["temp_a", "temp_b"]:
+        temp_value = config.get(temp_key)
+        if temp_value is None:
+            continue
+        if not isinstance(temp_value, (int, float)):
+            errors.append(f"{temp_key} must be a number between 0 and 2")
+        elif not (0 <= float(temp_value) <= 2):
+            errors.append(f"{temp_key} must be between 0 and 2 (received {temp_value})")
+
+    # Optional flag
+    stop_flag = config.get("stop_word_detection_enabled")
+    if stop_flag is not None and not isinstance(stop_flag, bool):
+        errors.append("stop_word_detection_enabled must be a boolean if provided")
+
+    if errors:
+        raise ConfigValidationError(errors)
+
+
 class RolesManager:
     """Manages roles and personalities configuration"""
 
     def __init__(self, config_path: str = "roles.json"):
-        self.config_path = config_path
+        self.config_path = os.path.abspath(config_path)
         self.config = self.load_config()
 
     def load_config(self) -> Dict:
         """Load configuration from file or create default"""
-        if os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
-                print_error(f"Failed to load {self.config_path}: {e}")
-                return self.get_default_config()
-        else:
-            print_info(f"Creating new configuration file: {self.config_path}")
+        path = self.config_path
+
+        if not os.path.exists(path):
+            print_error(f"Configuration file not found at {path}. Loading defaults.")
             config = self.get_default_config()
+            # Attempt to persist defaults for convenience
             self.save_config(config)
             return config
+
+        if os.path.isdir(path):
+            print_error(f"Configuration path {path} is a directory. Loading defaults instead.")
+            return self.get_default_config()
+
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            print_error(f"Configuration file not found at {path}. Loading defaults.")
+            return self.get_default_config()
+        except PermissionError as e:
+            print_error(f"Permission denied when reading {path}: {e}. Loading defaults.")
+            return self.get_default_config()
+        except json.JSONDecodeError as e:
+            print_error(f"Invalid JSON in {path}: {e}. Loading defaults.")
+            return self.get_default_config()
+        except OSError as e:
+            print_error(f"Failed to read {path}: {e}. Loading defaults.")
+            return self.get_default_config()
+
+        try:
+            validate_config_schema(data, context=path)
+        except ConfigValidationError as exc:
+            for err in exc.errors:
+                print_error(err)
+            print_warning("Loaded defaults due to invalid configuration schema.")
+            return self.get_default_config()
+
+        return data
 
     def save_config(self, config: Optional[Dict] = None) -> bool:
         """Save configuration to file"""
         if config is None:
             config = self.config
+
+        try:
+            validate_config_schema(config, context=self.config_path)
+        except ConfigValidationError as exc:
+            for err in exc.errors:
+                print_error(err)
+            print_error("Aborting save because the configuration schema is invalid.")
+            return False
 
         try:
             # Create backup if file exists
@@ -129,6 +283,7 @@ class RolesManager:
             },
             "persona_library": {
                 "scientist": {
+                    "name": "scientist",
                     "provider": "anthropic",
                     "model": None,
                     "system": "You are a rigorous scientist focused on evidence-based reasoning and methodology.",
@@ -140,6 +295,7 @@ class RolesManager:
                     ]
                 },
                 "philosopher": {
+                    "name": "philosopher",
                     "provider": "openai",
                     "model": None,
                     "system": "You are a thoughtful philosopher who explores deep questions about meaning, ethics, and existence.",
@@ -151,6 +307,7 @@ class RolesManager:
                     ]
                 },
                 "comedian": {
+                    "name": "comedian",
                     "provider": "openai",
                     "model": "gpt-4o",
                     "system": "You are a witty comedian who finds humor in everyday situations while remaining insightful.",
@@ -162,6 +319,7 @@ class RolesManager:
                     ]
                 },
                 "steel_worker": {
+                    "name": "steel_worker",
                     "provider": "anthropic",
                     "model": None,
                     "system": "You are a practical steel worker with decades of hands-on experience and no-nonsense wisdom.",
@@ -261,6 +419,7 @@ def create_persona_interactive() -> Optional[Dict]:
 
     # Build persona data
     persona_data = {
+        "name": name,
         "provider": provider,
         "system": system,
         "guidelines": guidelines
@@ -311,6 +470,7 @@ def edit_persona_interactive(persona_key: str, persona_data: Dict) -> Optional[D
     ]
 
     modified_data = persona_data.copy()
+    modified_data.setdefault("name", persona_key)
 
     while True:
         print("\n" + colorize("Edit options:", Colors.CYAN))
@@ -374,6 +534,7 @@ def edit_persona_interactive(persona_key: str, persona_data: Dict) -> Optional[D
                 print_success("Notes updated")
 
             elif choice == 5:  # Save changes
+                modified_data["name"] = persona_key
                 return {persona_key: modified_data}
 
             elif choice == 6:  # Cancel
@@ -692,12 +853,14 @@ def main():
                     name, data = list(new_persona.items())[0]
                     if name in manager.config.get("persona_library", {}):
                         if get_user_input(f"Persona '{name}' already exists. Overwrite? (y/n)", "n").lower().startswith('y'):
+                            data["name"] = name
                             manager.config.setdefault("persona_library", {})[name] = data
                             if manager.save_config():
                                 print_success(f"Persona '{name}' created successfully")
                         else:
                             print_info("Creation cancelled")
                     else:
+                        data["name"] = name
                         manager.config.setdefault("persona_library", {})[name] = data
                         if manager.save_config():
                             print_success(f"Persona '{name}' created successfully")
@@ -722,6 +885,7 @@ def main():
                         edited = edit_persona_interactive(persona_name, persona_data)
                         if edited:
                             name, data = list(edited.items())[0]
+                            data["name"] = persona_name
                             manager.config["persona_library"][persona_name] = data
                             if manager.save_config():
                                 print_success(f"Persona '{persona_name}' updated successfully")
