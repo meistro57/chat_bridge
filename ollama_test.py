@@ -8,7 +8,8 @@ from bridge_agents import OllamaChat
 
 async def test_ollama():
     """Test Ollama connection using the bridge_agents module"""
-    chat = OllamaChat('llama3.2:latest')
+    model = os.getenv('OLLAMA_MODEL', 'gemma3:latest')
+    chat = OllamaChat(model)
     messages = [{'role': 'user', 'content': 'Why is the sky blue?'}]
     
     print("Testing Ollama connection...")
