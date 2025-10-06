@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roles Editor - Chat Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .role-list {
+            list-style: none;
+        }
+
+        .role-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .role-item:hover {
+            background: #e8eaf6;
+            border-color: #667eea;
+        }
+
+        .role-item.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .role-item-name {
+            font-weight: 600;
+            flex-grow: 1;
+        }
+
+        .role-item-provider {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-right: 10px;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.2s;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .role-item.active .btn-delete {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .role-item.active .btn-delete:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-new-role {
+            width: 100%;
+            padding: 12px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: background 0.2s;
+        }
+
+        .btn-new-role:hover {
+            background: #229954;
+        }
+
+        .editor-panel {
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .editor-panel h2 {
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 1.05em;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+        }
+
+        .guidelines-section {
+            margin-top: 20px;
+        }
+
+        .guideline-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: start;
+        }
+
+        .guideline-item textarea {
+            flex-grow: 1;
+            min-height: 60px;
+        }
+
+        .btn-remove-guideline {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-remove-guideline:hover {
+            background: #c0392b;
+        }
+
+        .btn-add-guideline {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn-add-guideline:hover {
+            background: #2980b9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .btn-save {
+            flex: 1;
+            padding: 15px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-save:hover {
+            background: #229954;
+        }
+
+        .btn-cancel {
+            flex: 1;
+            padding: 15px;
+            background: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background: #7f8c8d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #95a5a6;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+        }
+
+        .wizard-container {
+            display: none;
+            padding: 30px;
+        }
+
+        .wizard-container.active {
+            display: block;
+        }
+
+        .wizard-step {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .wizard-step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .wizard-header h2 {
+            font-size: 2em;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .wizard-progress {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 10px;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            transition: background 0.3s;
+        }
+
+        .progress-dot.completed {
+            background: #27ae60;
+        }
+
+        .progress-dot.active {
+            background: #667eea;
+            transform: scale(1.3);
+        }
+
+        .wizard-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: space-between;
+        }
+
+        .btn-wizard {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-wizard-prev {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-wizard-prev:hover {
+            background: #7f8c8d;
+        }
+
+        .btn-wizard-next {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-wizard-next:hover {
+            background: #5568d3;
+        }
+
+        .btn-wizard-finish {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-wizard-finish:hover {
+            background: #229954;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: #27ae60;
+            color: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            animation: slideIn 0.3s;
+            z-index: 1000;
+        }
+
+        .notification.error {
+            background: #e74c3c;
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 Roles Editor</h1>
+            <p>Manage and create AI personas for your Chat Bridge</p>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <button class="btn-new-role" onclick="startWizard()">+ Create New Role</button>
+                <input type="text" class="search-box" placeholder="Search roles..." id="searchBox" oninput="filterRoles()">
+                <h2>Persona Library</h2>
+                <ul class="role-list" id="roleList"></ul>
+            </div>
+
+            <div class="editor-panel" id="editorPanel">
+                <div class="empty-state">
+                    <h3>👈 Select a role to edit</h3>
+                    <p>Or create a new one to get started</p>
+                </div>
+            </div>
+
+            <div class="wizard-container" id="wizardContainer">
+                <div class="wizard-header">
+                    <h2>Create New Role</h2>
+                    <div class="wizard-progress" id="wizardProgress"></div>
+                </div>
+
+                <div class="wizard-step active" data-step="1">
+                    <div class="form-group">
+                        <label>What's the name of this role?</label>
+                        <input type="text" id="wizardName" placeholder="e.g., Software_Architect, Chef, philosopher">
+                        <small style="color: #95a5a6; display: block; margin-top: 5px;">Use underscores for spaces, keep it descriptive</small>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="2">
+                    <div class="form-group">
+                        <label>Which AI provider should power this role?</label>
+                        <select id="wizardProvider">
+                            <option value="">-- Select Provider --</option>
+                            <option value="openai">OpenAI (ChatGPT)</option>
+                            <option value="anthropic">Anthropic (Claude)</option>
+                            <option value="gemini">Google (Gemini)</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="lmstudio">LM Studio (Local)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="3">
+                    <div class="form-group">
+                        <label>Optional: Specify a model (leave blank for default)</label>
+                        <input type="text" id="wizardModel" placeholder="e.g., gpt-4, claude-3-opus, gemini-pro">
+                        <small style="color: #95a5a6; display: block; margin-top: 5px;">You can leave this empty to use the provider's default model</small>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="4">
+                    <div class="form-group">
+                        <label>Describe this role's personality and purpose</label>
+                        <textarea id="wizardSystem" placeholder="You are a... [describe the persona, their tone, expertise, and approach]" rows="6"></textarea>
+                        <small style="color: #95a5a6; display: block; margin-top: 5px;">This is the core system prompt that defines who this AI is</small>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="5">
+                    <div class="form-group">
+                        <label>Add behavioral guidelines (optional)</label>
+                        <div id="wizardGuidelinesList"></div>
+                        <button class="btn-add-guideline" onclick="addWizardGuideline()">+ Add Guideline</button>
+                        <small style="color: #95a5a6; display: block; margin-top: 10px;">Guidelines help shape specific behaviors and response patterns</small>
+                    </div>
+                </div>
+
+                <div class="wizard-step" data-step="6">
+                    <div class="form-group">
+                        <label>Additional notes (optional)</label>
+                        <textarea id="wizardNotes" placeholder="Any extra context, configuration notes, or reminders..." rows="4"></textarea>
+                    </div>
+                </div>
+
+                <div class="wizard-buttons">
+                    <button class="btn-wizard btn-wizard-prev" onclick="prevWizardStep()" id="btnPrev">← Previous</button>
+                    <button class="btn-wizard btn-wizard-next" onclick="nextWizardStep()" id="btnNext">Next →</button>
+                    <button class="btn-wizard btn-wizard-finish" onclick="finishWizard()" id="btnFinish" style="display: none;">✓ Create Role</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let rolesData = {};
+        let currentRole = null;
+        let currentWizardStep = 1;
+        const totalWizardSteps = 6;
+
+        // Load roles on page load
+        window.addEventListener('DOMContentLoaded', loadRoles);
+
+        async function loadRoles() {
+            try {
+                const response = await fetch('/api/roles');
+                rolesData = await response.json();
+                renderRoleList();
+            } catch (error) {
+                showNotification('Failed to load roles: ' + error.message, 'error');
+            }
+        }
+
+        function renderRoleList() {
+            const roleList = document.getElementById('roleList');
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            roleList.innerHTML = '';
+
+            const personas = rolesData.persona_library || {};
+            const filteredRoles = Object.entries(personas).filter(([key, role]) => {
+                return key.toLowerCase().includes(searchTerm) ||
+                       (role.name && role.name.toLowerCase().includes(searchTerm)) ||
+                       (role.provider && role.provider.toLowerCase().includes(searchTerm));
+            });
+
+            filteredRoles.forEach(([key, role]) => {
+                const li = document.createElement('li');
+                li.className = 'role-item';
+                li.innerHTML = `
+                    <div class="role-item-name">${role.name || key}</div>
+                    <div class="role-item-provider">${role.provider || 'unknown'}</div>
+                    <button class="btn-delete" onclick="deleteRole('${key}', event)">×</button>
+                `;
+                li.onclick = (e) => {
+                    if (!e.target.classList.contains('btn-delete')) {
+                        editRole(key);
+                    }
+                };
+                roleList.appendChild(li);
+            });
+        }
+
+        function filterRoles() {
+            renderRoleList();
+        }
+
+        function editRole(roleKey) {
+            currentRole = roleKey;
+            const role = rolesData.persona_library[roleKey];
+
+            // Hide wizard, show editor
+            document.getElementById('wizardContainer').classList.remove('active');
+            document.getElementById('editorPanel').style.display = 'block';
+
+            // Highlight selected role
+            document.querySelectorAll('.role-item').forEach(item => item.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            // Populate editor
+            const editorPanel = document.getElementById('editorPanel');
+            editorPanel.innerHTML = `
+                <h2>Edit Role: ${role.name || roleKey}</h2>
+
+                <div class="form-group">
+                    <label>Role Name</label>
+                    <input type="text" id="editName" value="${role.name || roleKey}">
+                </div>
+
+                <div class="form-group">
+                    <label>Provider</label>
+                    <select id="editProvider">
+                        <option value="openai" ${role.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
+                        <option value="anthropic" ${role.provider === 'anthropic' ? 'selected' : ''}>Anthropic</option>
+                        <option value="gemini" ${role.provider === 'gemini' ? 'selected' : ''}>Gemini</option>
+                        <option value="deepseek" ${role.provider === 'deepseek' ? 'selected' : ''}>DeepSeek</option>
+                        <option value="ollama" ${role.provider === 'ollama' ? 'selected' : ''}>Ollama</option>
+                        <option value="lmstudio" ${role.provider === 'lmstudio' ? 'selected' : ''}>LM Studio</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Model (optional)</label>
+                    <input type="text" id="editModel" value="${role.model || ''}" placeholder="Leave blank for default">
+                </div>
+
+                <div class="form-group">
+                    <label>System Prompt</label>
+                    <textarea id="editSystem" rows="6">${role.system || ''}</textarea>
+                </div>
+
+                <div class="form-group guidelines-section">
+                    <label>Guidelines</label>
+                    <div id="editGuidelinesList"></div>
+                    <button class="btn-add-guideline" onclick="addEditGuideline()">+ Add Guideline</button>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes (optional)</label>
+                    <textarea id="editNotes" rows="3">${role.notes || ''}</textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-save" onclick="saveRole()">💾 Save Changes</button>
+                    <button class="btn-cancel" onclick="cancelEdit()">Cancel</button>
+                </div>
+            `;
+
+            // Render existing guidelines
+            const guidelinesList = document.getElementById('editGuidelinesList');
+            (role.guidelines || []).forEach((guideline, index) => {
+                addEditGuidelineWithValue(guideline);
+            });
+        }
+
+        function addEditGuideline() {
+            addEditGuidelineWithValue('');
+        }
+
+        function addEditGuidelineWithValue(value) {
+            const guidelinesList = document.getElementById('editGuidelinesList');
+            const div = document.createElement('div');
+            div.className = 'guideline-item';
+            div.innerHTML = `
+                <textarea placeholder="Add a behavioral guideline...">${value}</textarea>
+                <button class="btn-remove-guideline" onclick="this.parentElement.remove()">×</button>
+            `;
+            guidelinesList.appendChild(div);
+        }
+
+        async function saveRole() {
+            const name = document.getElementById('editName').value.trim();
+            const provider = document.getElementById('editProvider').value;
+            const model = document.getElementById('editModel').value.trim() || null;
+            const system = document.getElementById('editSystem').value.trim();
+            const notes = document.getElementById('editNotes').value.trim();
+
+            const guidelines = Array.from(document.querySelectorAll('#editGuidelinesList textarea'))
+                .map(ta => ta.value.trim())
+                .filter(g => g.length > 0);
+
+            if (!name || !provider || !system) {
+                showNotification('Please fill in all required fields', 'error');
+                return;
+            }
+
+            // Update the role
+            rolesData.persona_library[currentRole] = {
+                name: name,
+                provider: provider,
+                model: model,
+                system: system,
+                guidelines: guidelines
+            };
+
+            if (notes) {
+                rolesData.persona_library[currentRole].notes = notes;
+            }
+
+            // Save to backend
+            try {
+                const response = await fetch('/api/roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rolesData)
+                });
+
+                if (response.ok) {
+                    showNotification('Role saved successfully!');
+                    renderRoleList();
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                showNotification('Failed to save role: ' + error.message, 'error');
+            }
+        }
+
+        function cancelEdit() {
+            document.getElementById('editorPanel').innerHTML = `
+                <div class="empty-state">
+                    <h3>👈 Select a role to edit</h3>
+                    <p>Or create a new one to get started</p>
+                </div>
+            `;
+            document.querySelectorAll('.role-item').forEach(item => item.classList.remove('active'));
+            currentRole = null;
+        }
+
+        async function deleteRole(roleKey, event) {
+            event.stopPropagation();
+
+            if (!confirm(`Are you sure you want to delete "${roleKey}"?`)) {
+                return;
+            }
+
+            delete rolesData.persona_library[roleKey];
+
+            try {
+                const response = await fetch('/api/roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rolesData)
+                });
+
+                if (response.ok) {
+                    showNotification('Role deleted successfully!');
+                    renderRoleList();
+                    if (currentRole === roleKey) {
+                        cancelEdit();
+                    }
+                } else {
+                    throw new Error('Failed to delete');
+                }
+            } catch (error) {
+                showNotification('Failed to delete role: ' + error.message, 'error');
+            }
+        }
+
+        function startWizard() {
+            currentWizardStep = 1;
+            document.getElementById('editorPanel').style.display = 'none';
+            document.getElementById('wizardContainer').classList.add('active');
+
+            // Reset wizard fields
+            document.getElementById('wizardName').value = '';
+            document.getElementById('wizardProvider').value = '';
+            document.getElementById('wizardModel').value = '';
+            document.getElementById('wizardSystem').value = '';
+            document.getElementById('wizardNotes').value = '';
+            document.getElementById('wizardGuidelinesList').innerHTML = '';
+
+            updateWizardUI();
+        }
+
+        function updateWizardUI() {
+            // Update progress dots
+            const progressContainer = document.getElementById('wizardProgress');
+            progressContainer.innerHTML = '';
+            for (let i = 1; i <= totalWizardSteps; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'progress-dot';
+                if (i < currentWizardStep) dot.classList.add('completed');
+                if (i === currentWizardStep) dot.classList.add('active');
+                progressContainer.appendChild(dot);
+            }
+
+            // Update steps visibility
+            document.querySelectorAll('.wizard-step').forEach((step, index) => {
+                step.classList.toggle('active', index + 1 === currentWizardStep);
+            });
+
+            // Update buttons
+            document.getElementById('btnPrev').style.display = currentWizardStep === 1 ? 'none' : 'block';
+            document.getElementById('btnNext').style.display = currentWizardStep === totalWizardSteps ? 'none' : 'block';
+            document.getElementById('btnFinish').style.display = currentWizardStep === totalWizardSteps ? 'block' : 'none';
+        }
+
+        function nextWizardStep() {
+            // Validate current step
+            if (currentWizardStep === 1 && !document.getElementById('wizardName').value.trim()) {
+                showNotification('Please enter a role name', 'error');
+                return;
+            }
+            if (currentWizardStep === 2 && !document.getElementById('wizardProvider').value) {
+                showNotification('Please select a provider', 'error');
+                return;
+            }
+            if (currentWizardStep === 4 && !document.getElementById('wizardSystem').value.trim()) {
+                showNotification('Please describe the role', 'error');
+                return;
+            }
+
+            currentWizardStep++;
+            updateWizardUI();
+        }
+
+        function prevWizardStep() {
+            currentWizardStep--;
+            updateWizardUI();
+        }
+
+        function addWizardGuideline() {
+            const guidelinesList = document.getElementById('wizardGuidelinesList');
+            const div = document.createElement('div');
+            div.className = 'guideline-item';
+            div.innerHTML = `
+                <textarea placeholder="Add a behavioral guideline..."></textarea>
+                <button class="btn-remove-guideline" onclick="this.parentElement.remove()">×</button>
+            `;
+            guidelinesList.appendChild(div);
+        }
+
+        async function finishWizard() {
+            const name = document.getElementById('wizardName').value.trim();
+            const provider = document.getElementById('wizardProvider').value;
+            const model = document.getElementById('wizardModel').value.trim() || null;
+            const system = document.getElementById('wizardSystem').value.trim();
+            const notes = document.getElementById('wizardNotes').value.trim();
+
+            const guidelines = Array.from(document.querySelectorAll('#wizardGuidelinesList textarea'))
+                .map(ta => ta.value.trim())
+                .filter(g => g.length > 0);
+
+            if (!name || !provider || !system) {
+                showNotification('Please complete all required fields', 'error');
+                return;
+            }
+
+            // Create new role
+            const roleKey = name.toLowerCase().replace(/\s+/g, '_');
+
+            if (rolesData.persona_library[roleKey]) {
+                if (!confirm(`A role named "${roleKey}" already exists. Overwrite it?`)) {
+                    return;
+                }
+            }
+
+            rolesData.persona_library[roleKey] = {
+                name: name,
+                provider: provider,
+                model: model,
+                system: system,
+                guidelines: guidelines
+            };
+
+            if (notes) {
+                rolesData.persona_library[roleKey].notes = notes;
+            }
+
+            // Save to backend
+            try {
+                const response = await fetch('/api/roles', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rolesData)
+                });
+
+                if (response.ok) {
+                    showNotification('Role created successfully!');
+                    document.getElementById('wizardContainer').classList.remove('active');
+                    document.getElementById('editorPanel').style.display = 'block';
+                    renderRoleList();
+                    cancelEdit();
+                } else {
+                    throw new Error('Failed to create');
+                }
+            } catch (error) {
+                showNotification('Failed to create role: ' + error.message, 'error');
+            }
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification show';
+            if (type === 'error') {
+                notification.classList.add('error');
+            }
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
