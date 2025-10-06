@@ -46,25 +46,12 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ## 🚀 Quick Start
 
-**Option 1: Interactive Launcher (Recommended)**
-```bash
-python launch.py
-```
-
-**Option 2: Roles Manager (Standalone)**
-```bash
-python roles_manager.py
-```
-
-**Option 3: Direct Interactive Mode**
-```bash
-python chat_bridge.py
-```
-
-**Option 3: Command Line**
-```bash
-python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What is consciousness?"
-```
+| Goal | Command |
+| --- | --- |
+| Guided launcher with presets | `python launch.py` |
+| Manage personas outside the bridge | `python roles_manager.py` |
+| Jump straight into the colorful CLI | `python chat_bridge.py` |
+| Run fully scripted sessions | `python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What is consciousness?"` |
 
 ## 🛠️ Utility Scripts
 
@@ -104,7 +91,7 @@ Comprehensive automated testing and certification system for validating the enti
 ## Requirements
 
 - Python 3.10 or newer.
-- Dependencies: `httpx`, `python-dotenv`, `google-generativeai` (install via `pip install httpx python-dotenv google-generativeai`).
+- Recommended dependency install: `pip install -r requirements.txt` (or, for a minimal setup, install `httpx`, `python-dotenv`, `google-generativeai`).
 - API keys for whichever cloud providers you plan to use.
   - `OPENAI_API_KEY` for OpenAI.
   - `ANTHROPIC_API_KEY` for Anthropic.
@@ -127,8 +114,9 @@ Set provider-specific default models with environment variables such as
 2. (Optional) create and activate a virtual environment.
 3. Install dependencies:
    ```bash
-   pip install httpx python-dotenv google-generativeai
+   pip install -r requirements.txt
    ```
+   *(Or install `httpx`, `python-dotenv`, and `google-generativeai` manually if you prefer a lightweight environment.)*
 4. Create a `.env` file alongside the scripts and add your secrets:
    ```bash
    OPENAI_API_KEY=sk-...
@@ -349,14 +337,15 @@ Overall Status: 1/2 providers online
 - **💬 Styled output** - Clear agent identification and formatting
 - **⚡ Quick launcher** - Preset configurations for common scenarios
 
-## Outputs & Logs
+## Outputs, Logs & Data
 
 Every session produces:
 
 - `transcripts/<timestamp>__<starter-slug>.md` – Enhanced Markdown transcript with complete session configuration
-- `logs/<timestamp>__<starter-slug>.log` – optional structured per-session log.
+- `logs/<timestamp>__<starter-slug>.log` – optional structured per-session log (created on demand).
 - `chat_bridge.log` – global append-only log capturing request IDs and errors.
 - `bridge.db` – SQLite database containing metadata plus turn-by-turn content.
+- `chat_bridge_errors.log` – failure details for unexpected exceptions.
 
 ### 📝 Enhanced Transcript Features (New!)
 - **Session Configuration Header** - Complete configuration details including providers, models, temperatures
@@ -365,8 +354,28 @@ Every session produces:
 - **Stop Words List** - Active stop words with current detection status
 - **Structured Format** - Clear sections for easy navigation and analysis
 
-Legacy transcripts from earlier experiments may be stored in `chatlogs/`; current scripts
-write to `transcripts/` automatically.
+The bridge auto-creates the `transcripts/`, `logs/`, and `chatlogs/` directories on demand. Legacy transcripts from earlier
+experiments may be stored in `chatlogs/`, while current sessions write to `transcripts/` automatically.
+
+## 📂 Repository & Documentation Map
+
+| Path | Purpose |
+| --- | --- |
+| [`chat_bridge.py`](chat_bridge.py) | Core CLI that orchestrates configuration, streaming conversations, transcripts, and persistence. |
+| [`launch.py`](launch.py) | Menu-driven launcher that shells into popular `chat_bridge.py` presets. |
+| [`roles_manager.py`](roles_manager.py) | Interactive persona editor for `roles.json`, including stop-word toggles and backups. |
+| [`bridge_agents.py`](bridge_agents.py) | Provider registry plus async streaming clients for OpenAI, Anthropic, Gemini, DeepSeek, Ollama, and LM Studio. |
+| [`docs/roles.md`](docs/roles.md) | Deep dive into persona configuration and the role-first flow. |
+| [`docs/TESTING.md`](docs/TESTING.md) | Full testing & certification checklist, including automated and manual flows. |
+| [`ping_usage.md`](ping_usage.md) | Walkthrough of the connectivity tester and diagnostics output. |
+| [`MIGRATION.md`](MIGRATION.md) | Guide for users arriving from the older multi-script setup. |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release highlights and historical context. |
+
+Additional helper scripts worth exploring:
+
+- [`run_tests.py`](run_tests.py) aggregates the core test suites used by CI.
+- [`certify.py`](certify.py) performs a full installation audit and writes timestamped JSON reports.
+- [`check_port.py`](check_port.py) validates database connectivity when integrating with external systems.
 
 ## Running Longer Sessions
 

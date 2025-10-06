@@ -4,10 +4,11 @@ This document outlines comprehensive testing procedures to ensure Chat Bridge op
 
 ## 🎯 Testing Overview
 
-Chat Bridge testing covers three main areas:
+Chat Bridge testing covers four main areas:
 1. **Provider Connectivity** - API connections and authentication
 2. **Conversation Flow** - AI-to-AI conversation functionality
 3. **System Integration** - Database, logging, and file management
+4. **Regression Protection** - Automated unit tests and certification checks
 
 ## 🔬 Test Suites
 
@@ -123,6 +124,30 @@ python chat_bridge.py
 # Should show network error messages
 ```
 
+### 5. Automated Test Harness
+
+#### Quick Aggregated Run
+```bash
+python run_tests.py
+```
+
+Runs the curated regression suite (mirrors CI) across conversation, roles, and connectivity behaviors.
+
+#### Full Pytest Execution
+```bash
+pytest
+```
+
+Use standard `pytest` flags (e.g., `pytest -k roles` or `pytest tests/test_session_display.py`) for targeted diagnostics.
+
+#### Installation Certification
+```bash
+python certify.py
+```
+
+Generates a timestamped JSON report (`certification_report_YYYYMMDD_HHMMSS.json`) summarizing environment health, provider
+status, and dataset validations.
+
 ## 📋 Certification Checklist
 
 ### Core Functionality ✅
@@ -142,9 +167,10 @@ python chat_bridge.py
 - [ ] Graceful handling of keyboard interrupts (Ctrl+C)
 
 ### Data Persistence ✅
-- [ ] Transcripts saved to `transcripts/` directory
+- [ ] Transcripts saved to `transcripts/` directory (auto-created on first run)
 - [ ] Session logs created in `logs/` directory
 - [ ] Global log `chat_bridge.log` updated
+- [ ] Error log `chat_bridge_errors.log` updated when failures occur
 - [ ] SQLite database `bridge.db` populated
 - [ ] File naming follows timestamp format
 
