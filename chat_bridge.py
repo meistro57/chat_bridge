@@ -25,6 +25,8 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from typing import AsyncGenerator, Dict, Iterable, List, Optional, Tuple
 
+import inquirer
+
 from dotenv import load_dotenv
 
 from bridge_agents import (
@@ -468,33 +470,41 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
     print_section_header("Role Mode Selection", "🎭")
 
     # Get all available personas from the persona library
-    available_roles = []
     personas = roles_data.get('persona_library', {})
+
+    # Build options list for inquirer
+    options = [
+        {"name": "Use default system prompt", "value": "skip"},
+    ]
 
     # Add all existing personas with their descriptions
     for persona_key, persona_data in personas.items():
         provider_name = get_spec(persona_data.get('provider', 'openai')).label
         system_preview = persona_data.get('system', 'No description')[:60] + "..." if len(persona_data.get('system', '')) > 60 else persona_data.get('system', 'No description')
-        available_roles.append((persona_key, f"🎭 {persona_key} ({provider_name}) - {system_preview}"))
+        display_name = f"🎭 {persona_key} ({provider_name}) - {system_preview}"
+        options.append({"name": display_name, "value": persona_key})
 
     # Always add custom option
-    available_roles.append(("custom", "✨ Create Custom Role - Define your own role"))
-
-    if len(available_roles) == 1:  # Only custom available
-        print_warning("No personas found in persona library. You can create a custom one.")
+    options.append({"name": "✨ Create Custom Role - Define your own role", "value": "custom"})
 
     print_info("Choose role modes for your AI assistants:")
 
-    # Agent A role mode
-    print(colorize("🔹 ROLE MODE FOR AGENT A", Colors.BLUE, bold=True))
-    roles_with_skip = [("skip", "Use default system prompt")] + available_roles
-    choice_a = select_from_menu(roles_with_skip, "Agent A Role Mode", default="1")
+    try:
+        # Agent A role mode
+        print(colorize("🔹 ROLE MODE FOR AGENT A", Colors.BLUE, bold=True))
+        questions_a = [
+            inquirer.List(
+                'role_a',
+                message="Select role for Agent A",
+                choices=options,
+                default='skip'
+            ),
+        ]
+        answer_a = inquirer.prompt(questions_a, raise_keyboard_interrupt=True)
+        choice_a = answer_a['role_a']
 
-    if choice_a == "1":
         role_a = None
-    else:
-        selected_role = available_roles[int(choice_a) - 2][0]
-        if selected_role == "custom":
+        if choice_a == "custom":
             print_info("Creating custom role for Agent A...")
             custom_role = create_custom_role()
             role_key = list(custom_role.keys())[0]
@@ -506,18 +516,24 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
                     roles_data['_custom_roles_to_save'] = {}
                 roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
             role_a = role_key
-        else:
-            role_a = selected_role
+        elif choice_a != "skip":
+            role_a = choice_a
 
-    # Agent B role mode
-    print(colorize("🔸 ROLE MODE FOR AGENT B", Colors.MAGENTA, bold=True))
-    choice_b = select_from_menu(roles_with_skip, "Agent B Role Mode", default="1")
+        # Agent B role mode
+        print(colorize("🔸 ROLE MODE FOR AGENT B", Colors.MAGENTA, bold=True))
+        questions_b = [
+            inquirer.List(
+                'role_b',
+                message="Select role for Agent B",
+                choices=options,
+                default='skip'
+            ),
+        ]
+        answer_b = inquirer.prompt(questions_b, raise_keyboard_interrupt=True)
+        choice_b = answer_b['role_b']
 
-    if choice_b == "1":
         role_b = None
-    else:
-        selected_role = available_roles[int(choice_b) - 2][0]
-        if selected_role == "custom":
+        if choice_b == "custom":
             print_info("Creating custom role for Agent B...")
             custom_role = create_custom_role()
             role_key = list(custom_role.keys())[0]
@@ -528,10 +544,18 @@ def select_role_modes(roles_data: Optional[Dict]) -> Tuple[Optional[str], Option
                 roles_data['_custom_roles_to_save'] = {}
             roles_data['_custom_roles_to_save'][role_key] = custom_role[role_key]
             role_b = role_key
-        else:
-            role_b = selected_role
+        elif choice_b != "skip":
+            role_b = choice_b
 
-    return role_a, role_b
+        return role_a, role_b
+
+    except KeyboardInterrupt:
+        print(f"\n{colorize('👋 Goodbye!', Colors.YELLOW)}")
+        sys.exit(0)
+    except Exception as e:
+        print_error(f"Error during role selection: {e}")
+        print_info("Falling back to default roles")
+        return None, None
 
 def select_personas(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional[str]]:
     """Select personas from roles.json if available"""
@@ -837,16 +861,132 @@ def setup_session_logger(log_path: str) -> logging.Logger:
     return session_logger
 
 def load_roles_file(roles_path: Optional[str]) -> Optional[Dict]:
-    """Load roles configuration if available"""
-    if not roles_path or not os.path.exists(roles_path):
+    """Load roles configuration with robust error handling and absolute path resolution"""
+    if not roles_path:
         return None
 
     try:
-        with open(roles_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except Exception as e:
-        print_warning(f"Could not load roles file {roles_path}: {e}")
+        # Convert to absolute path for consistent resolution
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        absolute_roles_path = os.path.abspath(os.path.join(script_dir, roles_path))
+
+        # Check file existence with helpful error messages
+        if not os.path.exists(absolute_roles_path):
+            available_files = [f for f in os.listdir(script_dir) if f.endswith('.json')]
+            print_warning(f"Could not find roles file: {absolute_roles_path}. Available JSON files: {available_files}")
+            return None
+
+        # Use explicit encoding and better error reporting
+        with open(absolute_roles_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Validate schema and clean up broken personas
+        try:
+            validate_roles_schema(data, skip_broken_personas=True)
+        except Exception as e:
+            print_error(f"Schema validation failed for roles file {roles_path}: {e}")
+            print_info("Loading without validation - some features may not work correctly")
+            # Continue anyway to allow partial functionality
+
+        return data
+
+    except json.JSONDecodeError as e:
+        print_error(f"JSON syntax error in roles file {roles_path}: {e}")
+        print_error(f"Line {e.lineno}, column {e.colno}: {e.msg}")
+        print_info("Tip: Validate your JSON at https://jsonlint.com/ or use 'python -m json.tool roles.json'")
         return None
+    except UnicodeDecodeError as e:
+        print_error(f"Encoding error in roles file {roles_path}: {e}")
+        print_info("Ensure the file is saved with UTF-8 encoding")
+        return None
+    except Exception as e:
+        print_error(f"Could not load roles file {roles_path}: {e}")
+        return None
+
+def validate_persona_config(persona_config: Dict, persona_name: str = "unknown") -> None:
+    """Validate persona configuration against required schema"""
+    required_fields = ['name', 'provider']
+
+    for field in required_fields:
+        if field not in persona_config:
+            raise ValueError(f"Persona '{persona_name}' missing required field: {field}")
+
+    required_system_fields = ['system']
+    for field in required_system_fields:
+        if field not in persona_config:
+            raise ValueError(f"Persona '{persona_name}' missing required system field: {field}")
+
+    # Validate data types
+    if not isinstance(persona_config.get('name'), str) or not persona_config['name'].strip():
+        raise TypeError(f"Persona '{persona_name}': 'name' must be non-empty string")
+
+    if not isinstance(persona_config.get('provider'), str) or not persona_config['provider'].strip():
+        raise TypeError(f"Persona '{persona_name}': 'provider' must be non-empty string")
+
+    if not isinstance(persona_config.get('system'), str) or not persona_config['system'].strip():
+        raise TypeError(f"Persona '{persona_name}': 'system' must be non-empty string")
+
+    # Validate temperature if specified
+    if 'temperature' in persona_config:
+        temp = persona_config['temperature']
+        if not isinstance(temp, (int, float)) or not (0.0 <= temp <= 2.0):
+            raise ValueError(f"Persona '{persona_name}': temperature must be number between 0.0 and 2.0, got {temp}")
+
+    # Validate model if specified
+    if 'model' in persona_config and persona_config['model'] is not None:
+        if not isinstance(persona_config['model'], str) or not persona_config['model'].strip():
+            raise TypeError(f"Persona '{persona_name}': 'model' must be non-empty string or null")
+
+    # Validate guidelines if specified
+    if 'guidelines' in persona_config:
+        if not isinstance(persona_config['guidelines'], list):
+            raise TypeError(f"Persona '{persona_name}': 'guidelines' must be list")
+        for i, guideline in enumerate(persona_config['guidelines']):
+            if not isinstance(guideline, str):
+                raise TypeError(f"Persona '{persona_name}': guideline {i} must be string")
+
+
+def validate_roles_schema(roles_data: Dict, skip_broken_personas: bool = True) -> bool:
+    """Validate complete roles.json schema, optionally skipping broken personas"""
+    if not isinstance(roles_data, dict):
+        raise TypeError("Roles data must be object")
+
+    # Validate global config fields if present
+    global_config_fields = ['temp_a', 'temp_b', 'stop_words', 'stop_word_detection_enabled']
+    for field in global_config_fields:
+        if field in roles_data:
+            if field.startswith('temp_'):
+                temp = roles_data[field]
+                if not isinstance(temp, (int, float)) or not (0.0 <= temp <= 2.0):
+                    raise ValueError(f"Global config: {field} must be between 0.0 and 2.0, got {temp}")
+            elif field == 'stop_words':
+                if not isinstance(roles_data[field], list):
+                    raise TypeError(f"Global config: {field} must be list")
+                for word in roles_data[field]:
+                    if not isinstance(word, str):
+                        raise TypeError(f"Global config: {field} items must be strings")
+            elif field == 'stop_word_detection_enabled':
+                if not isinstance(roles_data[field], bool):
+                    raise TypeError(f"Global config: {field} must be boolean")
+
+    # Validate persona library
+    if 'persona_library' in roles_data:
+        if not isinstance(roles_data['persona_library'], dict):
+            raise TypeError("persona_library must be object")
+
+        for persona_name, persona_config in roles_data['persona_library'].items():
+            try:
+                validate_persona_config(persona_config, persona_name)
+            except (ValueError, TypeError) as e:
+                if skip_broken_personas:
+                    print_warning(f"Skipping invalid persona '{persona_name}': {e}")
+                    # Remove the broken persona
+                    roles_data['persona_library'].pop(persona_name, None)
+                else:
+                    raise
+
+    return True
+
 
 def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: Optional[Dict]) -> tuple[AgentRuntime, Optional[float]]:
     """Apply persona from roles data if specified, returns (agent, custom_temperature)"""
@@ -857,16 +997,54 @@ def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: O
     if not persona:
         return agent, None
 
+    try:
+        # Validate persona configuration before applying
+        validate_persona_config(persona, persona_key)
+    except (ValueError, TypeError) as e:
+        print_warning(f"Cannot apply invalid persona '{persona_key}': {e}")
+        return agent, None
+
     # Update agent with persona settings
-    if persona.get('system'):
-        agent.system_prompt = persona['system']
-        if persona.get('guidelines'):
-            guidelines_text = "\n".join(f"• {g}" for g in persona['guidelines'])
-            agent.system_prompt += f"\n\nGuidelines:\n{guidelines_text}"
+    try:
+        if persona.get('system'):
+            agent.system_prompt = persona['system']
+            if persona.get('guidelines'):
+                guidelines_text = "\n".join(f"• {g}" for g in persona['guidelines'])
+                agent.system_prompt += f"\n\nGuidelines:\n{guidelines_text}"
+    except Exception as e:
+        print_warning(f"Error updating system prompt for persona '{persona_key}': {e}")
+        return agent, None
 
     # Return custom temperature if specified in persona
     custom_temp = persona.get('temperature')
     return agent, custom_temp
+
+
+def test_agent_functionality(agent: AgentRuntime, agent_name: str, debug_mode: bool = False) -> bool:
+    """Test agent with simple prompt to ensure it's working"""
+    try:
+        if debug_mode:
+            print_info(f"🔍 DEBUG: Testing {agent_name} functionality...")
+
+        test_prompt = "Respond with exactly: 'Agent test successful.'"
+        response = agent.generate_response(test_prompt)
+
+        if not response or len(response.strip()) == 0:
+            if debug_mode:
+                print_warning(f"⚠️  {agent_name} returned empty response")
+            return False
+
+        if debug_mode:
+            print_success(f"✅ {agent_name} test successful: {response.strip()[:50]}...")
+
+        return True
+
+    except Exception as e:
+        print_error(f"Agent {agent_name} functionality test failed: {e}")
+        if debug_mode:
+            import traceback
+            traceback.print_exc()
+        return False
 
 
 def save_roles_file(roles_data: Dict, roles_path: str) -> bool:
@@ -2129,6 +2307,17 @@ async def run_bridge(args):
         agent_b = create_agent("b", provider_b, model_b, temp_b, get_spec(provider_b).default_system)
         if args.debug:
             print_success(f"✅ Agent B created successfully")
+
+        # Test agent functionality if debug mode enabled
+        if args.debug:
+            print_info("🔍 DEBUG: Testing agent functionality...")
+            agent_a_working = test_agent_functionality(agent_a, "Agent A", args.debug)
+            agent_b_working = test_agent_functionality(agent_b, "Agent B", args.debug)
+
+            if not agent_a_working or not agent_b_working:
+                print_warning("⚠️  Agent testing completed with warnings - proceeding anyway")
+            else:
+                print_success("✅ All agent tests passed")
 
         bridge_logger.info(f"Successfully created agents")
 
