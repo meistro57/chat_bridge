@@ -701,33 +701,12 @@ class AgentRuntime:
     def identifier(self) -> str:
         return f"{self.provider_key}:{self.model}"
 
-    def stream_reply(self, turns: Iterable[Turn], mem_rounds: int) -> AsyncGenerator[str, None]:
-        recent = select_turns(turns, mem_rounds)
-        if self.provider_key in {"openai", "lmstudio", "deepseek", "openrouter"}:
-            messages = build_chatml(recent, self.agent_id, self.system_prompt)
-            return self.client.stream(messages, temperature=self.temperature)
-        if self.provider_key == "anthropic":
-            messages = build_anthropic(recent, self.agent_id)
-            return self.client.stream(
-                system_prompt=self.system_prompt,
-                messages_for_claude=messages,
-                temperature=self.temperature,
-            )
-        if self.provider_key == "gemini":
-            contents = build_gemini(recent, self.agent_id)
-            return self.client.stream(
-                system_instruction=self.system_prompt,
-                contents=contents,
-                temperature=self.temperature,
-            )
-        if self.provider_key == "ollama":
-            messages = build_ollama(recent, self.agent_id)
-            return self.client.stream(
-                messages=messages,
-                system_prompt=self.system_prompt,
-                temperature=self.temperature,
-            )
-        raise RuntimeError(f"Unsupported provider: {self.provider_key}")
+    async def generate_response(self, prompt_text: str, mem_rounds: int) -> str:
+        turns = [Turn(author="user", text=prompt_text)]
+        full_response = []
+        async for chunk in self.stream_reply(turns, mem_rounds):
+            full_response.append(chunk)
+        return "".join(full_response)
 
 
 def create_agent(agent_id: str, provider_key: str, model: str, temperature: float, system_prompt: str) -> AgentRuntime:
