@@ -54,4 +54,3 @@ chatlogs/*
 # Backup files
 *.bak
 *.backup
-web_gui/
