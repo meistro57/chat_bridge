@@ -36,6 +36,7 @@ from bridge_agents import (
     provider_choices,
     resolve_model,
     ensure_credentials,
+    fetch_openrouter_models,
     OpenAIChat,
     AnthropicChat,
     GeminiChat,
@@ -209,6 +210,100 @@ def select_from_menu(options: List[Tuple[str, str]], title: str, allow_multiple:
         except ValueError:
             print_error("Please enter a valid number")
 
+async def select_openrouter_model(api_key: str) -> Optional[str]:
+    """Interactive OpenRouter model selection from available models"""
+    print_info("Fetching available OpenRouter models...")
+
+    models = await fetch_openrouter_models(api_key)
+
+    if not models:
+        print_warning("Could not fetch models from OpenRouter API")
+        print_info("You can still enter a model name manually")
+        return None
+
+    # Filter and organize models by provider
+    print_success(f"Found {len(models)} available models")
+
+    # Group models by provider prefix
+    providers_map = {}
+    for model in models:
+        model_id = model.get("id", "")
+        if "/" in model_id:
+            provider_prefix = model_id.split("/")[0]
+            if provider_prefix not in providers_map:
+                providers_map[provider_prefix] = []
+            providers_map[provider_prefix].append(model)
+
+    # Show provider categories
+    print_section_header("OpenRouter Model Selection", "🤖")
+    print_info("Select a provider category:")
+
+    provider_list = sorted(providers_map.keys())
+    for i, provider in enumerate(provider_list, 1):
+        count = len(providers_map[provider])
+        print(f"  {colorize(f'{i}.', Colors.CYAN, bold=True)} {colorize(provider, Colors.GREEN)} ({count} models)")
+
+    print(f"  {colorize('0.', Colors.CYAN, bold=True)} {colorize('Enter model ID manually', Colors.YELLOW)}")
+
+    choice = get_user_input(f"Select provider category (0-{len(provider_list)})", "0")
+
+    if choice == "0" or not choice:
+        return None
+
+    try:
+        provider_idx = int(choice) - 1
+        if 0 <= provider_idx < len(provider_list):
+            selected_provider = provider_list[provider_idx]
+            provider_models = providers_map[selected_provider]
+
+            # Show models from selected provider
+            print_section_header(f"{selected_provider} Models", "📋")
+
+            # Limit display to 20 models
+            display_models = provider_models[:20]
+
+            for i, model in enumerate(display_models, 1):
+                model_id = model.get("id", "")
+                name = model.get("name", "Unknown")
+                context = model.get("context_length", "N/A")
+                pricing = model.get("pricing", {})
+                prompt_price = pricing.get("prompt", "N/A")
+
+                # Format price nicely
+                if isinstance(prompt_price, str) and prompt_price != "N/A":
+                    try:
+                        price_float = float(prompt_price)
+                        price_str = f"${price_float*1000000:.2f}/1M tokens"
+                    except:
+                        price_str = prompt_price
+                else:
+                    price_str = "N/A"
+
+                print(f"  {colorize(f'{i}.', Colors.CYAN, bold=True)} {colorize(model_id, Colors.GREEN)}")
+                print(f"      {colorize(name, Colors.WHITE)} | Context: {colorize(str(context), Colors.YELLOW)} | {colorize(price_str, Colors.MAGENTA)}")
+
+            if len(provider_models) > 20:
+                print_info(f"... and {len(provider_models) - 20} more models")
+
+            print(f"  {colorize('0.', Colors.CYAN, bold=True)} {colorize('Enter model ID manually', Colors.YELLOW)}")
+
+            model_choice = get_user_input(f"Select model (0-{len(display_models)})", "0")
+
+            if model_choice == "0" or not model_choice:
+                return None
+
+            model_idx = int(model_choice) - 1
+            if 0 <= model_idx < len(display_models):
+                selected_model = display_models[model_idx]["id"]
+                print_success(f"Selected: {selected_model}")
+                return selected_model
+
+    except (ValueError, IndexError):
+        print_error("Invalid selection")
+
+    return None
+
+
 def select_providers() -> Tuple[str, str]:
     """Interactive provider selection with beautiful menus"""
     print_section_header("Provider Selection", "🤖")
@@ -269,8 +364,27 @@ def create_custom_role() -> Dict:
     
     # Get model (optional)
     default_model = get_spec(provider).default_model
-    model_input = get_user_input(f"Model (optional, default: {default_model}): ").strip()
-    model = model_input if model_input else None
+    model = None
+
+    # For OpenRouter, offer interactive model selection
+    if provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key and api_key != "your-api-key-here":
+            print_info("Would you like to browse available OpenRouter models? (y/n)")
+            browse = get_user_input("Browse models?", "n").lower()
+            if browse in ['y', 'yes']:
+                try:
+                    import asyncio
+                    selected_model = asyncio.run(select_openrouter_model(api_key))
+                    if selected_model:
+                        model = selected_model
+                except Exception as e:
+                    print_warning(f"Could not fetch models: {e}")
+
+    # If no model selected yet, ask for manual input
+    if not model:
+        model_input = get_user_input(f"Model (optional, default: {default_model}): ").strip()
+        model = model_input if model_input else None
     
     # Get system prompt
     print_info("Enter the system prompt for this role:")
@@ -891,7 +1005,26 @@ def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
 
         elif choice == "4":  # Change model
             current_model = persona_data.get('model', 'default')
+            current_provider = persona_data.get('provider', 'openai')
             print_info(f"Current model: {current_model}")
+
+            # For OpenRouter, offer interactive model selection
+            if current_provider == "openrouter":
+                api_key = os.getenv("OPENROUTER_API_KEY")
+                if api_key and api_key != "your-api-key-here":
+                    print_info("Would you like to browse available OpenRouter models? (y/n)")
+                    browse = get_user_input("Browse models?", "n").lower()
+                    if browse in ['y', 'yes']:
+                        try:
+                            import asyncio
+                            selected_model = asyncio.run(select_openrouter_model(api_key))
+                            if selected_model:
+                                persona_data['model'] = selected_model
+                                continue
+                        except Exception as e:
+                            print_warning(f"Could not fetch models: {e}")
+
+            # Manual model input
             new_model = get_user_input("New model (or Enter for default): ").strip()
             persona_data['model'] = new_model if new_model else None
 
@@ -1526,6 +1659,59 @@ async def ping_provider(provider_key: str) -> Dict[str, any]:
                     ]
                 result["error"] = error_str
 
+        elif provider_key == "openrouter":
+            try:
+                api_key = ensure_credentials(provider_key)
+                base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+                client = OpenAIChat(model=spec.default_model, api_key=api_key, base_url=base_url)
+
+                response_started = False
+                test_messages = [{"role": "user", "content": "Hello"}]
+                async for chunk in client.stream(test_messages, temperature=0.1, max_tokens=5):
+                    if chunk.strip():
+                        response_started = True
+                        break
+
+                if response_started:
+                    result["status"] = "online"
+                    result["message"] = "✅ API key valid, model accessible"
+                else:
+                    result["status"] = "error"
+                    result["message"] = "❌ No response received"
+
+            except Exception as e:
+                result["status"] = "error"
+                error_str = str(e)
+                if "401" in error_str or "unauthorized" in error_str.lower():
+                    result["message"] = "❌ Invalid API key - Check OPENROUTER_API_KEY environment variable"
+                    result["troubleshooting"] = [
+                        "1. Verify OPENROUTER_API_KEY is set correctly",
+                        "2. Check if API key has sufficient credits",
+                        "3. Ensure API key has not expired"
+                    ]
+                elif "403" in error_str:
+                    result["message"] = "❌ Access forbidden - Check API key permissions"
+                    result["troubleshooting"] = [
+                        "1. Verify your API key has access to OpenRouter models",
+                        "2. Check your account status at openrouter.ai",
+                        "3. Try a different model"
+                    ]
+                elif "429" in error_str:
+                    result["message"] = "❌ Rate limit exceeded"
+                    result["troubleshooting"] = [
+                        "1. Wait before retrying",
+                        "2. Check your usage limits at openrouter.ai",
+                        "3. Consider upgrading your plan"
+                    ]
+                else:
+                    result["message"] = f"❌ {error_str}"
+                    result["troubleshooting"] = [
+                        "1. Check OPENROUTER_API_KEY environment variable",
+                        "2. Verify network connectivity",
+                        "3. Check OpenRouter service status"
+                    ]
+                result["error"] = error_str
+
         else:
             result["status"] = "unsupported"
             result["message"] = f"❓ Provider {provider_key} not supported for ping test"
@@ -1693,7 +1879,7 @@ async def provider_ping_menu():
 
             print(f"{colorize('ENVIRONMENT VARIABLES:', Colors.WHITE, bold=True)}")
             env_vars = [
-                "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
+                "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", "OPENROUTER_API_KEY",
                 "LMSTUDIO_BASE_URL", "OLLAMA_HOST", "OPENAI_MODEL", "ANTHROPIC_MODEL"
             ]
 

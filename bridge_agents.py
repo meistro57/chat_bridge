@@ -111,6 +111,17 @@ PROVIDER_REGISTRY: Dict[str, ProviderSpec] = {
         model_env="DEEPSEEK_MODEL",
         description="DeepSeek OpenAI-compatible API for advanced reasoning and coding.",
     ),
+    "openrouter": ProviderSpec(
+        key="openrouter",
+        label="OpenRouter",
+        kind="chatml",
+        default_model=_env("OPENROUTER_MODEL") or "openai/gpt-4o-mini",
+        default_system="You are an AI assistant. Be helpful, concise, and engaging.",
+        needs_key=True,
+        key_env="OPENROUTER_API_KEY",
+        model_env="OPENROUTER_MODEL",
+        description="OpenRouter unified API for accessing multiple AI models.",
+    ),
 }
 
 
@@ -570,6 +581,36 @@ def resolve_model(provider_key: str, override: Optional[str] = None, agent_env: 
     return spec.default_model
 
 
+async def fetch_openrouter_models(api_key: str) -> List[Dict]:
+    """Fetch available models from OpenRouter API"""
+    logger = logging.getLogger("bridge")
+
+    url = "https://openrouter.ai/api/v1/models"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, headers=headers)
+
+            if response.status_code == 200:
+                data = response.json()
+                if "data" in data:
+                    logger.info(f"Fetched {len(data['data'])} models from OpenRouter")
+                    return data["data"]
+                else:
+                    logger.warning("Unexpected response format from OpenRouter models API")
+                    return []
+            else:
+                logger.error(f"Failed to fetch OpenRouter models: {response.status_code}")
+                return []
+    except Exception as e:
+        logger.error(f"Error fetching OpenRouter models: {e}")
+        return []
+
+
 def ensure_credentials(provider_key: str) -> Optional[str]:
     logger = logging.getLogger("bridge")
     spec = get_spec(provider_key)
@@ -662,7 +703,7 @@ class AgentRuntime:
 
     def stream_reply(self, turns: Iterable[Turn], mem_rounds: int) -> AsyncGenerator[str, None]:
         recent = select_turns(turns, mem_rounds)
-        if self.provider_key in {"openai", "lmstudio", "deepseek"}:
+        if self.provider_key in {"openai", "lmstudio", "deepseek", "openrouter"}:
             messages = build_chatml(recent, self.agent_id, self.system_prompt)
             return self.client.stream(messages, temperature=self.temperature)
         if self.provider_key == "anthropic":
@@ -718,6 +759,11 @@ def create_agent(agent_id: str, provider_key: str, model: str, temperature: floa
             base = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
             client = OpenAIChat(model=model, api_key=api_key, base_url=base)
             logger.debug(f"DeepSeek client created for agent {agent_id}")
+        elif provider_key == "openrouter":
+            api_key = ensure_credentials(provider_key)
+            base = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+            client = OpenAIChat(model=model, api_key=api_key, base_url=base)
+            logger.debug(f"OpenRouter client created for agent {agent_id}")
         else:
             logger.error(f"Unsupported provider requested: {provider_key}")
             raise RuntimeError(f"Unsupported provider: {provider_key}")
