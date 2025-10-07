@@ -184,16 +184,30 @@ def validate_config_schema(config: Any, *, context: Optional[str] = None) -> Non
 class RolesManager:
     """Manages roles and personalities configuration"""
 
-    def __init__(self, config_path: str = "roles.json"):
+    def __init__(self, config_path: str = "roles.json", debug: bool = False):
         self.config_path = os.path.abspath(config_path)
+        self.debug = debug
         self.config = self.load_config()
 
     def load_config(self) -> Dict:
         """Load configuration from file or create default"""
         path = self.config_path
 
+        if self.debug:
+            print_info(f"🔍 DEBUG: Attempting to load config from: {path}")
+            print_info(f"🔍 DEBUG: Current working directory: {os.getcwd()}")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            print_info(f"🔍 DEBUG: Script directory: {script_dir}")
+
         if not os.path.exists(path):
-            print_error(f"Configuration file not found at {path}. Loading defaults.")
+            if self.debug:
+                # List available JSON files in the directory
+                directory = os.path.dirname(path) or '.'
+                json_files = [f for f in os.listdir(directory) if f.endswith('.json')]
+                print_error(f"Configuration file not found at {path}")
+                print_info(f"🔍 DEBUG: Available JSON files in {directory}: {json_files}")
+            else:
+                print_error(f"Configuration file not found at {path}. Loading defaults.")
             config = self.get_default_config()
             # Attempt to persist defaults for convenience
             self.save_config(config)
@@ -204,26 +218,62 @@ class RolesManager:
             return self.get_default_config()
 
         try:
+            if self.debug:
+                # Show file size and permissions
+                file_stat = os.stat(path)
+                print_info(f"🔍 DEBUG: File size: {file_stat.st_size} bytes")
+                print_info(f"🔍 DEBUG: File permissions: {oct(file_stat.st_mode)}")
+
             with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+                content = f.read()
+                if self.debug:
+                    print_info(f"🔍 DEBUG: Successfully read {len(content)} characters from file")
+                data = json.loads(content)
+                if self.debug:
+                    print_success(f"✅ JSON parsed successfully")
+                    print_info(f"🔍 DEBUG: Top-level keys: {list(data.keys())}")
         except FileNotFoundError:
             print_error(f"Configuration file not found at {path}. Loading defaults.")
             return self.get_default_config()
         except PermissionError as e:
             print_error(f"Permission denied when reading {path}: {e}. Loading defaults.")
+            if self.debug:
+                import traceback
+                print_info(f"🔍 DEBUG: Traceback:\n{traceback.format_exc()}")
             return self.get_default_config()
         except json.JSONDecodeError as e:
-            print_error(f"Invalid JSON in {path}: {e}. Loading defaults.")
+            print_error(f"Invalid JSON in {path}")
+            print_error(f"  Error at line {e.lineno}, column {e.colno}: {e.msg}")
+            if self.debug:
+                print_info(f"🔍 DEBUG: Character position: {e.pos}")
+                # Show context around the error
+                with open(path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    if e.lineno > 0:
+                        start = max(0, e.lineno - 3)
+                        end = min(len(lines), e.lineno + 2)
+                        print_info(f"🔍 DEBUG: Context (lines {start+1}-{end}):")
+                        for i in range(start, end):
+                            marker = " >>> " if i == e.lineno - 1 else "     "
+                            print_info(f"{marker}{i+1:4d}: {lines[i].rstrip()}")
+            print_warning("Loading defaults due to JSON syntax error.")
             return self.get_default_config()
         except OSError as e:
             print_error(f"Failed to read {path}: {e}. Loading defaults.")
+            if self.debug:
+                import traceback
+                print_info(f"🔍 DEBUG: Traceback:\n{traceback.format_exc()}")
             return self.get_default_config()
 
         try:
             validate_config_schema(data, context=path)
+            if self.debug:
+                print_success("✅ Configuration schema validation passed")
         except ConfigValidationError as exc:
             for err in exc.errors:
                 print_error(err)
+            if self.debug:
+                print_info(f"🔍 DEBUG: Total validation errors: {len(exc.errors)}")
             print_warning("Loaded defaults due to invalid configuration schema.")
             return self.get_default_config()
 
@@ -336,6 +386,106 @@ class RolesManager:
             "temp_a": 0.7,
             "temp_b": 0.7
         }
+
+    def validate_json_file(self, file_path: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+        """Validate JSON file syntax and structure.
+
+        Args:
+            file_path: Path to JSON file. If None, uses self.config_path
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        path = file_path or self.config_path
+
+        if not os.path.exists(path):
+            return False, f"File not found: {path}"
+
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                data = json.loads(content)
+
+            # Validate schema
+            validate_config_schema(data, context=path)
+            return True, None
+
+        except json.JSONDecodeError as e:
+            error_msg = f"JSON syntax error at line {e.lineno}, column {e.colno}: {e.msg}"
+            return False, error_msg
+        except ConfigValidationError as exc:
+            error_msg = f"Schema validation failed:\n" + "\n".join(exc.errors)
+            return False, error_msg
+        except Exception as e:
+            return False, f"Unexpected error: {str(e)}"
+
+    def get_persona_info(self, persona_key: str) -> Optional[Dict]:
+        """Get detailed information about a specific persona.
+
+        Args:
+            persona_key: The persona identifier
+
+        Returns:
+            Persona configuration dict or None if not found
+        """
+        persona_library = self.config.get("persona_library", {})
+        persona = persona_library.get(persona_key)
+
+        if persona and self.debug:
+            print_info(f"🔍 DEBUG: Persona '{persona_key}' details:")
+            print_info(f"  Provider: {persona.get('provider')}")
+            print_info(f"  Model: {persona.get('model', 'default')}")
+            print_info(f"  System prompt length: {len(persona.get('system', ''))} chars")
+            print_info(f"  Guidelines count: {len(persona.get('guidelines', []))}")
+
+        return persona
+
+    def list_all_personas(self) -> List[str]:
+        """Get list of all available persona keys."""
+        persona_library = self.config.get("persona_library", {})
+        personas = list(persona_library.keys())
+
+        if self.debug:
+            print_info(f"🔍 DEBUG: Found {len(personas)} personas: {', '.join(personas)}")
+
+        return personas
+
+    def test_agent_creation(self, persona_key: str) -> bool:
+        """Test if agent configuration is valid for creation.
+
+        Args:
+            persona_key: The persona to test
+
+        Returns:
+            True if configuration appears valid, False otherwise
+        """
+        persona = self.get_persona_info(persona_key)
+
+        if not persona:
+            if self.debug:
+                print_error(f"Persona '{persona_key}' not found")
+            return False
+
+        # Check required fields
+        required = ["provider", "system", "guidelines"]
+        missing = [field for field in required if field not in persona]
+
+        if missing:
+            if self.debug:
+                print_error(f"Missing required fields: {', '.join(missing)}")
+            return False
+
+        # Validate provider
+        valid_providers = ["openai", "anthropic", "gemini", "ollama", "lmstudio", "openrouter"]
+        if persona.get("provider") not in valid_providers:
+            if self.debug:
+                print_error(f"Invalid provider: {persona.get('provider')}")
+            return False
+
+        if self.debug:
+            print_success(f"✅ Persona '{persona_key}' configuration is valid")
+
+        return True
 
 # ───────────────────────── Persona Management ─────────────────────────
 

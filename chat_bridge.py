@@ -2081,38 +2081,110 @@ async def run_bridge(args):
     # Create agents
     try:
         bridge_logger.info(f"Creating agents: {provider_a} ({args.model_a or 'default'}) vs {provider_b} ({args.model_b or 'default'})")
+        if args.debug:
+            print_info(f"🔍 DEBUG: Starting agent creation process")
+            print_info(f"🔍 DEBUG: Provider A: {provider_a}, Model A: {args.model_a or 'default'}")
+            print_info(f"🔍 DEBUG: Provider B: {provider_b}, Model B: {args.model_b or 'default'}")
+            print_info(f"🔍 DEBUG: Temperature A: {temp_a}, Temperature B: {temp_b}")
+
+        # Ensure credentials are available
+        try:
+            ensure_credentials(provider_a)
+            if args.debug:
+                print_success(f"✅ Credentials verified for {provider_a}")
+        except Exception as cred_err:
+            bridge_logger.error(f"Credential check failed for {provider_a}: {cred_err}")
+            if args.debug:
+                print_error(f"Missing credentials for {provider_a}")
+                print_info(f"🔍 DEBUG: Set {get_spec(provider_a).key_env} environment variable")
+            raise
+
+        try:
+            ensure_credentials(provider_b)
+            if args.debug:
+                print_success(f"✅ Credentials verified for {provider_b}")
+        except Exception as cred_err:
+            bridge_logger.error(f"Credential check failed for {provider_b}: {cred_err}")
+            if args.debug:
+                print_error(f"Missing credentials for {provider_b}")
+                print_info(f"🔍 DEBUG: Set {get_spec(provider_b).key_env} environment variable")
+            raise
 
         model_a = resolve_model(provider_a, args.model_a)
         model_b = resolve_model(provider_b, args.model_b)
 
         bridge_logger.info(f"Resolved models: Agent A = {model_a}, Agent B = {model_b}")
+        if args.debug:
+            print_info(f"🔍 DEBUG: Resolved model A: {model_a}")
+            print_info(f"🔍 DEBUG: Resolved model B: {model_b}")
 
+        if args.debug:
+            print_info(f"🔍 DEBUG: Creating Agent A with {provider_a}...")
         agent_a = create_agent("a", provider_a, model_a, temp_a, get_spec(provider_a).default_system)
+        if args.debug:
+            print_success(f"✅ Agent A created successfully")
+
+        if args.debug:
+            print_info(f"🔍 DEBUG: Creating Agent B with {provider_b}...")
         agent_b = create_agent("b", provider_b, model_b, temp_b, get_spec(provider_b).default_system)
+        if args.debug:
+            print_success(f"✅ Agent B created successfully")
 
         bridge_logger.info(f"Successfully created agents")
 
         # Apply personas if specified and handle custom temperatures
         if roles_data:
             bridge_logger.info(f"Applying personas: Agent A = {persona_a}, Agent B = {persona_b}")
+            if args.debug:
+                print_info(f"🔍 DEBUG: Applying persona '{persona_a}' to Agent A")
+                if persona_a:
+                    persona_data_a = roles_data.get('persona_library', {}).get(persona_a)
+                    if persona_data_a:
+                        print_info(f"  System prompt length: {len(persona_data_a.get('system', ''))} chars")
+                        print_info(f"  Guidelines: {len(persona_data_a.get('guidelines', []))} items")
+                    else:
+                        print_warning(f"  Persona '{persona_a}' not found in library")
+
             agent_a, custom_temp_a = apply_persona(agent_a, persona_a, roles_data)
+
+            if args.debug:
+                print_info(f"🔍 DEBUG: Applying persona '{persona_b}' to Agent B")
+                if persona_b:
+                    persona_data_b = roles_data.get('persona_library', {}).get(persona_b)
+                    if persona_data_b:
+                        print_info(f"  System prompt length: {len(persona_data_b.get('system', ''))} chars")
+                        print_info(f"  Guidelines: {len(persona_data_b.get('guidelines', []))} items")
+                    else:
+                        print_warning(f"  Persona '{persona_b}' not found in library")
+
             agent_b, custom_temp_b = apply_persona(agent_b, persona_b, roles_data)
 
             # Override temperatures if custom roles specify them
             if custom_temp_a is not None:
                 bridge_logger.info(f"Agent A temperature override: {temp_a} -> {custom_temp_a}")
+                if args.debug:
+                    print_info(f"🔍 DEBUG: Temperature override for Agent A: {temp_a} -> {custom_temp_a}")
                 temp_a = custom_temp_a
                 agent_a.temperature = custom_temp_a
             if custom_temp_b is not None:
                 bridge_logger.info(f"Agent B temperature override: {temp_b} -> {custom_temp_b}")
+                if args.debug:
+                    print_info(f"🔍 DEBUG: Temperature override for Agent B: {temp_b} -> {custom_temp_b}")
                 temp_b = custom_temp_b
                 agent_b.temperature = custom_temp_b
+
+        if args.debug:
+            print_success("✅ All agents configured and ready")
 
     except Exception as e:
         bridge_logger.error(f"Failed to create agents: {e}", exc_info=True)
         bridge_logger.error(f"Provider A: {provider_a}, Provider B: {provider_b}")
         bridge_logger.error(f"Model A: {args.model_a}, Model B: {args.model_b}")
         print_error(f"Failed to create agents: {e}")
+        if args.debug:
+            import traceback
+            print_error("🔍 DEBUG: Full traceback:")
+            print_error(traceback.format_exc())
         return
 
     # Initialize conversation
