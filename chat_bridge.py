@@ -39,6 +39,7 @@ from bridge_agents import (
     resolve_model,
     ensure_credentials,
     fetch_openrouter_models,
+    fetch_available_models,
     OpenAIChat,
     AnthropicChat,
     GeminiChat,
@@ -348,53 +349,237 @@ def select_providers() -> Tuple[str, str]:
 
     return provider_a, provider_b
 
+
+async def select_provider_and_model(agent_name: str, default_provider: Optional[str] = None) -> Tuple[str, Optional[str]]:
+    """Select provider and model for an agent with dynamic model listing
+
+    Returns:
+        Tuple of (provider_key, model_name or None)
+    """
+    print_section_header(f"Provider & Model for {agent_name}", "🤖")
+
+    # Get provider specs
+    specs = {key: get_spec(key) for key in provider_choices()}
+
+    print_info(f"Select AI Provider for {agent_name}:")
+    print()
+
+    providers = []
+    for key, spec in specs.items():
+        providers.append((key, f"{spec.label} - {spec.description}"))
+
+    # Find default index
+    default_index = "1"
+    if default_provider:
+        for i, (key, _) in enumerate(providers, 1):
+            if key == default_provider:
+                default_index = str(i)
+                break
+
+    # Select provider
+    choice = select_from_menu(providers, f"{agent_name} Provider", default=default_index)
+    provider_key = providers[int(choice) - 1][0]
+    spec = specs[provider_key]
+
+    print_success(f"Selected: {spec.label}")
+    print()
+
+    # Fetch and display available models
+    print_info(f"Fetching available models for {spec.label}...")
+    try:
+        models = await fetch_available_models(provider_key)
+
+        if not models:
+            print_warning(f"No models returned, using default: {spec.default_model}")
+            return provider_key, None
+
+        # Show first 20 models or all if less
+        display_models = models[:20] if len(models) > 20 else models
+
+        print_info(f"Available models (showing {len(display_models)} of {len(models)}):")
+        print()
+
+        model_options = [(m, m) for m in display_models]
+        model_options.insert(0, ("default", f"Use default ({spec.default_model})"))
+
+        model_choice = select_from_menu(model_options, f"{agent_name} Model", default="1")
+
+        if model_choice == "1":  # Default
+            selected_model = None
+            print_success(f"Using default model: {spec.default_model}")
+        else:
+            selected_model = model_options[int(model_choice) - 1][0]
+            print_success(f"Selected model: {selected_model}")
+
+        return provider_key, selected_model
+
+    except Exception as e:
+        print_warning(f"Error fetching models: {e}")
+        print_info(f"Using default model: {spec.default_model}")
+        return provider_key, None
+
+
+async def configure_agent_simple(agent_name: str, roles_data: Optional[Dict] = None) -> Dict:
+    """Simplified turn-based configuration for a single agent.
+
+    Flow: Persona → Provider → Model → Temperature
+
+    Returns:
+        Dict with keys: persona, provider, model, temperature
+    """
+    agent_color = Colors.BLUE if agent_name == "Agent A" else Colors.MAGENTA
+    print()
+    print(colorize(f"═══════════════════════════════════════", agent_color, bold=True))
+    print(colorize(f"    CONFIGURING {agent_name.upper()}", agent_color, bold=True))
+    print(colorize(f"═══════════════════════════════════════", agent_color, bold=True))
+    print()
+
+    # Step 1: Select Persona
+    print_section_header(f"Step 1: Select Persona for {agent_name}", "🎭")
+    persona = None
+
+    if roles_data and 'persona_library' in roles_data:
+        personas = roles_data.get('persona_library', {})
+
+        # Build persona options
+        persona_options = [("skip", "Use default system prompt (no persona)")]
+
+        for persona_key, persona_data in personas.items():
+            system_preview = persona_data.get('system', 'No description')[:60]
+            if len(persona_data.get('system', '')) > 60:
+                system_preview += "..."
+            display_name = f"{persona_key} - {system_preview}"
+            persona_options.append((persona_key, display_name))
+
+        print_info(f"Choose a persona for {agent_name}:")
+        print()
+
+        choice = select_from_menu(persona_options, f"{agent_name} Persona", default="1")
+        persona = persona_options[int(choice) - 1][0]
+
+        if persona == "skip":
+            persona = None
+            print_success("No persona selected (will use provider defaults)")
+        else:
+            print_success(f"Selected persona: {persona}")
+    else:
+        print_warning("No personas available. Continuing without persona...")
+
+    print()
+
+    # Step 2: Select Provider
+    print_section_header(f"Step 2: Select Provider for {agent_name}", "🔌")
+
+    specs = {key: get_spec(key) for key in provider_choices()}
+    provider_options = []
+
+    for key, spec in specs.items():
+        provider_options.append((key, f"{spec.label} - {spec.description}"))
+
+    print_info(f"Select AI Provider for {agent_name}:")
+    print()
+
+    choice = select_from_menu(provider_options, f"{agent_name} Provider", default="1")
+    provider_key = provider_options[int(choice) - 1][0]
+    spec = specs[provider_key]
+
+    print_success(f"Selected provider: {spec.label}")
+    print()
+
+    # Step 3: Select Model
+    print_section_header(f"Step 3: Select Model for {agent_name}", "🤖")
+
+    print_info(f"Fetching available models for {spec.label}...")
+    model = None
+
+    try:
+        models = await fetch_available_models(provider_key)
+
+        if models and len(models) > 0:
+            # Show first 20 models or all if less
+            display_models = models[:20] if len(models) > 20 else models
+
+            print_info(f"Available models (showing {len(display_models)} of {len(models)}):")
+            print()
+
+            model_options = [("default", f"Use default ({spec.default_model})")]
+            for m in display_models:
+                model_options.append((m, m))
+
+            choice = select_from_menu(model_options, f"{agent_name} Model", default="1")
+
+            if model_options[int(choice) - 1][0] == "default":
+                model = None
+                print_success(f"Using default model: {spec.default_model}")
+            else:
+                model = model_options[int(choice) - 1][0]
+                print_success(f"Selected model: {model}")
+        else:
+            print_warning(f"No models available, using default: {spec.default_model}")
+            model = None
+
+    except Exception as e:
+        print_warning(f"Error fetching models: {e}")
+        print_info(f"Using default model: {spec.default_model}")
+        model = None
+
+    print()
+
+    # Step 4: Set Temperature
+    print_section_header(f"Step 4: Set Temperature for {agent_name}", "🌡️")
+
+    print_info("Temperature controls randomness in responses:")
+    print_info("  • 0.0 = Very focused and deterministic")
+    print_info("  • 0.6 = Balanced (recommended)")
+    print_info("  • 1.0 = Creative and varied")
+    print_info("  • 2.0 = Very random and creative")
+    print()
+
+    temp_input = get_user_input("Enter temperature (0.0-2.0) [default: 0.6]: ").strip()
+
+    if temp_input:
+        try:
+            temperature = float(temp_input)
+            if temperature < 0.0 or temperature > 2.0:
+                print_warning("Temperature out of range, using default 0.6")
+                temperature = 0.6
+            else:
+                print_success(f"Temperature set to: {temperature}")
+        except ValueError:
+            print_warning("Invalid input, using default temperature 0.6")
+            temperature = 0.6
+    else:
+        temperature = 0.6
+        print_success("Using default temperature: 0.6")
+
+    print()
+    print(colorize(f"✓ {agent_name} configuration complete!", Colors.GREEN, bold=True))
+    print()
+
+    return {
+        'persona': persona,
+        'provider': provider_key,
+        'model': model,
+        'temperature': temperature
+    }
+
+
 def create_custom_role() -> Dict:
-    """Create a custom role with user-defined settings"""
+    """Create a custom role with user-defined settings (provider-neutral)"""
     print_section_header("Create Custom Role", "✨")
-    
+
     # Get role name
     role_name = get_user_input("Enter custom role name (e.g., 'detective', 'teacher'): ").strip()
     if not role_name:
         role_name = "custom_role"
-    
-    # Select provider
-    providers = provider_choices()
-    provider_options = [(p, get_spec(p).label) for p in providers]
-    print_info("Select AI provider for this role:")
-    choice = select_from_menu(provider_options, "Provider")
-    provider = provider_options[int(choice) - 1][0]
-    
-    # Get model (optional)
-    default_model = get_spec(provider).default_model
-    model = None
 
-    # For OpenRouter, offer interactive model selection
-    if provider == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if api_key and api_key != "your-api-key-here":
-            print_info("Would you like to browse available OpenRouter models? (y/n)")
-            browse = get_user_input("Browse models?", "n").lower()
-            if browse in ['y', 'yes']:
-                try:
-                    import asyncio
-                    selected_model = asyncio.run(select_openrouter_model(api_key))
-                    if selected_model:
-                        model = selected_model
-                except Exception as e:
-                    print_warning(f"Could not fetch models: {e}")
-
-    # If no model selected yet, ask for manual input
-    if not model:
-        model_input = get_user_input(f"Model (optional, default: {default_model}): ").strip()
-        model = model_input if model_input else None
-    
     # Get system prompt
     print_info("Enter the system prompt for this role:")
     print_info("This defines the AI's personality, expertise, and behavior.")
     system_prompt = get_user_input("System prompt: ").strip()
     if not system_prompt:
         system_prompt = f"You are a {role_name}. Be helpful, knowledgeable, and stay in character."
-    
+
     # Get guidelines
     print_info("Enter behavioral guidelines (one per line, empty line to finish):")
     print_info("These are specific instructions for how the AI should behave.")
@@ -404,10 +589,10 @@ def create_custom_role() -> Dict:
         if not guideline.strip():
             break
         guidelines.append(guideline.strip())
-    
+
     if not guidelines:
         guidelines = [f"Stay in character as a {role_name}", "Be helpful and informative", "Use appropriate language for the role"]
-    
+
     # Get temperature (optional)
     temp_input = get_user_input("Temperature (0.0-2.0, optional, default: 0.7): ").strip()
     temperature = None
@@ -420,14 +605,13 @@ def create_custom_role() -> Dict:
                 print_warning("Temperature must be between 0.0 and 2.0. Using default.")
         except ValueError:
             print_warning("Invalid temperature value. Using default.")
-    
+
     # Get notes (optional)
     notes = get_user_input("Notes (optional description): ").strip()
-    
-    # Build the custom role
+
+    # Build the custom role (provider-neutral)
     custom_role = {
-        "provider": provider,
-        "model": model,
+        "model": None,  # Model will be selected when choosing provider
         "system": system_prompt,
         "guidelines": guidelines
     }
@@ -566,9 +750,8 @@ def select_personas(roles_data: Optional[Dict]) -> Tuple[Optional[str], Optional
 
     personas = []
     for key, persona in roles_data['persona_library'].items():
-        provider_name = get_spec(persona['provider']).label
-        system_preview = persona['system'][:80] + "..." if len(persona['system']) > 80 else persona['system']
-        personas.append((key, f"{provider_name} - {system_preview}"))
+        system_preview = persona['system'][:100] + "..." if len(persona['system']) > 100 else persona['system']
+        personas.append((key, f"{key}: {system_preview}"))
 
     if not personas:
         return None, None
@@ -1059,22 +1242,13 @@ def save_roles_file(roles_data: Dict, roles_path: str) -> bool:
 
 
 def create_new_persona() -> Optional[Dict]:
-    """Interactive creation of a new persona"""
+    """Interactive creation of a new persona (provider-neutral)"""
     print_section_header("Create New Persona", "✨")
 
     # Get persona name
     name = get_user_input("Enter persona name (e.g., 'expert_analyst'): ").strip()
     if not name:
         return None
-
-    # Select provider
-    providers = provider_choices()
-    provider_options = [(p, get_spec(p).label) for p in providers]
-    print_info("Select provider for this persona:")
-    choice = select_from_menu(provider_options, "Provider")
-    if not choice:
-        return None
-    provider = provider_options[int(choice) - 1][0]
 
     # Get system prompt
     print_info("Enter system prompt (multi-line supported, empty line to finish):")
@@ -1101,17 +1275,12 @@ def create_new_persona() -> Optional[Dict]:
             break
         guidelines.append(guideline.strip())
 
-    # Get model (optional)
-    model_input = get_user_input(f"Model (optional, default: {get_spec(provider).default_model}): ").strip()
-    model = model_input if model_input else None
-
     # Optional notes
     notes = get_user_input("Notes (optional): ").strip()
 
     persona = {
         "name": name,
-        "provider": provider,
-        "model": model,
+        "model": None,  # Model will be selected when choosing provider
         "system": system_prompt,
         "guidelines": guidelines
     }
@@ -1284,8 +1453,7 @@ def manage_roles_configuration(roles_path: str = "roles.json"):
 
             persona_options = []
             for key, persona in roles_data['persona_library'].items():
-                provider_name = get_spec(persona['provider']).label
-                persona_options.append((key, f"{key} ({provider_name})"))
+                persona_options.append((key, key))
 
             print_info("Select persona to edit:")
             persona_choice = select_from_menu(persona_options, "Persona")
@@ -2096,12 +2264,10 @@ async def show_main_menu() -> str:
     print_section_header("Main Menu", "🚀")
 
     options = [
-        ("1", "Quick Start - Default Conversation"),
-        ("2", "Start with Role Personalities"),
-        ("3", "Advanced Setup"),
-        ("4", "Manage Roles & Personas"),
-        ("5", "Test Provider Connectivity"),
-        ("6", "Exit")
+        ("1", "Start Conversation - Simple Setup (Step-by-step)"),
+        ("2", "Manage Roles & Personas"),
+        ("3", "Test Provider Connectivity"),
+        ("4", "Exit")
     ]
 
     return select_from_menu(options, "What would you like to do?")
@@ -2118,23 +2284,17 @@ async def run_bridge(args):
         while True:
             choice = await show_main_menu()
 
-            if choice == "1":  # Quick Start
-                setup_mode = "quick"
+            if choice == "1":  # Simple Setup
+                setup_mode = "simple"
                 break
-            elif choice == "2":  # Start with Role Personalities
-                setup_mode = "roles"
-                break
-            elif choice == "3":  # Advanced Setup
-                setup_mode = "advanced"
-                break
-            elif choice == "4":  # Manage roles
+            elif choice == "2":  # Manage roles
                 roles_path = getattr(args, 'roles', 'roles.json')
                 manage_roles_configuration(roles_path)
                 continue
-            elif choice == "5":  # Test provider connectivity
+            elif choice == "3":  # Test provider connectivity
                 await provider_ping_menu()
                 continue
-            elif choice == "6":  # Exit
+            elif choice == "4":  # Exit
                 print(f"\n{colorize('👋 Goodbye!', Colors.YELLOW)}")
                 return
             else:
@@ -2146,91 +2306,32 @@ async def run_bridge(args):
 
     # Interactive setup based on selected mode
     if not (args.provider_a and args.provider_b and getattr(args, 'starter', None)):
-        if setup_mode == "quick":
-            # Quick setup with defaults
-            provider_a, provider_b = DEFAULT_PROVIDER_A, DEFAULT_PROVIDER_B
-            persona_a, persona_b = None, None
-            print_success(f"Quick setup: {get_spec(provider_a).label} vs {get_spec(provider_b).label}")
-            starter = get_conversation_starter()
+        if setup_mode == "simple":
+            # New simplified turn-based configuration
+            print_section_header("Conversation Setup", "🎯")
+            print_info("Let's configure your AI conversation step by step.")
+            print()
 
-        elif setup_mode == "roles":
-            # Role personalities first, then providers
-            if not roles_data:
-                print_warning("No roles.json found. Creating basic role configuration...")
-                roles_data = {
-                    "persona_library": {
-                        "scientist": {
-                            "name": "scientist",
-                            "provider": "openai",
-                            "model": None,
-                            "system": "You are a rigorous scientist focused on evidence-based reasoning.",
-                            "guidelines": ["Cite sources", "Question assumptions", "Use data and examples"]
-                        },
-                        "philosopher": {
-                            "name": "philosopher",
-                            "provider": "anthropic",
-                            "model": None,
-                            "system": "You are a thoughtful philosopher exploring deep questions.",
-                            "guidelines": ["Consider multiple perspectives", "Acknowledge uncertainty", "Use clear reasoning"]
-                        },
-                        "comedian": {
-                            "name": "comedian",
-                            "provider": "openai",
-                            "model": None,
-                            "system": "You are a witty comedian with observational humor.",
-                            "guidelines": ["Be entertaining but insightful", "Use timing and wordplay", "Stay positive"]
-                        },
-                        "steel_worker": {
-                            "name": "steel_worker",
-                            "provider": "anthropic",
-                            "model": None,
-                            "system": "You are a practical steel worker with blue-collar wisdom.",
-                            "guidelines": ["Focus on practical solutions", "Use straightforward language", "Value hard work"]
-                        }
-                    }
-                }
+            # Configure Agent A
+            config_a = await configure_agent_simple("Agent A", roles_data)
+            persona_a = config_a['persona']
+            provider_a = config_a['provider']
+            args.model_a = config_a['model']
+            args.temp_a = config_a['temperature']
 
-            persona_a, persona_b = select_role_modes(roles_data)
+            # Configure Agent B
+            config_b = await configure_agent_simple("Agent B", roles_data)
+            persona_b = config_b['persona']
+            provider_b = config_b['provider']
+            args.model_b = config_b['model']
+            args.temp_b = config_b['temperature']
 
-            # Auto-select providers based on personas, or prompt if needed
-            if persona_a and persona_b:
-                provider_a = roles_data['persona_library'][persona_a]['provider']
-                provider_b = roles_data['persona_library'][persona_b]['provider']
-                print_success(f"Role setup: {persona_a} ({get_spec(provider_a).label}) vs {persona_b} ({get_spec(provider_b).label})")
-            else:
-                provider_a, provider_b = select_providers()
-
-            starter = get_conversation_starter()
-
-        elif setup_mode == "advanced":
-            # Full advanced setup (original flow)
-            provider_a, provider_b = select_providers()
-
-            if roles_data:
-                # Ask user if they want to use role modes or full persona selection
-                print_section_header("Persona Options", "🎭")
-                mode_options = [
-                    ("1", "Quick Role Modes - All available personas"),
-                    ("2", "Full Persona Library"),
-                    ("3", "Skip - Use default prompts")
-                ]
-
-                mode_choice = select_from_menu(mode_options, "Select persona mode", default="1")
-
-                if mode_choice == "1":
-                    persona_a, persona_b = select_role_modes(roles_data)
-                elif mode_choice == "2":
-                    persona_a, persona_b = select_personas(roles_data)
-                else:
-                    persona_a, persona_b = None, None
-            else:
-                persona_a, persona_b = None, None
-
+            # Get conversation starter
             starter = get_conversation_starter()
 
         else:
-            # Fallback to original behavior
-            provider_a, provider_b = select_providers()
+            # Fallback to defaults if mode not recognized
+            provider_a, provider_b = DEFAULT_PROVIDER_A, DEFAULT_PROVIDER_B
             persona_a, persona_b = None, None
             starter = get_conversation_starter()
     else:
@@ -2566,6 +2667,7 @@ Examples:
     parser.add_argument("--mem-rounds", type=int, default=8, help="Memory rounds for context")
     parser.add_argument("--roles", help="Path to roles.json file for personas")
     parser.add_argument("--starter", help="Conversation starter (skips interactive mode)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
     parser.add_argument("--version", action="version", version=f"Chat Bridge {__version__}")
 
     # Legacy compatibility

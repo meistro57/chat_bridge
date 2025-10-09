@@ -2,32 +2,23 @@
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in Version 1.2.1
+## ✨ What's New in Version 1.3.0
 
-### 🔧 **Latest Updates**
+### 🎯 **Major UI Overhaul - Simplified Turn-Based Setup**
+- **📋 Step-by-Step Configuration** - New simplified turn-based flow for configuring each agent
+- **🎭 Persona First** - Select persona → provider → model → temperature for each agent sequentially
+- **🌡️ Temperature Default Changed** - Now defaults to 0.6 (more balanced) instead of 0.7
+- **🎯 Cleaner Main Menu** - Reduced from 6 options to 4 for better focus
+- **⚡ Single Setup Mode** - One intuitive flow replaces multiple setup modes
+- **🔌 Dynamic Model Queries** - Models fetched in real-time from OpenAI, Ollama, LM Studio, and OpenRouter
+
+### 🔧 **Previous Version Highlights (1.2.1)**
 - **🎭 Enhanced Persona Library** - Added DeepSeek, ADHD Kid, and Complainer personas for diverse conversation dynamics
 - **⚙️ Improved Roles Management** - Updated roles_manager.py with better persona handling and configuration options
 - **🛠️ Additional Utilities** - Added check_port.py for database connectivity testing
 - **📦 Version Management** - Centralized version string in version.py for better release tracking
-
-### 🔧 **Roles Manager Integration Fix (Latest)**
-- **🎭 Full Persona Compatibility** - All roles created with the roles manager are now properly selectable in the main app
-- **🔗 Unified Role Selection** - Both hardcoded and custom roles appear in the same selection menu
-- **📋 Enhanced Persona Display** - Persona descriptions now show provider and system prompt previews
-- **🛠️ Seamless Integration** - No more missing personas when using both roles manager and main chat bridge
-
-### 🔄 **Stop Word Detection Control & Enhanced Transcripts**
 - **🔄 Stop Word Detection Toggle** - Enable/disable conversation termination control through interactive menu
 - **📝 Enhanced Session Transcripts** - Comprehensive session configuration tracking in transcript headers
-- **⚡ Real-time Configuration Display** - Session summaries now show stop word detection status
-- **🛡️ Backward Compatible** - All existing configurations continue working seamlessly
-
-### 🚀 **Simplified Menu Structure & Role Personality Flow**
-- **🎯 Quick Start Option** - Get conversations running in seconds with sensible defaults
-- **🎭 Role Personality First Flow** - Choose personalities first, providers auto-selected
-- **⚙️ Streamlined Navigation** - Fewer menu levels for common use cases
-- **🎪 Enhanced Role Selection** - Direct access to scientist, philosopher, comedian, steel worker personas
-- **🚀 Three Setup Modes** - Quick Start, Role Personalities, or Advanced Setup to match your needs
 
 ### 🛠️ **Core Features**
 - **✨ Custom Role Creation** - Create fully customizable AI roles with user-defined settings
@@ -157,32 +148,31 @@ python chat_bridge.py
 
 You'll see beautiful colored menus guiding you through:
 
-### 🚀 Simplified Main Menu Options:
-1. **Quick Start - Default Conversation** - Start immediately with OpenAI vs Anthropic and default settings
-2. **Start with Role Personalities** - Choose scientist, philosopher, comedian, or steel worker first (providers auto-selected)
-3. **Advanced Setup** - Full configuration with provider and persona selection (original functionality)
-4. **Manage Roles & Personas** - Interactive roles.json configuration and persona creation
-5. **Test Provider Connectivity** - Diagnose and test AI provider connections
-6. **Exit** - Gracefully exit the application
+### 🚀 Main Menu Options (v1.3.0):
+1. **Start Conversation - Simple Setup (Step-by-step)** - New streamlined configuration flow
+2. **Manage Roles & Personas** - Interactive roles.json configuration and persona creation
+3. **Test Provider Connectivity** - Diagnose and test AI provider connections
+4. **Exit** - Gracefully exit the application
 
-### 💬 Conversation Flow Options:
+### 💬 Simple Setup Flow (New in v1.3.0):
 
-#### 🚀 Quick Start Flow:
-1. **Instant Setup** - Uses sensible defaults (OpenAI vs Anthropic)
-2. **Conversation Starter** - Enter your discussion topic
-3. **Live Conversation** - Watch the AI assistants converse immediately
+The new simplified turn-based configuration walks you through setting up each agent:
 
-#### 🎭 Role Personality Flow (New!):
-1. **Role Selection** - Choose personalities for both agents (scientist, philosopher, comedian, steel worker)
-2. **Auto Provider Assignment** - Providers automatically selected based on role preferences
-3. **Conversation Starter** - Enter your discussion topic
-4. **Live Conversation** - Watch personality-driven conversations
+#### 🎭 Agent A Configuration:
+1. **Step 1: Select Persona** - Choose from persona library or skip for defaults
+2. **Step 2: Select Provider** - Choose AI provider (OpenAI, Anthropic, Gemini, etc.)
+3. **Step 3: Select Model** - Choose from dynamically fetched available models
+4. **Step 4: Set Temperature** - Enter temperature (default: 0.6 for balanced responses)
 
-#### ⚙️ Advanced Setup Flow:
-1. **Provider Selection** - Choose AI providers for both agents
-2. **Persona Selection** - Optional personas from `roles.json` (Quick Modes, Full Library, or Skip)
-3. **Conversation Starter** - Enter your discussion topic
-4. **Live Conversation** - Watch the AI assistants converse with real-time streaming
+#### 🎭 Agent B Configuration:
+1. **Step 1: Select Persona** - Choose from persona library or skip for defaults
+2. **Step 2: Select Provider** - Choose AI provider (OpenAI, Anthropic, Gemini, etc.)
+3. **Step 3: Select Model** - Choose from dynamically fetched available models
+4. **Step 4: Set Temperature** - Enter temperature (default: 0.6 for balanced responses)
+
+#### 💬 Start Conversation:
+1. **Conversation Starter** - Enter your discussion topic
+2. **Live Conversation** - Watch the AI assistants converse with real-time streaming
 
 ### Command Line Mode
 

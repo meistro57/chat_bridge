@@ -611,6 +611,99 @@ async def fetch_openrouter_models(api_key: str) -> List[Dict]:
         return []
 
 
+async def fetch_available_models(provider_key: str) -> List[str]:
+    """Fetch available models for a given provider"""
+    logger = logging.getLogger("bridge")
+
+    try:
+        if provider_key == "openai":
+            api_key = _env("OPENAI_API_KEY")
+            if not api_key:
+                return ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]
+
+            url = "https://api.openai.com/v1/models"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(url, headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    models = [m["id"] for m in data.get("data", []) if m["id"].startswith(("gpt-", "o1-"))]
+                    return sorted(models, reverse=True) if models else ["gpt-4o-mini", "gpt-4o"]
+
+        elif provider_key == "anthropic":
+            # Anthropic doesn't have a models endpoint, return known models
+            return [
+                "claude-3-5-sonnet-20241022",
+                "claude-3-5-haiku-20241022",
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
+                "claude-3-haiku-20240307"
+            ]
+
+        elif provider_key == "gemini":
+            # Return known Gemini models
+            return [
+                "gemini-2.5-flash",
+                "gemini-2.0-flash-exp",
+                "gemini-1.5-pro-latest",
+                "gemini-1.5-flash-latest"
+            ]
+
+        elif provider_key == "deepseek":
+            # Return known DeepSeek models
+            return [
+                "deepseek-chat",
+                "deepseek-coder"
+            ]
+
+        elif provider_key == "ollama":
+            # Query Ollama for installed models
+            host = _env("OLLAMA_HOST") or "http://localhost:11434"
+            url = f"{host}/api/tags"
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        data = response.json()
+                        models = [m["name"] for m in data.get("models", [])]
+                        return models if models else ["llama3.1:8b-instruct", "mistral:latest"]
+            except:
+                logger.warning("Could not connect to Ollama, returning default models")
+                return ["llama3.1:8b-instruct", "llama3.1:latest", "mistral:latest", "phi3:latest"]
+
+        elif provider_key == "lmstudio":
+            # Query LM Studio for loaded models
+            base_url = _env("LMSTUDIO_BASE_URL") or "http://localhost:1234/v1"
+            url = f"{base_url}/models"
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(url)
+                    if response.status_code == 200:
+                        data = response.json()
+                        models = [m["id"] for m in data.get("data", [])]
+                        return models if models else ["lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF"]
+            except:
+                logger.warning("Could not connect to LM Studio, returning default model")
+                return ["lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF"]
+
+        elif provider_key == "openrouter":
+            api_key = _env("OPENROUTER_API_KEY")
+            if api_key:
+                models_data = await fetch_openrouter_models(api_key)
+                return [m["id"] for m in models_data] if models_data else ["openai/gpt-4o-mini"]
+            return ["openai/gpt-4o-mini", "anthropic/claude-3-5-sonnet"]
+
+        else:
+            logger.warning(f"Unknown provider: {provider_key}")
+            return []
+
+    except Exception as e:
+        logger.error(f"Error fetching models for {provider_key}: {e}")
+        # Return default model for the provider
+        spec = get_spec(provider_key)
+        return [spec.default_model] if spec else []
+
+
 def ensure_credentials(provider_key: str) -> Optional[str]:
     logger = logging.getLogger("bridge")
     spec = get_spec(provider_key)
@@ -700,6 +793,34 @@ class AgentRuntime:
     @property
     def identifier(self) -> str:
         return f"{self.provider_key}:{self.model}"
+
+    async def stream_reply(self, turns: List[Turn], mem_rounds: int) -> AsyncGenerator[str, None]:
+        """Stream a reply from the agent given conversation turns."""
+        # Limit conversation history
+        recent_turns = select_turns(turns, mem_rounds)
+
+        # Build messages and stream based on provider type
+        if self.spec.kind == "chatml":
+            messages = build_chatml(recent_turns, self.agent_id, self.system_prompt)
+            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+                yield chunk
+        elif self.spec.kind == "anthropic":
+            messages = build_anthropic(recent_turns, self.agent_id)
+            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+                yield chunk
+        elif self.spec.kind == "gemini":
+            messages = build_gemini(recent_turns, self.agent_id)
+            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+                yield chunk
+        elif self.spec.kind == "ollama":
+            messages = build_ollama(recent_turns, self.agent_id)
+            async for chunk in self.client.stream(messages, self.system_prompt, temperature=self.temperature, max_tokens=MAX_TOKENS):
+                yield chunk
+        else:
+            # Default to chatml for unknown types
+            messages = build_chatml(recent_turns, self.agent_id, self.system_prompt)
+            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+                yield chunk
 
     async def generate_response(self, prompt_text: str, mem_rounds: int) -> str:
         turns = [Turn(author="user", text=prompt_text)]
