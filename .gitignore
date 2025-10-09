@@ -51,6 +51,10 @@ chatlogs/*
 !chatlogs/2025-09-23_15-56-13__if-a-large-language-model-doesnt-actually-understand-words-the-way-humans-do-wha.md
 !chatlogs/2025-09-23_11-40-03__discover-how-to-have-three-ai-chatting-in-a-chat-environment-simultainiusly-just.md
 
+# Frontend dependencies
+node_modules/
+**/node_modules/
+
 # Backup files
 *.bak
 *.backup
