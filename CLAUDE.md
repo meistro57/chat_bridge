@@ -4,9 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter), custom persona management, real-time conversation streaming, and comprehensive logging/transcription. The project includes both CLI and web GUI interfaces.
+Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter), custom persona management, real-time conversation streaming, and comprehensive logging/transcription. The project now includes both **cyberpunk web GUI** and traditional CLI interfaces.
 
-## Development Commands
+## New In v1.4.0: Cyberpunk Web GUI 🎨⚡🤖
+
+Experience AI conversations like never before with the immersive cyberpunk web interface featuring:
+
+- **🌈 Futuristic Cyberpunk Design** - Neon aesthetics, particle effects, aurora backgrounds, and grid overlays
+- **⚡ Real-Time Streaming** - Watch AI responses appear live with ultra-low latency WebSocket connections  
+- **🎭 Advanced Persona System** - Choose from 32+ pre-built personas (Scientist, Philosopher, Comedian, etc.)
+- **🔄 Universal Provider Support** - All AI providers accessible through unified interface
+- **📱 Responsive Experience** - Perfect on desktop, tablet, and mobile devices
+- **🎨 Visual Feedback** - Connection status, typing indicators, and smooth animations
+- **⚙️ Deep Customization** - Temperature controls, max rounds, and conversation settings
 
 ### Python CLI Application
 
@@ -30,7 +40,7 @@ python chat_bridge.py  # Select option 3 from menu
 python certify.py
 ```
 
-### New in v1.3.0: Simplified Setup Flow
+### Previous In v1.3.0: Enhanced CLI Experience
 
 The CLI now features a streamlined step-by-step configuration:
 1. Select option 1 from main menu ("Start Conversation - Simple Setup")
@@ -105,7 +115,14 @@ python test_roles_debug.py
 - `POST /api/conversations` - Create conversation session
 - `WS /ws/conversations/{id}` - WebSocket for streaming messages
 
-**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with three-step setup wizard (persona selection → provider selection → conversation start), real-time chat interface with WebSocket streaming, and responsive design with dark mode.
+**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with **cyberpunk aesthetic**:
+- **🎨 Cyberpunk Design System**: Neon cyan/fuchsia/yellow color palette with glowing borders and effects
+- **✨ Particle Effects**: Animated floating particles throughout the interface
+- **🌈 Aurora Background**: Dynamic color-shifting aurora lighting effects  
+- **🔲 Cyber Grid**: Classic matrix-style animated grid overlay
+- **🎭 4-Step Setup Flow**: Persona → Provider → Settings → Start conversation wizard
+- **⚡ Real-Time Streaming**: WebSocket-powered live AI response streaming
+- **📱 Responsive Layout**: Adapts beautifully across all device sizes
 
 ### Provider System
 
@@ -332,13 +349,20 @@ Messages sent from server to client:
 }
 ```
 
-### Frontend Structure
+### Cyberpunk Frontend Structure
 
-- `src/App.tsx` - Main application component with step wizard
-- `src/components/` - React components for chat UI and setup
-- `src/types/` - TypeScript type definitions
-- `tailwind.config.js` - Tailwind CSS configuration
-- `vite.config.ts` - Build configuration
+- `src/App.tsx` - Main cyberpunk application with particle effects, aurora backgrounds, and 4-step setup flow
+- `src/types/` - TypeScript interfaces for Personas, Messages, and WebSocket data structures  
+- `tailwind.config.js` - Tailwind CSS with custom cyberpunk color scheme and animations
+- `vite.config.ts` - Vite build configuration optimized for cyberpunk visual assets
+
+**💡 Cyberpunk Design Features:**
+- **Particle System**: Floating animated particles with cyan glow effects
+- **Aurora Effects**: Dynamic color-shifting background gradients
+- **Grid Overlay**: Animated matrix-style grid with perspective transforms  
+- **Neon Borders**: Glowing clip-path borders on all interactive elements
+- **Cyber Animations**: Pulsing effects, scan lines, and smooth transitions
+- **Color Palette**: Cyan (#00ffff), fuchsia (#ff00ff), yellow (#ffff00), and black backgrounds
 
 ## Known Issues and Limitations
 
@@ -347,7 +371,7 @@ Messages sent from server to client:
 - **LM Studio**: Requires manual server startup and model loading
 - **Long conversations**: Token limits vary by provider (OpenAI 128k, Anthropic 200k, Gemini 1M context)
 - **Stop words**: Case-sensitive matching; lowercase recommended
-- **Web GUI**: Currently under active development, CLI is more feature-complete
+- **Web GUI**: Fully functional cyberpunk interface with all features implemented - real-time streaming, persona selection, provider flexibility, and beautiful aesthetic
 
 ## Code Style Notes
 

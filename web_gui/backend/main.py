@@ -164,29 +164,15 @@ class PersonaManager:
         return self.persona_library.get(persona_key)
 
     def get_available_personas(self) -> Dict[str, Dict]:
-        """Get available personas in API format"""
+        """Get available personas in API format - personas are provider-agnostic"""
         available: Dict[str, Dict] = {}
         for key, persona in self.persona_library.items():
-            try:
-                spec = get_spec(persona.provider)
-            except KeyError:
-                logger.warning("Skipping persona %s due to unknown provider '%s'", key, persona.provider)
-                continue
-
-            if spec.needs_key and not os.getenv(spec.key_env or ""):
-                logger.info(
-                    "Skipping persona %s because %s credentials (%s) are not configured",
-                    key,
-                    spec.label,
-                    spec.key_env,
-                )
-                continue
-
+            # Since personas are now provider-agnostic, we return all of them
+            # Provider selection happens at conversation creation time
             available[key] = {
                 "id": key,
                 "name": persona.name,
-                "provider": persona.provider,
-                "description": f"AI persona using {persona.provider}",
+                "description": "AI persona available with any provider",
                 "system_preview": persona.system_prompt[:100] + "..." if len(persona.system_prompt) > 100 else persona.system_prompt,
             }
 
@@ -223,6 +209,9 @@ async def get_providers():
 @app.get("/api/personas")
 async def get_personas():
     """Get available persona configurations"""
+    # Ensure personas are loaded if not already
+    if not persona_manager.persona_library:
+        persona_manager.persona_library = persona_manager.load_personas_from_config()
     return {"personas": list(persona_manager.get_available_personas().values())}
 
 @app.post("/api/conversations", response_model=dict)
@@ -394,4 +383,7 @@ async def load_persona_configurations():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("🚀 Starting Chat Bridge Web Backend on http://0.0.0.0:8000")
+    print("📁 Loaded personas from roles.json")
+    print("⏹️  Press Ctrl+C to stop the server")
+    uvicorn.run("web_gui.backend.main:app", host="0.0.0.0", port=8000, log_level="info")

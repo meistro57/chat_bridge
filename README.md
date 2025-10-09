@@ -1,16 +1,35 @@
-# 🌉 Chat Bridge - Unified Edition
+# 🌉 Chat Bridge - Unified Edition: Cyberpunk Web GUI 🎨⚡🤖
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
-A beautiful, interactive chat bridge that connects two AI assistants with colorful menus and enhanced user experience! Watch AI assistants converse while everything is logged with comprehensive transcripts and SQLite storage.
+A beautiful, interactive chat bridge that connects two AI assistants with **cyberpunk web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in Version 1.3.0
+## ✨ What's New in Version 1.4.0 **Cyberpunk Web GUI Edition** 🎨⚡🤖
 
-### 🎯 **Major UI Overhaul - Simplified Turn-Based Setup**
-- **📋 Step-by-Step Configuration** - New simplified turn-based flow for configuring each agent
-- **🎭 Persona First** - Select persona → provider → model → temperature for each agent sequentially
-- **🌡️ Temperature Default Changed** - Now defaults to 0.6 (more balanced) instead of 0.7
-- **🎯 Cleaner Main Menu** - Reduced from 6 options to 4 for better focus
-- **⚡ Single Setup Mode** - One intuitive flow replaces multiple setup modes
-- **🔌 Dynamic Model Queries** - Models fetched in real-time from OpenAI, Ollama, LM Studio, and OpenRouter
+### 🌈 **Cyberpunk Web GUI - Live Streaming AI Conversations**
+- **🎭 Intimate 4-Step Setup**: Persona → Provider → Settings → Start flow
+- **⚡ Real-Time Streaming**: Watch AI responses appear live as they're generated
+- **🎨 Cyberpunk Aesthetic**: Futuristic neon Cyberpunk 2077-style interface with particle effects, aurora backgrounds, and glow effects
+- **🏙️ Immersive Experience**: Animated grid overlay, floating particles, aurora effects, and responsive cyberpunk design
+- **🎯 Dual Provider Selection**: Choose any combination of AI providers (OpenAI, Anthropic, Gemini, OpenRouter, etc.)
+- **🌡️ Advanced Controls**: Adjustable max rounds, temperature settings per agent
+- **🔄 Instant Conversations**: Click⚡ to launch WebSocket-streaming AI dialogues
+- **📱 Modern Interface**: React + TypeScript + Tailwind CSS for smooth, professional experience
+- **🎪 Modal Persona Selection**: Interactive persona selection with descriptions and previews
+- **📊 Live Status**: Real-time connection indicators and typing animations
+- **🎨 Neon Color Scheme**: Cyan, fuchsia, yellow neon accents throughout
+
+### 🚀 **Multiple Interface Options**
+- **🌐 Web GUI**: Modern browser interface (recommended for visual experience)
+- **💻 CLI Mode**: Traditional command-line interface (always reliable)
+- **🔌 Hybrid**: Switch between interfaces based on your needs
+
+### 📝 **Enhanced Cyberpunk Features**
+- **Particle Effects**: Animated floating elements throughout the interface
+- **Grid Overlay**: Classic cyberpunk matrix-style background animation
+- **Aurora Background**: Dynamic color-shifting aurora effects
+- **Glowing Borders**: Neon clip-path borders on all interactive elements
+- **Responsive Design**: Adapts beautifully to desktop, tablet, and mobile
+- **WebSocket Streaming**: Ultra-fast real-time message delivery
+- **Visual Feedback**: Typing indicators, connection status, hover effects
 
 ### 📝 **Enhanced Transcript Features**
 - **🔢 Round Markers** - Conversation turns now include visible round numbers in transcripts for easy tracking
@@ -41,6 +60,34 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 
 ## 🚀 Quick Start
 
+### 🌐 **Web GUI (Cyberpunk Experience) - Recommended**
+
+The new cyberpunk web interface provides an immersive AI conversation experience:
+
+```bash
+# Start the backend server
+cd web_gui/backend
+python main.py
+
+# In a new terminal, start the frontend
+cd web_gui/frontend  
+npm install
+npm run dev
+
+# Open browser: http://localhost:5173
+# Follow the 4-step setup: Persona → Provider → Settings → Start
+```
+
+**🌟 Cyberpunk GUI Features:**
+- **🎨 Neon Aesthetic**: Cyberpunk 2077-inspired design with particles, aurora effects, and glowing borders
+- **⚡ Live Streaming**: Watch AI responses appear in real-time as they're generated
+- **🎭 32 Personas**: Scientist, Philosopher, Comedian, Steel Worker, and many more
+- **🚀 Multiple Providers**: OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio
+- **🌡️ Advanced Controls**: Temperature, max rounds, and conversation settings
+- **📱 Responsive**: Works perfectly on desktop, tablet, and mobile devices
+
+### 💻 **CLI Interface (Traditional)**
+
 **Option 1: Interactive Launcher (Recommended)**
 ```bash
 python launch.py
@@ -56,7 +103,7 @@ python roles_manager.py
 python chat_bridge.py
 ```
 
-**Option 3: Command Line**
+**Option 4: Command Line**
 ```bash
 python chat_bridge.py --provider-a openai --provider-b anthropic --starter "What is consciousness?"
 ```
@@ -98,49 +145,41 @@ Comprehensive automated testing and certification system for validating the enti
 
 ## Requirements
 
-- Python 3.10 or newer.
-- Dependencies: `httpx`, `python-dotenv`, `google-generativeai` (install via `pip install httpx python-dotenv google-generativeai`).
-- API keys for whichever cloud providers you plan to use.
-  - `OPENAI_API_KEY` for OpenAI.
-  - `ANTHROPIC_API_KEY` for Anthropic.
-  - `GEMINI_API_KEY` for Gemini.
-  - `DEEPSEEK_API_KEY` for DeepSeek.
-- Local endpoints for on-device models (optional):
-  - Ollama running on `http://localhost:11434` (override with `OLLAMA_HOST`).
-  - LM Studio's OpenAI-compatible server on `http://localhost:1234/v1`
-    (override with `LMSTUDIO_BASE_URL`).
+**For CLI (Python only):**
+- Python 3.10 or newer
+- Dependencies: `httpx`, `python-dotenv`, `google-generativeai`, `inquirer` (install via `pip install -r requirements.txt`)
 
-Set provider-specific default models with environment variables such as
-`OPENAI_MODEL`, `ANTHROPIC_MODEL`, `GEMINI_MODEL`, `DEEPSEEK_MODEL`, `OLLAMA_MODEL`, or
-`LMSTUDIO_MODEL`. You can also target particular agents with `BRIDGE_MODEL_A` and
-`BRIDGE_MODEL_B`, plus override system prompts with `BRIDGE_SYSTEM_A` /
-`BRIDGE_SYSTEM_B`.
+**For Web GUI (Full Experience):**
+- All Python requirements above
+- **Web GUI Backend**: `fastapi`, `uvicorn[standard]`, `websockets`, `pydantic` (install via `pip install -r web_gui/backend/requirements.txt`)
+- **Web GUI Frontend**: Node.js 16+, npm (install via `cd web_gui/frontend && npm install`)
+- **Web GUI Build**: Modern browser with WebSocket support
 
-## Setup
+### API Keys Setup
 
-1. Clone the repository.
-2. (Optional) create and activate a virtual environment.
-3. Install dependencies:
-   ```bash
-   pip install httpx python-dotenv google-generativeai
-   ```
-4. Create a `.env` file alongside the scripts and add your secrets:
-   ```bash
-   OPENAI_API_KEY=sk-...
-   ANTHROPIC_API_KEY=ak-...
-   GEMINI_API_KEY=gm-...
-   DEEPSEEK_API_KEY=sk-...
-   # Optional local hosts / model overrides
-   OLLAMA_HOST=http://localhost:11434
-   LMSTUDIO_BASE_URL=http://localhost:1234/v1
-   DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-   OPENAI_MODEL=gpt-4o-mini
-   ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
-   GEMINI_MODEL=gemini-2.5-flash
-   DEEPSEEK_MODEL=deepseek-chat
-   OLLAMA_MODEL=llama3.1:8b-instruct
-   LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
-   ```
+Create a `.env` file in the project root with your API keys:
+
+```bash
+# Primary API Keys (OpenRouter recommended for Web GUI)
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENAI_API_KEY=sk-proj-...
+ANTHROPIC_API_KEY=sk-ant-...
+GEMINI_API_KEY=AIza...
+DEEPSEEK_API_KEY=sk-...
+
+# Model Configuration
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENAI_MODEL=gpt-4o-mini
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+GEMINI_MODEL=gemini-2.5-flash
+DEEPSEEK_MODEL=deepseek-chat
+
+# Local Model Hosts (optional)
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b-instruct
+LMSTUDIO_BASE_URL=http://localhost:1234/v1
+LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
+```
 
 ## Running the Bridge
 
