@@ -246,7 +246,7 @@ class TestLogging(unittest.TestCase):
         bridge_logger, session_logger = chat_bridge.setup_logging()
 
         self.assertEqual(bridge_logger.name, "bridge")
-        self.assertEqual(bridge_logger.level, 20)  # INFO level
+        self.assertEqual(bridge_logger.level, 10)  # DEBUG level
         self.assertEqual(session_logger.name, "session")
 
     def test_setup_session_logger(self):
