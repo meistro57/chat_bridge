@@ -160,10 +160,24 @@ class OpenAIChat:
                     logger.debug(f"OpenAI response status: {r.status_code}")
 
                     if r.status_code != 200:
-                        error_text = await r.aread() if hasattr(r, 'aread') else "Unknown error"
-                        logger.error(f"OpenAI API error {r.status_code}: {error_text}")
+                        error_text = await r.aread() if hasattr(r, 'aread') else b"Unknown error"
+                        error_str = error_text.decode('utf-8') if isinstance(error_text, bytes) else str(error_text)
+                        logger.error(f"OpenAI API error {r.status_code}: {error_str}")
                         logger.error(f"Request URL: {self.url}")
                         logger.error(f"Request payload: {json.dumps(payload, indent=2)}")
+
+                        # Check for OpenRouter-specific errors
+                        if "openrouter.ai" in self.url and r.status_code == 404:
+                            try:
+                                error_data = json.loads(error_str)
+                                error_msg = error_data.get("error", {}).get("message", "")
+                                if "providers have been ignored" in error_msg.lower():
+                                    logger.error("OpenRouter provider filtering detected")
+                                    logger.error(f"Model attempted: {self.model}")
+                                    logger.error("This model's provider is blocked in your OpenRouter settings")
+                                    logger.error("Fix: Visit https://openrouter.ai/settings/preferences to adjust provider filters")
+                            except json.JSONDecodeError:
+                                pass
 
                     r.raise_for_status()
                     req_id = r.headers.get("x-request-id") or r.headers.get("request-id")
@@ -198,6 +212,23 @@ class OpenAIChat:
             logger.error(f"OpenAI HTTP error: {http_error}")
             logger.error(f"Response status: {http_error.response.status_code}")
             logger.error(f"Response text: {http_error.response.text}")
+
+            # Provide user-friendly error message for OpenRouter provider filtering
+            if "openrouter.ai" in self.url and http_error.response.status_code == 404:
+                try:
+                    error_data = json.loads(http_error.response.text)
+                    error_msg = error_data.get("error", {}).get("message", "")
+                    if "providers have been ignored" in error_msg.lower():
+                        raise RuntimeError(
+                            f"OpenRouter Error: The provider for model '{self.model}' is blocked in your account settings.\n"
+                            f"To fix this:\n"
+                            f"1. Visit https://openrouter.ai/settings/preferences\n"
+                            f"2. Adjust your 'Ignored Providers' settings\n"
+                            f"3. Ensure the provider for '{self.model}' is enabled"
+                        ) from http_error
+                except (json.JSONDecodeError, KeyError):
+                    pass
+
             raise
         except Exception as unexpected_error:
             logger.error(f"Unexpected OpenAI error: {unexpected_error}", exc_info=True)
