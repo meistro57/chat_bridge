@@ -1088,7 +1088,7 @@ def load_roles_file(roles_path: Optional[str]) -> Optional[Dict]:
 
 def validate_persona_config(persona_config: Dict, persona_name: str = "unknown") -> None:
     """Validate persona configuration against required schema"""
-    required_fields = ['name', 'provider']
+    required_fields = ['name']
 
     for field in required_fields:
         if field not in persona_config:
@@ -1103,8 +1103,10 @@ def validate_persona_config(persona_config: Dict, persona_name: str = "unknown")
     if not isinstance(persona_config.get('name'), str) or not persona_config['name'].strip():
         raise TypeError(f"Persona '{persona_name}': 'name' must be non-empty string")
 
-    if not isinstance(persona_config.get('provider'), str) or not persona_config['provider'].strip():
-        raise TypeError(f"Persona '{persona_name}': 'provider' must be non-empty string")
+    # Provider is optional - if present, validate it
+    if 'provider' in persona_config and persona_config['provider'] is not None:
+        if not isinstance(persona_config['provider'], str) or not persona_config['provider'].strip():
+            raise TypeError(f"Persona '{persona_name}': 'provider' must be non-empty string or null")
 
     if not isinstance(persona_config.get('system'), str) or not persona_config['system'].strip():
         raise TypeError(f"Persona '{persona_name}': 'system' must be non-empty string")
@@ -1157,7 +1159,9 @@ def validate_roles_schema(roles_data: Dict, skip_broken_personas: bool = True) -
         if not isinstance(roles_data['persona_library'], dict):
             raise TypeError("persona_library must be object")
 
-        for persona_name, persona_config in roles_data['persona_library'].items():
+        # Create a list of personas to iterate over (avoid modifying dict during iteration)
+        personas_to_check = list(roles_data['persona_library'].items())
+        for persona_name, persona_config in personas_to_check:
             try:
                 validate_persona_config(persona_config, persona_name)
             except (ValueError, TypeError) as e:
@@ -1173,11 +1177,15 @@ def validate_roles_schema(roles_data: Dict, skip_broken_personas: bool = True) -
 
 def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: Optional[Dict]) -> tuple[AgentRuntime, Optional[float]]:
     """Apply persona from roles data if specified, returns (agent, custom_temperature)"""
+    bridge_logger = logging.getLogger("bridge")
+
     if not persona_key or not roles_data or 'persona_library' not in roles_data:
+        bridge_logger.debug(f"Skipping persona application for agent {agent.agent_id}: persona_key={persona_key}")
         return agent, None
 
     persona = roles_data['persona_library'].get(persona_key)
     if not persona:
+        bridge_logger.warning(f"Persona '{persona_key}' not found in library for agent {agent.agent_id}")
         return agent, None
 
     try:
@@ -1189,17 +1197,24 @@ def apply_persona(agent: AgentRuntime, persona_key: Optional[str], roles_data: O
 
     # Update agent with persona settings
     try:
+        old_prompt_len = len(agent.system_prompt) if agent.system_prompt else 0
         if persona.get('system'):
             agent.system_prompt = persona['system']
             if persona.get('guidelines'):
                 guidelines_text = "\n".join(f"• {g}" for g in persona['guidelines'])
                 agent.system_prompt += f"\n\nGuidelines:\n{guidelines_text}"
+
+            new_prompt_len = len(agent.system_prompt)
+            bridge_logger.info(f"Applied persona '{persona_key}' to agent {agent.agent_id}: system_prompt changed from {old_prompt_len} to {new_prompt_len} chars")
+            bridge_logger.debug(f"New system_prompt preview for agent {agent.agent_id}: {agent.system_prompt[:150]}...")
     except Exception as e:
         print_warning(f"Error updating system prompt for persona '{persona_key}': {e}")
         return agent, None
 
     # Return custom temperature if specified in persona
     custom_temp = persona.get('temperature')
+    if custom_temp is not None:
+        bridge_logger.info(f"Persona '{persona_key}' specifies custom temperature: {custom_temp}")
     return agent, custom_temp
 
 
@@ -1307,12 +1322,12 @@ def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
 
     while True:
         print_info(f"Current persona: {persona_key}")
-        print(f"Provider: {colorize(persona_data['provider'], Colors.BLUE)}")
+        print(f"Provider: {colorize(persona_data.get('provider', 'not set'), Colors.BLUE)}")
         print(f"Model: {colorize(str(persona_data.get('model', 'default')), Colors.CYAN)}")
-        print(f"System: {persona_data['system'][:100]}...")
+        print(f"System: {persona_data.get('system', 'not set')[:100]}...")
         print(f"Guidelines: {len(persona_data.get('guidelines', []))} items")
         if persona_data.get('notes'):
-            print(f"Notes: {persona_data['notes'][:50]}...")
+            print(f"Notes: {persona_data.get('notes', '')[:50]}...")
 
         choice = select_from_menu(options, "Edit Option")
         if not choice:
@@ -1321,7 +1336,7 @@ def edit_persona(persona_key: str, persona_data: Dict) -> Optional[Dict]:
 
         if choice == "1":  # Edit system prompt
             print_info("Current system prompt:")
-            print(persona_data['system'])
+            print(persona_data.get('system', 'not set'))
             new_system = get_user_input("New system prompt (or Enter to keep current): ")
             if new_system.strip():
                 persona_data['system'] = new_system.strip()

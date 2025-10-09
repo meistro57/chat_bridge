@@ -345,6 +345,11 @@ class AnthropicChat:
     ) -> AsyncGenerator[str, None]:
         logger = logging.getLogger("bridge")
         logger.debug(f"Anthropic request: model={self.model}, messages={len(messages_for_claude)}, temp={temperature}")
+        if system_prompt:
+            logger.debug(f"Anthropic system_prompt length: {len(system_prompt)} chars")
+            logger.debug(f"Anthropic system_prompt preview: {system_prompt[:100]}...")
+        else:
+            logger.warning("No system_prompt provided to Anthropic")
 
         try:
             async for piece in self._stream_messages(system_prompt, messages_for_claude, temperature, max_tokens):
@@ -411,7 +416,21 @@ class GeminiChat:
         logger = logging.getLogger("bridge")
         logger.debug(f"Gemini request: model={self.model}, contents={len(contents)}, temp={temperature}")
 
+        # Log system instruction for debugging
+        if system_instruction:
+            logger.debug(f"Gemini system_instruction length: {len(system_instruction)} chars")
+            logger.debug(f"Gemini system_instruction preview: {system_instruction[:100]}...")
+        else:
+            logger.warning("No system_instruction provided to Gemini")
+
         try:
+            # Create model with system_instruction
+            model_with_system = genai.GenerativeModel(
+                model_name=self.model,
+                system_instruction=system_instruction if system_instruction else None
+            )
+            logger.debug(f"Created Gemini model with system_instruction")
+
             # Convert contents to Gemini format
             history = []
             current_message = None
@@ -443,8 +462,8 @@ class GeminiChat:
 
             # Create chat session
             try:
-                chat = self.client.start_chat(history=history)
-                logger.debug("Gemini chat session created successfully")
+                chat = model_with_system.start_chat(history=history)
+                logger.debug("Gemini chat session created successfully with system_instruction")
             except Exception as chat_error:
                 logger.error(f"Failed to create Gemini chat session: {chat_error}")
                 logger.error(f"History length: {len(history)}")
@@ -535,6 +554,10 @@ class OllamaChat:
         }
         if system_prompt:
             payload["system"] = system_prompt
+            logger.debug(f"Ollama system_prompt length: {len(system_prompt)} chars")
+            logger.debug(f"Ollama system_prompt preview: {system_prompt[:100]}...")
+        else:
+            logger.warning("No system_prompt provided to Ollama")
 
         url = f"{self.base}/api/chat"
         logger.debug(f"Ollama request: {url}, model={self.model}, messages={len(messages)}")
@@ -765,9 +788,13 @@ def select_turns(turns: Iterable[Turn], mem_rounds: int) -> List[Turn]:
 
 
 def build_chatml(turns: List[Turn], agent_id: str, system_prompt: str) -> List[Dict[str, str]]:
+    logger = logging.getLogger("bridge")
     messages: List[Dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
+        logger.debug(f"ChatML: Added system prompt ({len(system_prompt)} chars) for agent {agent_id}")
+    else:
+        logger.warning(f"ChatML: No system prompt provided for agent {agent_id}")
     for turn in turns:
         role = "assistant" if turn.author == agent_id else "user"
         messages.append({"role": role, "content": turn.text})
