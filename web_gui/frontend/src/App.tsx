@@ -39,15 +39,34 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start conversation');
+        let message = 'Failed to start conversation';
+        const clonedResponse = response.clone();
+        try {
+          const errorBody = await clonedResponse.json();
+          if (errorBody && typeof errorBody.detail === 'string') {
+            message = errorBody.detail;
+          }
+        } catch (parseError) {
+          try {
+            const text = await response.text();
+            if (text) {
+              message = text;
+            }
+          } catch {
+            // Ignore secondary parsing errors
+          }
+        }
+
+        throw new Error(message);
       }
 
       const data: ConversationResponse = await response.json();
       setConversationId(data.conversation_id);
       setSetupComplete(true);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to start conversation';
       console.error('Failed to start conversation:', error);
-      alert('Failed to start conversation. Please try again.');
+      alert(message);
     }
   };
 
