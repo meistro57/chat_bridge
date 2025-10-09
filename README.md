@@ -1,32 +1,34 @@
-# 🌉 Chat Bridge - Unified Edition: Cyberpunk Web GUI 🎨⚡🤖
+# 🌉 Chat Bridge - Unified Edition: Windows 95-Style Retro edition 🎨⚡🤖
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
-A beautiful, interactive chat bridge that connects two AI assistants with **cyberpunk web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
+A beautiful, interactive chat bridge that connects two AI assistants with **retro Windows 95-style web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
 
-## ✨ What's New in Version 1.4.0 **Cyberpunk Web GUI Edition** 🎨⚡🤖
+## ✨ What's New in Version 1.4.0 **Windows 95-Style Retro Edition** 🎨⚡🤖
 
-### 🌈 **Cyberpunk Web GUI - Live Streaming AI Conversations**
+### 🌈 **Windows 95-Style Retro Web GUI - Nostalgic AI Conversations**
 - **🎭 Intimate 4-Step Setup**: Persona → Provider → Settings → Start flow
 - **⚡ Real-Time Streaming**: Watch AI responses appear live as they're generated
-- **🎨 Cyberpunk Aesthetic**: Futuristic neon Cyberpunk 2077-style interface with particle effects, aurora backgrounds, and glow effects
-- **🏙️ Immersive Experience**: Animated grid overlay, floating particles, aurora effects, and responsive cyberpunk design
+- **🎨 Retro Computing Aesthetic**: Classic Windows 95/98-inspired interface with beveled buttons, classic color schemes, and throwback design
+- **🏙️ Immersive Experience**: Window-like interface, scrollbars, and vintage computer styling
 - **🎯 Dual Provider Selection**: Choose any combination of AI providers (OpenAI, Anthropic, Gemini, OpenRouter, etc.)
 - **🌡️ Advanced Controls**: Adjustable max rounds, temperature settings per agent
 - **🔄 Instant Conversations**: Click⚡ to launch WebSocket-streaming AI dialogues
 - **📱 Modern Interface**: React + TypeScript + Tailwind CSS for smooth, professional experience
 - **🎪 Modal Persona Selection**: Interactive persona selection with descriptions and previews
 - **📊 Live Status**: Real-time connection indicators and typing animations
-- **🎨 Neon Color Scheme**: Cyan, fuchsia, yellow neon accents throughout
+- **🎨 Classic Color Scheme**: Windows 95 grays, blues, and system colors throughout
+- **⚡ Quick Startup Script**: New `start_web_gui.sh` for easy single-command startup
 
 ### 🚀 **Multiple Interface Options**
 - **🌐 Web GUI**: Modern browser interface (recommended for visual experience)
 - **💻 CLI Mode**: Traditional command-line interface (always reliable)
 - **🔌 Hybrid**: Switch between interfaces based on your needs
 
-### 📝 **Enhanced Cyberpunk Features**
-- **Particle Effects**: Animated floating elements throughout the interface
-- **Grid Overlay**: Classic cyberpunk matrix-style background animation
-- **Aurora Background**: Dynamic color-shifting aurora effects
-- **Glowing Borders**: Neon clip-path borders on all interactive elements
+### 📝 **Enhanced Windows 95-Style Features**
+- **Window-Like Menus**: Classic window management with title bars and buttons
+- **3D Button Effects**: Outset/inset button styling for authentic retro feel
+- **Scrollbar Styling**: Classic gray scrollbars throughout the interface
+- **Bubble Messages**: Vintage chat bubble design with Win95 colors
+- **Animated Elements**: Pulsing status indicators and smooth transitions
 - **Responsive Design**: Adapts beautifully to desktop, tablet, and mobile
 - **WebSocket Streaming**: Ultra-fast real-time message delivery
 - **Visual Feedback**: Typing indicators, connection status, hover effects
@@ -60,11 +62,15 @@ A beautiful, interactive chat bridge that connects two AI assistants with **cybe
 
 ## 🚀 Quick Start
 
-### 🌐 **Web GUI (Cyberpunk Experience) - Recommended**
+### 🌐 **Web GUI (Retro Computing Experience) - Recommended**
 
-The new cyberpunk web interface provides an immersive AI conversation experience:
+The new Windows 95-style web interface provides a nostalgic AI conversation experience:
 
 ```bash
+# Quick startup (recommended)
+./start_web_gui.sh
+
+# Or manual startup:
 # Start the backend server
 cd web_gui/backend
 python main.py
@@ -78,8 +84,8 @@ npm run dev
 # Follow the 4-step setup: Persona → Provider → Settings → Start
 ```
 
-**🌟 Cyberpunk GUI Features:**
-- **🎨 Neon Aesthetic**: Cyberpunk 2077-inspired design with particles, aurora effects, and glowing borders
+**🌟 Windows 95-Style GUI Features:**
+- **🎨 Retro Aesthetic**: Classical Windows 95/98-inspired design with beveled buttons, classic colors, and window-like interface
 - **⚡ Live Streaming**: Watch AI responses appear in real-time as they're generated
 - **🎭 32 Personas**: Scientist, Philosopher, Comedian, Steel Worker, and many more
 - **🚀 Multiple Providers**: OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio

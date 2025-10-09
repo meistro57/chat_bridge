@@ -78,40 +78,63 @@ class Conversation:
     def initialize_agents(self) -> None:
         """Initialize AI agents for the conversation.
 
+        Applies persona configurations if provided in the request.
+
         Raises:
             RuntimeError: If the provider configuration is invalid or
                 required credentials are missing.
         """
+        global persona_manager
 
-        # Resolve models
-        model_a = resolve_model(self.request.provider_a, None)
-        model_b = resolve_model(self.request.provider_b, None)
+        # Resolve configurations for Agent A
+        persona_a_config = persona_manager.persona_library.get(self.request.persona_a) if self.request.persona_a else None
+        if persona_a_config:
+            provider_a = persona_a_config.provider if persona_a_config.provider else self.request.provider_a
+            temp_a = persona_a_config.temperature if persona_a_config.temperature else self.request.temperature_a
+            model_a = resolve_model(provider_a, persona_a_config.model)
+            system_a = persona_a_config.system_prompt if persona_a_config.system_prompt else get_spec(provider_a).default_system
+        else:
+            provider_a = self.request.provider_a
+            temp_a = self.request.temperature_a
+            model_a = resolve_model(provider_a, None)
+            system_a = get_spec(provider_a).default_system
+
+        # Resolve configurations for Agent B
+        persona_b_config = persona_manager.persona_library.get(self.request.persona_b) if self.request.persona_b else None
+        if persona_b_config:
+            provider_b = persona_b_config.provider if persona_b_config.provider else self.request.provider_b
+            temp_b = persona_b_config.temperature if persona_b_config.temperature else self.request.temperature_b
+            model_b = resolve_model(provider_b, persona_b_config.model)
+            system_b = persona_b_config.system_prompt if persona_b_config.system_prompt else get_spec(provider_b).default_system
+        else:
+            provider_b = self.request.provider_b
+            temp_b = self.request.temperature_b
+            model_b = resolve_model(provider_b, None)
+            system_b = get_spec(provider_b).default_system
 
         # Ensure credentials (raises RuntimeError when missing)
-        ensure_credentials(self.request.provider_a)
-        ensure_credentials(self.request.provider_b)
+        ensure_credentials(provider_a)
+        ensure_credentials(provider_b)
 
-        # Create agents
+        # Create agents with applied configurations
         self.agent_a = create_agent(
             "A",
-            self.request.provider_a,
+            provider_a,
             model_a,
-            self.request.temperature_a,
-            get_spec(self.request.provider_a).default_system,
+            temp_a,
+            system_a,
         )
 
         self.agent_b = create_agent(
             "B",
-            self.request.provider_b,
+            provider_b,
             model_b,
-            self.request.temperature_b,
-            get_spec(self.request.provider_b).default_system,
+            temp_b,
+            system_b,
         )
 
         logger.info(
-            "Agents initialized: %s vs %s",
-            self.request.provider_a,
-            self.request.provider_b,
+            f"Agents initialized with personas {self.request.persona_a or 'default'} vs {self.request.persona_b or 'default'}"
         )
 
 class PersonaManager:
@@ -280,44 +303,67 @@ async def websocket_conversation(websocket: WebSocket, conversation_id: str):
         # Start conversation loop
         current_agent = conversation.agent_a
         agent_name = "agent_a"
+        turn_counter = 0
 
-        while conversation.active and len(conversation.messages) < conversation.request.max_rounds * 2:  # *2 because each round has 2 messages
+        while conversation.active and turn_counter < conversation.request.max_rounds:
             try:
-                # Get last message as context
-                context = [msg.content for msg in conversation.messages[-5:]]  # Last 5 messages for context
+                turn_counter += 1
 
-                # Generate response
-                response = await current_agent.generate_response(
+                # Agent A response
+                context = [msg.content for msg in conversation.messages[-conversation.request.mem_rounds:]]
+                response_a = await current_agent.generate_response(
                     " ".join(context),
-                    conversation.request.mem_rounds # Pass mem_rounds
+                    conversation.request.mem_rounds
                 )
-
-                # Create and add message
-                message = Message(
-                    content=response,
-                    sender=agent_name,
+                message_a = Message(
+                    content=response_a,
+                    sender="agent_a",
                     timestamp=datetime.now(),
-                    persona=getattr(conversation.request, f'persona_{agent_name[-1]}', None)
+                    persona=getattr(conversation.request, f'persona_a', None)
                 )
-                conversation.messages.append(message)
-
-                # Send to websocket
+                conversation.messages.append(message_a)
                 await websocket.send_json({
                     "type": "message",
                     "data": {
-                        "content": response,
-                        "sender": agent_name,
-                        "timestamp": message.timestamp.isoformat(),
-                        "persona": message.persona
+                        "content": response_a,
+                        "sender": "agent_a",
+                        "timestamp": message_a.timestamp.isoformat(),
+                        "persona": message_a.persona
                     }
                 })
 
-                # Switch agents
-                current_agent = conversation.agent_b if current_agent == conversation.agent_a else conversation.agent_a
-                agent_name = "agent_b" if agent_name == "agent_a" else "agent_a"
+                await asyncio.sleep(0.05)
 
-                # Small delay to allow streaming effect
-                await asyncio.sleep(0.1)
+                # Agent B response
+                current_agent = conversation.agent_b
+                agent_name = "agent_b"
+                context = [msg.content for msg in conversation.messages[-conversation.request.mem_rounds:]]
+                response_b = await current_agent.generate_response(
+                    " ".join(context),
+                    conversation.request.mem_rounds
+                )
+                message_b = Message(
+                    content=response_b,
+                    sender="agent_b",
+                    timestamp=datetime.now(),
+                    persona=getattr(conversation.request, f'persona_b', None)
+                )
+                conversation.messages.append(message_b)
+                await websocket.send_json({
+                    "type": "message",
+                    "data": {
+                        "content": response_b,
+                        "sender": "agent_b",
+                        "timestamp": message_b.timestamp.isoformat(),
+                        "persona": message_b.persona
+                    }
+                })
+
+                await asyncio.sleep(0.05)
+
+                # Switch back to A for next round
+                current_agent = conversation.agent_a
+                agent_name = "agent_a"
 
             except Exception as e:
                 logger.error(f"Error in conversation loop: {e}")

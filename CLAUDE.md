@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter), custom persona management, real-time conversation streaming, and comprehensive logging/transcription. The project now includes both **cyberpunk web GUI** and traditional CLI interfaces.
+Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter), custom persona management, real-time conversation streaming, and comprehensive logging/transcription. The project now includes both **Windows 95-style retro web GUI** and traditional CLI interfaces.
 
-## New In v1.4.0: Cyberpunk Web GUI 🎨⚡🤖
+## New In v1.4.0: Windows 95-Style Retro Web GUI 🎨⚡🤖
 
-Experience AI conversations like never before with the immersive cyberpunk web interface featuring:
+Experience AI conversations like never before with the immersive Windows 95-style retro web interface featuring:
 
-- **🌈 Futuristic Cyberpunk Design** - Neon aesthetics, particle effects, aurora backgrounds, and grid overlays
+- **🌈 Nostalgic Windows Aesthetic** - Classic 95/98-style interface with beveled buttons, gray backgrounds, and retro styling
 - **⚡ Real-Time Streaming** - Watch AI responses appear live with ultra-low latency WebSocket connections  
 - **🎭 Advanced Persona System** - Choose from 32+ pre-built personas (Scientist, Philosopher, Comedian, etc.)
 - **🔄 Universal Provider Support** - All AI providers accessible through unified interface
@@ -54,6 +54,11 @@ This replaces the previous multi-mode setup with a single intuitive flow.
 ### Web GUI Development
 
 ```bash
+# Quick start (recommended)
+./start_web_gui.sh
+
+# Manual development setup:
+
 # Backend (FastAPI server on port 8000)
 cd web_gui/backend
 pip install -r requirements.txt
@@ -72,6 +77,22 @@ npm run dev
 cd web_gui/frontend
 npm run build
 npm run preview
+```
+
+### Startup Script
+
+The project includes a convenient startup script for quick development:
+
+```bash
+./start_web_gui.sh
+```
+
+The script handles:
+- Installing Python backend dependencies
+- Installing Node.js frontend dependencies  
+- Starting the FastAPI backend server on port 8000
+- Starting the Vite dev server on port 5173
+- Graceful shutdown on Ctrl+C
 ```
 
 ### Testing
@@ -115,11 +136,11 @@ python test_roles_debug.py
 - `POST /api/conversations` - Create conversation session
 - `WS /ws/conversations/{id}` - WebSocket for streaming messages
 
-**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with **cyberpunk aesthetic**:
-- **🎨 Cyberpunk Design System**: Neon cyan/fuchsia/yellow color palette with glowing borders and effects
-- **✨ Particle Effects**: Animated floating particles throughout the interface
-- **🌈 Aurora Background**: Dynamic color-shifting aurora lighting effects  
-- **🔲 Cyber Grid**: Classic matrix-style animated grid overlay
+**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with **Windows 95-style aesthetic**:
+- **🎨 Retro Design System**: Classic Windows 95 button styling with outset/inset effects and gray color palette
+- **🪟 Window Interface**: Traditional window-like interface with title bars and system styling
+- **📜 Custom Scrollbars**: Classic gray Windows scrollbars throughout
+- **💭 Message Bubbles**: Vintage computer chat bubble design
 - **🎭 4-Step Setup Flow**: Persona → Provider → Settings → Start conversation wizard
 - **⚡ Real-Time Streaming**: WebSocket-powered live AI response streaming
 - **📱 Responsive Layout**: Adapts beautifully across all device sizes
@@ -356,13 +377,14 @@ Messages sent from server to client:
 - `tailwind.config.js` - Tailwind CSS with custom cyberpunk color scheme and animations
 - `vite.config.ts` - Vite build configuration optimized for cyberpunk visual assets
 
-**💡 Cyberpunk Design Features:**
-- **Particle System**: Floating animated particles with cyan glow effects
-- **Aurora Effects**: Dynamic color-shifting background gradients
-- **Grid Overlay**: Animated matrix-style grid with perspective transforms  
-- **Neon Borders**: Glowing clip-path borders on all interactive elements
-- **Cyber Animations**: Pulsing effects, scan lines, and smooth transitions
-- **Color Palette**: Cyan (#00ffff), fuchsia (#ff00ff), yellow (#ffff00), and black backgrounds
+**💡 Windows 95-Style Design Features:**
+- **3D Button Effects**: Classic outset/inset button styling for authentic retro feel
+- **Window-Like Interface**: Familiar window management and dialog boxes
+- **Vintage Color Palette**: Classic gray backgrounds, blue title bars, and system colors
+- **Old-School Fonts**: MS Sans Serif and VT323 nostalgic typography
+- **Bubble Messages**: Vintage computer chat bubble design with Win95 aesthetics
+- **Custom Scrollbars**: Classic gray Windows scrollbar styling
+- **Throwback Animations**: Pulse effects and smooth transitions from the 90s
 
 ## Known Issues and Limitations
 
@@ -371,7 +393,7 @@ Messages sent from server to client:
 - **LM Studio**: Requires manual server startup and model loading
 - **Long conversations**: Token limits vary by provider (OpenAI 128k, Anthropic 200k, Gemini 1M context)
 - **Stop words**: Case-sensitive matching; lowercase recommended
-- **Web GUI**: Fully functional cyberpunk interface with all features implemented - real-time streaming, persona selection, provider flexibility, and beautiful aesthetic
+- **Web GUI**: Fully functional Windows 95-style retro interface with all features implemented - real-time streaming, persona selection, provider flexibility, and nostalgic aesthetic
 
 ## Code Style Notes
 

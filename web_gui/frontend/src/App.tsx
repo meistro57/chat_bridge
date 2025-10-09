@@ -33,20 +33,10 @@ const CyberpunkChatBridge = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Particle generation
-  useEffect(() => {
-    const particlesContainer = document.getElementById('particles');
-    if (!particlesContainer) return;
-    
-    for (let i = 0; i < 50; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'particle';
-      particle.style.left = Math.random() * 100 + '%';
-      particle.style.top = Math.random() * 100 + '%';
-      particle.style.animationDelay = Math.random() * 20 + 's';
-      particlesContainer.appendChild(particle);
-    }
-  }, []);
+  // Removed particle effects for Winamp theme
+  // useEffect(() => {
+  //   [...]
+  // }, []);
 
   // Fetch personas
   useEffect(() => {
@@ -164,201 +154,159 @@ const CyberpunkChatBridge = () => {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-hidden">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
         
-        * { font-family: 'Space Grotesk', sans-serif; }
-        
-        .particle {
-          position: absolute;
-          width: 2px;
-          height: 2px;
-          background: #00ffff;
-          border-radius: 50%;
-          box-shadow: 0 0 10px #00ffff;
-          animation: float 20s infinite;
-          opacity: 0.6;
+        * { 
+          font-family: 'MS Sans Serif', sans-serif; 
+          -webkit-font-smoothing: none;
+          -moz-osx-font-smoothing: none;
         }
         
-        @keyframes float {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          25% { transform: translate(100px, -100px) scale(1.5); }
-          50% { transform: translate(-50px, -150px) scale(0.8); }
-          75% { transform: translate(150px, -50px) scale(1.2); }
+        .window {
+          background: linear-gradient(to bottom, #c8c8c8 0%, #d0d0d0 50%, #e8e8e8 100%);
+          border: 2px inset #808080;
+          box-shadow: 
+            inset 1px 1px 0px #ffffff,
+            inset -1px -1px 0px #000000,
+            2px 2px 2px rgba(0,0,0,0.5);
         }
         
-        .cyber-grid {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: 
-            linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent),
-            linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent);
-          background-size: 50px 50px;
-          animation: gridMove 30s linear infinite;
-          opacity: 0.3;
+        .title-bar {
+          background: linear-gradient(to right, #000080 0%, #0000a0 100%);
+          color: #ffffff;
+          padding: 2px 4px;
+          text-shadow: 1px 1px 0px #000000;
+          font-weight: bold;
         }
         
-        @keyframes gridMove {
-          0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
-          100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        .button-3d {
+          background: linear-gradient(to bottom, #d0d0d0 0%, #c8c8c8 100%);
+          border: 2px outset #c0c0c0;
+          padding: 2px 6px;
+          color: #000000;
+          font-size: 11px;
+          text-transform: uppercase;
+          font-weight: bold;
+          cursor: pointer;
         }
         
-        .aurora {
-          position: fixed;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: radial-gradient(ellipse at center, rgba(0, 255, 255, 0.15) 0%, transparent 50%),
-                      radial-gradient(ellipse at 70% 30%, rgba(255, 0, 255, 0.15) 0%, transparent 50%),
-                      radial-gradient(ellipse at 30% 70%, rgba(255, 255, 0, 0.1) 0%, transparent 50%);
-          animation: auroraShift 15s ease-in-out infinite;
-          pointer-events: none;
+        .button-3d:active {
+          background: linear-gradient(to bottom, #a0a0a0 0%, #b0b0b0 100%);
+          border: 2px inset #c0c0c0;
+          padding: 3px 5px 1px 7px;
         }
         
-        @keyframes auroraShift {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.6; }
-          33% { transform: translate(5%, -5%) rotate(120deg); opacity: 0.8; }
-          66% { transform: translate(-5%, 5%) rotate(240deg); opacity: 0.7; }
+        .input-winamp {
+          background: #ffffff;
+          border: 2px inset #c0c0c0;
+          padding: 2px;
+          font-family: 'MS Sans Serif', sans-serif;
+          font-size: 11px;
         }
         
-        .cyber-clip {
-          clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+        .scrollbar-winamp {
+          scrollbar-width: thin;
+          scrollbar-color: #c0c0c0 #f0f0f0;
         }
         
-        .message-clip {
-          clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+        .scrollbar-winamp::-webkit-scrollbar {
+          width: 16px;
         }
         
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.1); opacity: 0.8; }
+        .scrollbar-winamp::-webkit-scrollbar-track {
+          background: #f0f0f0;
+          border: 2px inset #c0c0c0;
         }
         
-        @keyframes scan {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+        .scrollbar-winamp::-webkit-scrollbar-thumb {
+          background: #c0c0c0;
+          border: 1px solid #808080;
+        }
+        
+        .message-bubble-winamp {
+          background: #ffffe1;
+          border: 1px inset #c0c0c0;
+          padding: 4px;
+          font-size: 11px;
+        }
+        
+        .agent-winamp { background: #e0f0ff; }
+        .user-winamp { background: #f0f0e0; }
+        
+        .status-indicator {
+          background: #c0c0c0;
+          border: 1px outset #808080;
+          padding: 1px;
+          font-size: 10px;
+        }
+        
+        .pulse-winamp {
+          animation: pulse-winamp 2s infinite;
+        }
+        
+        @keyframes pulse-winamp {
+          0%, 100% { background-color: #c8c8c8; }
+          50% { background-color: #a8a8a8; }
+        }
+        
+        .rounded-winamp { border-radius: 0; }
+        
+        .text-winamp { color: #000000; font-size: 11px; }
+        
+        .icon-winamp {
+          width: 16px;
+          height: 16px;
+          background: #800000;
+          clip-path: polygon(0 0, 100% 0, 50% 100%);
         }
       `}</style>
 
-      {/* Background Effects */}
-      <div id="particles" className="fixed inset-0 pointer-events-none z-0" />
-      <div className="cyber-grid" />
-      <div className="aurora" />
-
-      {/* Main App */}
-      <div className="relative z-10 flex flex-col h-screen">
-        {/* Header */}
-        <div className="h-[70px] relative overflow-hidden" style={{
-          background: 'linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%)',
-          backdropFilter: 'blur(20px) saturate(180%)',
-          borderBottom: '2px solid #00ffff',
-          boxShadow: '0 0 30px rgba(0, 255, 255, 0.3)'
-        }}>
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.2) 50%, transparent 100%)',
-            animation: 'scan 3s linear infinite'
-          }} />
-          
-          <div className="relative z-10 h-full flex items-center justify-between px-5">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl" style={{ 
-                color: '#00ffff',
-                textShadow: '0 0 20px #00ffff, 0 0 40px #00ffff',
-                animation: 'pulse 2s ease-in-out infinite'
-              }}>⚡</span>
-              <span className="text-xl font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-yellow-400 bg-clip-text text-transparent">
-                Chat Bridge Nexus
-              </span>
-            </div>
-            
-            <div className="flex gap-2">
-              {conversationId && (
-                <button
-                  onClick={resetConversation}
-                  className="px-4 py-2 text-xs font-semibold uppercase tracking-wide border-2 border-cyan-400 text-cyan-400 cyber-clip hover:bg-cyan-400/20 transition-all"
-                  style={{ boxShadow: isConnected ? '0 0 20px rgba(0, 255, 255, 0.5)' : 'none' }}
-                >
-                  New Session
-                </button>
-              )}
-            </div>
-          </div>
+      <div className="window scrollbar-winamp">
+        <div className="title-bar text-sm font-bold">
+          Chat Bridge v1.4.0 - Winamp Inspired
+          <div className="float-right text-xs">AI Chat Player</div>
         </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 p-4 overflow-y-auto scrollbar-winamp">
             {!conversationId ? (
-              <div className="flex flex-col items-center justify-center h-full text-center px-8">
-                <div className="text-6xl mb-5 bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-yellow-400 bg-clip-text text-transparent" style={{
-                  animation: 'pulse 3s ease-in-out infinite',
-                  filter: 'drop-shadow(0 0 20px rgba(0, 255, 255, 0.5))'
-                }}>
-                  ⚡
-                </div>
-                <h2 className="text-3xl font-bold uppercase tracking-widest mb-3 bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">
-                  AI Nexus
-                </h2>
-                <p className="text-sm text-cyan-400/70 mb-8 max-w-xs uppercase tracking-wide">
-                  Connect AI agents in real-time cyberpunk conversation
+              <div className="p-4 bg-gray-100 border border-gray-800 max-w-md mx-auto mt-8">
+                <h2 className="text-lg font-bold text-black mb-4">Welcome to Chat Bridge</h2>
+                <p className="text-sm text-black mb-4">
+                  Connect two AI agents and watch them converse! Select personas and start chatting.
                 </p>
                 
-                <div className="grid grid-cols-2 gap-3 max-w-sm">
-                  {[
-                    { icon: '🤖', title: 'Multi-Agent', desc: 'Connect any AI' },
-                    { icon: '⚡', title: 'Real-Time', desc: 'Live streaming' },
-                    { icon: '🎭', title: 'Personas', desc: 'Custom roles' },
-                    { icon: '🔮', title: 'Quantum', desc: 'Neural bridge' }
-                  ].map((feature, i) => (
-                    <div key={i} className="p-4 border border-cyan-400/30 cyber-clip hover:bg-cyan-400/10 hover:border-cyan-400 transition-all" style={{
-                      background: 'rgba(0, 255, 255, 0.05)'
-                    }}>
-                      <div className="text-2xl mb-2" style={{ color: '#00ffff', textShadow: '0 0 10px #00ffff' }}>
-                        {feature.icon}
-                      </div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-cyan-400 mb-1">
-                        {feature.title}
-                      </div>
-                      <div className="text-[10px] text-white/50">
-                        {feature.desc}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Settings */}
-                <div className="mt-8 w-full max-w-sm grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-wide text-cyan-400 mb-2">Max Rounds</label>
-                    <input
-                      type="number"
-                      value={maxRounds}
-                      onChange={(e) => setMaxRounds(Number(e.target.value))}
-                      min="1"
-                      max="100"
-                      className="w-full p-2 text-sm cyber-clip bg-black/50 border border-cyan-400 text-cyan-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-wide text-cyan-400 mb-2">Temp A</label>
-                    <input
-                      type="number"
-                      value={temperatureA}
-                      onChange={(e) => setTemperatureA(Number(e.target.value))}
-                      min="0"
-                      max="2"
-                      step="0.1"
-                      className="w-full p-2 text-sm cyber-clip bg-black/50 border border-cyan-400 text-cyan-400"
-                    />
-                  </div>
-                </div>
-                <div className="w-full max-w-sm mb-8">
-                  <div className="grid grid-cols-2 gap-4">
+                {/* Settings Panel */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-fuchsia-400 mb-2">Temp B</label>
+                      <label className="block text-xs text-black mb-1">Max Rounds</label>
+                      <input
+                        type="number"
+                        value={maxRounds}
+                        onChange={(e) => setMaxRounds(Number(e.target.value))}
+                        min="1"
+                        max="100"
+                        className="input-winamp w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-black mb-1">Temp A</label>
+                      <input
+                        type="number"
+                        value={temperatureA}
+                        onChange={(e) => setTemperatureA(Number(e.target.value))}
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        className="input-winamp w-full"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-black mb-1">Temp B</label>
                       <input
                         type="number"
                         value={temperatureB}
@@ -366,43 +314,29 @@ const CyberpunkChatBridge = () => {
                         min="0"
                         max="2"
                         step="0.1"
-                        className="w-full p-2 text-sm cyber-clip bg-black/50 border border-fuchsia-500 text-fuchsia-400"
+                        className="input-winamp w-full"
                       />
                     </div>
                   </div>
-                </div>
-
-                {/* Provider Selection */}
-                <div className="mt-8 w-full max-w-sm">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-cyan-400 mb-2">Agent A Provider</label>
-                      <select 
-                        value={selectedProviderA}
-                        onChange={(e) => setSelectedProviderA(e.target.value)}
-                        className="w-full p-2 text-sm cyber-clip bg-black/50 border border-cyan-400 text-cyan-400"
-                      >
+                      <label className="block text-xs text-black mb-1">Provider A</label>
+                      <select value={selectedProviderA} onChange={(e) => setSelectedProviderA(e.target.value)} className="input-winamp w-full">
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic</option>
                         <option value="gemini">Gemini</option>
                         <option value="deepseek">DeepSeek</option>
                         <option value="ollama">Ollama</option>
-                        <option value="lmstudio">LM Studio</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-fuchsia-400 mb-2">Agent B Provider</label>
-                      <select 
-                        value={selectedProviderB}
-                        onChange={(e) => setSelectedProviderB(e.target.value)}
-                        className="w-full p-2 text-sm cyber-clip bg-black/50 border border-fuchsia-500 text-fuchsia-400"
-                      >
+                      <label className="block text-xs text-black mb-1">Provider B</label>
+                      <select value={selectedProviderB} onChange={(e) => setSelectedProviderB(e.target.value)} className="input-winamp w-full">
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic</option>
                         <option value="gemini">Gemini</option>
                         <option value="deepseek">DeepSeek</option>
                         <option value="ollama">Ollama</option>
-                        <option value="lmstudio">LM Studio</option>
                       </select>
                     </div>
                   </div>
@@ -415,53 +349,21 @@ const CyberpunkChatBridge = () => {
                   const isAgentA = msg.sender === 'agent_a';
                   
                   return (
-                    <div key={i} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
-                      <div className="w-10 h-10 flex items-center justify-center font-bold text-base" style={{
-                        background: isUser ? 'linear-gradient(135deg, #ffff00, #ff6bc9)' : 'linear-gradient(135deg, #00ffff, #ff00ff)',
-                        clipPath: 'polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%)',
-                        boxShadow: isUser ? '0 0 20px rgba(255, 255, 0, 0.5)' : '0 0 20px rgba(0, 255, 255, 0.5)'
-                      }}>
-                        {isUser ? '👤' : '🤖'}
-                      </div>
-                      
-                      <div className="flex-1 max-w-[calc(100%-52px)] p-4 message-clip" style={{
-                        background: isUser ? 'rgba(40, 26, 40, 0.8)' : 'rgba(26, 26, 40, 0.8)',
-                        backdropFilter: 'blur(10px)',
-                        border: '2px solid transparent',
-                        borderImage: isUser ? 'linear-gradient(135deg, #ffff00, #ff6bc9) 1' : 'linear-gradient(135deg, #00ffff, #ff00ff) 1'
-                      }}>
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-semibold uppercase tracking-wide" style={{
-                            color: isUser ? '#ffff00' : '#00ffff',
-                            textShadow: isUser ? '0 0 10px #ffff00' : '0 0 10px #00ffff'
-                          }}>
-                            {isUser ? 'You' : isAgentA ? 'Agent A' : 'Agent B'}
-                          </span>
-                          <span className="text-[10px] text-white/40 font-mono">
-                            {new Date(msg.timestamp).toLocaleTimeString()}
-                          </span>
+                    <div key={i} className={`mb-3 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`message-bubble-winamp ${isUser ? 'message-bubble-winamp user-winamp' : 'message-bubble-winamp agent-winamp'} max-w-[70%]`}>
+                        <div className="text-xs text-black font-bold mb-1">
+                          {isUser ? 'You' : isAgentA ? 'Agent A' : 'Agent B'} - {new Date(msg.timestamp).toLocaleTimeString()}
                         </div>
-                        <div className="text-sm leading-relaxed text-gray-200">
-                          {msg.content}
-                        </div>
+                        <div className="text-sm text-black">{msg.content}</div>
                       </div>
                     </div>
                   );
                 })}
                 
                 {isTyping && (
-                  <div className="flex items-center gap-2 px-5 py-3 border border-cyan-400 cyber-clip" style={{
-                    background: 'rgba(0, 255, 255, 0.1)',
-                    boxShadow: '0 0 15px rgba(0, 255, 255, 0.3)'
-                  }}>
-                    <span className="text-xs text-cyan-400">Processing</span>
-                    <div className="flex gap-1">
-                      {[0, 1, 2].map(i => (
-                        <div key={i} className="w-1.5 h-1.5 bg-cyan-400" style={{
-                          boxShadow: '0 0 8px #00ffff',
-                          animation: `pulse 1.4s ease-in-out infinite ${i * 0.2}s`
-                        }} />
-                      ))}
+                  <div className="mb-3 flex justify-start">
+                    <div className="status-indicator pulse-winamp">
+                      Processing...
                     </div>
                   </div>
                 )}
@@ -470,108 +372,65 @@ const CyberpunkChatBridge = () => {
               </>
             )}
           </div>
-        </div>
 
-        {/* Input Area */}
-        {!conversationId && (
-          <div className="p-4" style={{
-            background: 'linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '2px solid #00ffff',
-            boxShadow: '0 -5px 30px rgba(0, 255, 255, 0.2)'
-          }}>
-            <div className="flex gap-3 mb-3">
-              <button
-                onClick={() => openModal('agentA')}
-                className="flex-1 p-3 border-2 border-cyan-400 text-cyan-400 cyber-clip hover:bg-cyan-400/20 transition-all text-xs font-semibold uppercase"
-              >
-                {selectedPersonaA ? `🎭 ${selectedPersonaA.name}` : 'Select Agent A'}
-              </button>
-              <button
-                onClick={() => openModal('agentB')}
-                className="flex-1 p-3 border-2 border-fuchsia-500 text-fuchsia-500 cyber-clip hover:bg-fuchsia-500/20 transition-all text-xs font-semibold uppercase"
-              >
-                {selectedPersonaB ? `🎭 ${selectedPersonaB.name}` : 'Select Agent B'}
-              </button>
+          {/* Controls Panel */}
+          {!conversationId ? (
+            <div className="p-4 bg-gray-300 border-t border-gray-800">
+              <div className="flex gap-2 mb-2">
+                <button onClick={() => openModal('agentA')} className="button-3d">
+                  {selectedPersonaA ? selectedPersonaA.name : 'Select Agent A'}
+                </button>
+                <button onClick={() => openModal('agentB')} className="button-3d">
+                  {selectedPersonaB ? selectedPersonaB.name : 'Select Agent B'}
+                </button>
+                {conversationId && (
+                  <button onClick={resetConversation} className="button-3d">
+                    New Session
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Enter starter message..."
+                  className="input-winamp flex-1 resize-none"
+                  rows={2}
+                />
+                <button
+                  onClick={startConversation}
+                  disabled={!selectedPersonaA || !selectedPersonaB || !inputMessage.trim()}
+                  className="button-3d"
+                >
+                  Start
+                </button>
+              </div>
             </div>
-            
-            <div className="flex gap-3">
-              <textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Enter starter message..."
-                className="flex-1 p-4 text-sm cyber-clip resize-none min-h-[48px] max-h-[80px]"
-                style={{
-                  background: 'rgba(13, 13, 20, 0.9)',
-                  border: '2px solid #00ffff',
-                  color: '#e0e0ff'
-                }}
-              />
-              <button
-                onClick={startConversation}
-                disabled={!selectedPersonaA || !selectedPersonaB || !inputMessage.trim()}
-                className="w-12 h-12 flex items-center justify-center text-lg disabled:opacity-50"
-                style={{
-                  background: 'linear-gradient(135deg, #00ffff, #ff00ff)',
-                  clipPath: 'polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%)',
-                  boxShadow: '0 0 20px rgba(0, 255, 255, 0.5)',
-                  color: '#000'
-                }}
-              >
-                ⚡
-              </button>
-            </div>
-          </div>
-        )}
+          ) : null}
+        </div>
       </div>
 
       {/* Persona Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-5">
-          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto p-8" style={{
-            background: 'linear-gradient(135deg, rgba(0, 255, 255, 0.1) 0%, rgba(255, 0, 255, 0.1) 100%)',
-            backdropFilter: 'blur(30px)',
-            border: '2px solid #00ffff',
-            clipPath: 'polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px)',
-            boxShadow: '0 0 50px rgba(0, 255, 255, 0.5)'
-          }}>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold uppercase tracking-wider bg-gradient-to-r from-cyan-400 to-fuchsia-500 bg-clip-text text-transparent">
-                Select Persona
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="w-9 h-9 flex items-center justify-center border-2 border-cyan-400 text-cyan-400 cyber-clip hover:bg-cyan-400 hover:text-black transition-all"
-              >
-                ✕
-              </button>
+        <div className="fixed inset-0 bg-gray-400 flex items-center justify-center z-50 p-8">
+          <div className="window w-full max-w-md p-4">
+            <div className="title-bar text-sm font-bold mb-4">
+              Select Persona
+              <button onClick={() => setIsModalOpen(false)} className="float-right button-3d text-xs w-6 h-6">X</button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2 scrollbar-winamp max-h-64 overflow-y-auto">
               {personas.map(persona => (
                 <div
                   key={persona.id}
                   onClick={() => selectPersona(persona)}
-                  className="p-4 border-2 border-cyan-400/30 cyber-clip cursor-pointer hover:bg-cyan-400/10 hover:border-cyan-400 transition-all"
-                  style={{ background: 'rgba(0, 255, 255, 0.05)' }}
+                  className="p-2 border border-gray-600 cursor-pointer hover:bg-gray-200"
                 >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 flex items-center justify-center text-xl" style={{
-                      background: 'linear-gradient(135deg, #00ffff, #ff00ff)',
-                      clipPath: 'polygon(15% 0%, 100% 0%, 85% 100%, 0% 100%)',
-                      boxShadow: '0 0 15px rgba(0, 255, 255, 0.5)'
-                    }}>
-                      🎭
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold text-cyan-400">{persona.name}</div>
-                      <div className="text-xs text-white/50">{persona.description}</div>
-                    </div>
-                  </div>
+                  <div className="font-bold text-sm text-black">{persona.name}</div>
+                  <div className="text-xs text-gray-600">{persona.description}</div>
                   {persona.system_preview && (
-                    <div className="text-xs text-white/70 leading-relaxed">
-                      {persona.system_preview}
-                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{persona.system_preview}</div>
                   )}
                 </div>
               ))}
@@ -579,6 +438,10 @@ const CyberpunkChatBridge = () => {
           </div>
         </div>
       )}
+
+        </div>
+      )}
+
     </div>
   );
 };
