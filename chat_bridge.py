@@ -2567,7 +2567,7 @@ Examples:
     parser.add_argument("--roles", help="Path to roles.json file for personas")
     parser.add_argument("--starter", help="Conversation starter (skips interactive mode)")
     parser.add_argument("--version", action="version", version=f"Chat Bridge {__version__}")
-
+    parser.add_argument("--debug", action="store_true", help="Enable verbose debug logging and output.")
     # Legacy compatibility
     parser.add_argument("--openai-model", dest="model_a", help="Legacy alias for --model-a")
     parser.add_argument("--anthropic-model", dest="model_b", help="Legacy alias for --model-b")
