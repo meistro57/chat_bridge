@@ -5,7 +5,7 @@ import { Persona, Provider, ConversationRequest, ConversationResponse } from './
 
 function App() {
   const [personas, setPersonas] = useState<Persona[]>([]);
-  const [providers] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [selectedPersonas, setSelectedPersonas] = useState<{
     agentA?: Persona;
@@ -16,6 +16,7 @@ function App() {
   useEffect(() => {
     // Load available personas on app start
     fetchPersonas();
+    fetchProviders();
   }, []);
 
   const fetchPersonas = async () => {
@@ -25,6 +26,16 @@ function App() {
       setPersonas(data.personas || []);
     } catch (error) {
       console.error('Failed to load personas:', error);
+    }
+  };
+
+  const fetchProviders = async () => {
+    try {
+      const response = await fetch('/api/providers');
+      const data = await response.json();
+      setProviders(data.providers || []);
+    } catch (error) {
+      console.error('Failed to load providers:', error);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PersonaSelector } from './PersonaSelector';
 import { Persona, Provider, ConversationRequest } from '../types';
 
@@ -25,6 +25,44 @@ export function SetupWizard({
   const [maxRounds, setMaxRounds] = useState(30);
   const [temperatureA, setTemperatureA] = useState(0.7);
   const [temperatureB, setTemperatureB] = useState(0.7);
+  const [providerA, setProviderA] = useState<string>('');
+  const [providerB, setProviderB] = useState<string>('');
+
+  useEffect(() => {
+    if (providers.length === 0) {
+      setProviderA('');
+      setProviderB('');
+      return;
+    }
+
+    setProviderA((current) => {
+      if (current && providers.some((provider) => provider.key === current)) {
+        return current;
+      }
+      return providers[0].key;
+    });
+
+    setProviderB((current) => {
+      if (current && providers.some((provider) => provider.key === current)) {
+        return current;
+      }
+      return providers[0].key;
+    });
+  }, [providers]);
+
+  useEffect(() => {
+    const preferred = selectedPersonas.agentA?.provider;
+    if (preferred && providers.some((provider) => provider.key === preferred)) {
+      setProviderA(preferred);
+    }
+  }, [selectedPersonas.agentA, providers]);
+
+  useEffect(() => {
+    const preferred = selectedPersonas.agentB?.provider;
+    if (preferred && providers.some((provider) => provider.key === preferred)) {
+      setProviderB(preferred);
+    }
+  }, [selectedPersonas.agentB, providers]);
 
   const handlePersonaSelect = (agent: 'agentA' | 'agentB', persona: Persona | undefined) => {
     onPersonasChange({
@@ -44,13 +82,19 @@ export function SetupWizard({
       return;
     }
 
+    if (!providerA || !providerB) {
+      alert('Please select providers for both agents');
+      return;
+    }
+
     const request: ConversationRequest = {
-      provider_a: selectedPersonas.agentA.provider,
-      provider_b: selectedPersonas.agentB.provider,
+      provider_a: providerA,
+      provider_b: providerB,
       persona_a: selectedPersonas.agentA.id,
       persona_b: selectedPersonas.agentB.id,
       starter_message: starterMessage,
       max_rounds: maxRounds,
+      mem_rounds: 8,
       temperature_a: temperatureA,
       temperature_b: temperatureB,
     };
@@ -73,27 +117,78 @@ export function SetupWizard({
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <PersonaSelector
-              personas={personas}
-              selectedPersona={selectedPersonas.agentA}
-              onSelect={(persona) => handlePersonaSelect('agentA', persona)}
-              label="Agent A Persona"
-              agentName="Agent A"
-            />
+            <div className="space-y-4">
+              <PersonaSelector
+                personas={personas}
+                selectedPersona={selectedPersonas.agentA}
+                onSelect={(persona) => handlePersonaSelect('agentA', persona)}
+                label="Agent A Persona"
+                agentName="Agent A"
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Agent A Provider
+                </label>
+                <select
+                  value={providerA}
+                  onChange={(event) => setProviderA(event.target.value)}
+                  disabled={providers.length === 0}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {providers.length === 0 ? (
+                    <option value="">No providers available</option>
+                  ) : (
+                    providers.map((provider) => (
+                      <option key={provider.key} value={provider.key}>
+                        {provider.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
 
-            <PersonaSelector
-              personas={personas}
-              selectedPersona={selectedPersonas.agentB}
-              onSelect={(persona) => handlePersonaSelect('agentB', persona)}
-              label="Agent B Persona"
-              agentName="Agent B"
-            />
+            <div className="space-y-4">
+              <PersonaSelector
+                personas={personas}
+                selectedPersona={selectedPersonas.agentB}
+                onSelect={(persona) => handlePersonaSelect('agentB', persona)}
+                label="Agent B Persona"
+                agentName="Agent B"
+              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Agent B Provider
+                </label>
+                <select
+                  value={providerB}
+                  onChange={(event) => setProviderB(event.target.value)}
+                  disabled={providers.length === 0}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {providers.length === 0 ? (
+                    <option value="">No providers available</option>
+                  ) : (
+                    providers.map((provider) => (
+                      <option key={provider.key} value={provider.key}>
+                        {provider.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end">
             <button
               onClick={() => setActiveStep('settings')}
-              disabled={!selectedPersonas.agentA || !selectedPersonas.agentB}
+              disabled={
+                !selectedPersonas.agentA ||
+                !selectedPersonas.agentB ||
+                !providerA ||
+                !providerB
+              }
               className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Next: Configure Settings

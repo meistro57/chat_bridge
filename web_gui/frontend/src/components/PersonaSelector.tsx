@@ -29,11 +29,15 @@ export function PersonaSelector({
         className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       >
         <option value="">Default AI ({agentName})</option>
-        {personas.map(persona => (
-          <option key={persona.id} value={persona.id}>
-            🎭 {persona.name} ({persona.provider})
-          </option>
-        ))}
+        {personas.map(persona => {
+          const providerLabel = persona.provider_label || persona.provider;
+          const providerSuffix = providerLabel ? ` (${providerLabel})` : '';
+          return (
+            <option key={persona.id} value={persona.id}>
+              🎭 {persona.name}{providerSuffix}
+            </option>
+          );
+        })}
       </select>
       
       {selectedPersona && selectedPersona.system_preview && (

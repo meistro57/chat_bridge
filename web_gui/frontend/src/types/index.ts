@@ -1,7 +1,8 @@
 export interface Persona {
   id: string;
   name: string;
-  provider: string;
+  provider?: string;
+  provider_label?: string;
   description?: string;
   system_preview?: string;
 }

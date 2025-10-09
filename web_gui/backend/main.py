@@ -6,8 +6,7 @@ FastAPI server providing RESTful API for the Chat Bridge web interface.
 
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 import json
 import os
@@ -15,21 +14,30 @@ from pathlib import Path
 from datetime import datetime
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 # Import Chat Bridge functionality
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.resolve()))
 
-from bridge_agents import create_agent, get_spec, provider_choices, ensure_credentials, resolve_model, ProviderSpec
+from bridge_agents import create_agent, get_spec, provider_choices, ensure_credentials, resolve_model
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Application lifespan handler for startup/shutdown tasks."""
+    persona_manager.persona_library = persona_manager.load_personas_from_config()
+    yield
+
+
 app = FastAPI(
     title="Chat Bridge Web API",
     description="RESTful API for managing AI agent conversations",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware for web frontend
@@ -44,11 +52,11 @@ app.add_middleware(
 # Data models for API requests
 class PersonaConfig(BaseModel):
     name: str
-    provider: str
+    provider: Optional[str] = None
     system_prompt: str
     temperature: Optional[float] = 0.7
     model: Optional[str] = None
-    guidelines: Optional[List[str]] = []
+    guidelines: List[str] = Field(default_factory=list)
 
 class ConversationRequest(BaseModel):
     persona_a: Optional[str] = None
@@ -139,7 +147,7 @@ class PersonaManager:
                     try:
                         persona_config = PersonaConfig(
                             name=persona_data.get('name', key),
-                            provider=persona_data.get('provider', 'openai'),
+                            provider=persona_data.get('provider'),
                             system_prompt=persona_data.get('system', ''),
                             temperature=persona_data.get('temperature', 0.7),
                             model=persona_data.get('model'),
@@ -167,26 +175,26 @@ class PersonaManager:
         """Get available personas in API format"""
         available: Dict[str, Dict] = {}
         for key, persona in self.persona_library.items():
-            try:
-                spec = get_spec(persona.provider)
-            except KeyError:
-                logger.warning("Skipping persona %s due to unknown provider '%s'", key, persona.provider)
-                continue
+            provider_label: Optional[str] = None
+            if persona.provider:
+                try:
+                    provider_label = get_spec(persona.provider).label
+                except KeyError:
+                    logger.warning(
+                        "Persona %s references unknown provider '%s'", key, persona.provider
+                    )
+                    provider_label = persona.provider
 
-            if spec.needs_key and not os.getenv(spec.key_env or ""):
-                logger.info(
-                    "Skipping persona %s because %s credentials (%s) are not configured",
-                    key,
-                    spec.label,
-                    spec.key_env,
-                )
-                continue
+            description = "AI persona"
+            if provider_label:
+                description = f"AI persona (preferred: {provider_label})"
 
             available[key] = {
                 "id": key,
                 "name": persona.name,
                 "provider": persona.provider,
-                "description": f"AI persona using {persona.provider}",
+                "provider_label": provider_label,
+                "description": description,
                 "system_preview": persona.system_prompt[:100] + "..." if len(persona.system_prompt) > 100 else persona.system_prompt,
             }
 
@@ -195,11 +203,6 @@ class PersonaManager:
 # Global state (in production, use Redis or database)
 conversations: Dict[str, Conversation] = {}
 persona_manager = PersonaManager()
-
-@app.on_event("startup")
-async def startup_event():
-    """Load persona configurations on startup"""
-    persona_manager.persona_library = persona_manager.load_personas_from_config()
 
 @app.get("/")
 async def root():
