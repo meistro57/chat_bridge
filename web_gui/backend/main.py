@@ -75,31 +75,44 @@ class Conversation:
         self.agent_b = None
         self.active = True
 
-    def initialize_agents(self):
-        """Initialize AI agents for the conversation"""
-        try:
-            # Resolve models
-            model_a = resolve_model(self.request.provider_a, None)
-            model_b = resolve_model(self.request.provider_b, None)
+    def initialize_agents(self) -> None:
+        """Initialize AI agents for the conversation.
 
-            # Ensure credentials
-            ensure_credentials(self.request.provider_a)
-            ensure_credentials(self.request.provider_b)
+        Raises:
+            RuntimeError: If the provider configuration is invalid or
+                required credentials are missing.
+        """
 
-            # Create agents
-            self.agent_a = create_agent("A", self.request.provider_a, model_a,
-                                      self.request.temperature_a,
-                                      get_spec(self.request.provider_a).default_system)
+        # Resolve models
+        model_a = resolve_model(self.request.provider_a, None)
+        model_b = resolve_model(self.request.provider_b, None)
 
-            self.agent_b = create_agent("B", self.request.provider_b, model_b,
-                                      self.request.temperature_b,
-                                      get_spec(self.request.provider_b).default_system)
+        # Ensure credentials (raises RuntimeError when missing)
+        ensure_credentials(self.request.provider_a)
+        ensure_credentials(self.request.provider_b)
 
-            logger.info(f"Agents initialized: {self.request.provider_a} vs {self.request.provider_b}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize agents: {e}")
-            return False
+        # Create agents
+        self.agent_a = create_agent(
+            "A",
+            self.request.provider_a,
+            model_a,
+            self.request.temperature_a,
+            get_spec(self.request.provider_a).default_system,
+        )
+
+        self.agent_b = create_agent(
+            "B",
+            self.request.provider_b,
+            model_b,
+            self.request.temperature_b,
+            get_spec(self.request.provider_b).default_system,
+        )
+
+        logger.info(
+            "Agents initialized: %s vs %s",
+            self.request.provider_a,
+            self.request.provider_b,
+        )
 
 class PersonaManager:
     """Manages roles and personalities configuration"""
@@ -152,16 +165,32 @@ class PersonaManager:
 
     def get_available_personas(self) -> Dict[str, Dict]:
         """Get available personas in API format"""
-        return {
-            key: {
+        available: Dict[str, Dict] = {}
+        for key, persona in self.persona_library.items():
+            try:
+                spec = get_spec(persona.provider)
+            except KeyError:
+                logger.warning("Skipping persona %s due to unknown provider '%s'", key, persona.provider)
+                continue
+
+            if spec.needs_key and not os.getenv(spec.key_env or ""):
+                logger.info(
+                    "Skipping persona %s because %s credentials (%s) are not configured",
+                    key,
+                    spec.label,
+                    spec.key_env,
+                )
+                continue
+
+            available[key] = {
                 "id": key,
                 "name": persona.name,
                 "provider": persona.provider,
                 "description": f"AI persona using {persona.provider}",
-                "system_preview": persona.system_prompt[:100] + "..." if len(persona.system_prompt) > 100 else persona.system_prompt
+                "system_preview": persona.system_prompt[:100] + "..." if len(persona.system_prompt) > 100 else persona.system_prompt,
             }
-            for key, persona in self.persona_library.items()
-        }
+
+        return available
 
 # Global state (in production, use Redis or database)
 conversations: Dict[str, Conversation] = {}
@@ -207,10 +236,8 @@ async def create_conversation(request: ConversationRequest):
         conversation = Conversation(request)
         conversations[conv_id] = conversation
 
-        # Initialize agents
-        success = conversation.initialize_agents()  # Remove await since create_agent is synchronous
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to initialize agents")
+        # Initialize agents (raises when credentials are missing)
+        conversation.initialize_agents()
 
         # Add initial user message
         initial_message = Message(
@@ -227,9 +254,12 @@ async def create_conversation(request: ConversationRequest):
             "starter_message": request.starter_message
         }
 
+    except RuntimeError as e:
+        logger.error("Failed to create conversation due to configuration issue: %s", e)
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to create conversation: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("Failed to create conversation: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 @app.websocket("/ws/conversations/{conversation_id}")
 async def websocket_conversation(websocket: WebSocket, conversation_id: str):
