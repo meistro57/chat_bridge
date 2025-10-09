@@ -5,190 +5,420 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roles Editor - Chat Bridge</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: #060716;
+            --bg-secondary: rgba(20, 24, 45, 0.7);
+            --bg-tertiary: rgba(34, 38, 69, 0.55);
+            --accent: #6c5ce7;
+            --accent-soft: rgba(108, 92, 231, 0.2);
+            --accent-strong: #9d74ff;
+            --success: #2dd4bf;
+            --danger: #ff6b6b;
+            --neutral: rgba(148, 163, 184, 0.65);
+            --text-primary: #f5f8ff;
+            --text-secondary: #c3c8f0;
+            --border-light: rgba(120, 130, 180, 0.25);
+            --shadow-lg: 0 32px 60px rgba(15, 21, 66, 0.35);
+            --shadow-sm: 0 18px 40px rgba(11, 15, 45, 0.35);
+            --radius-lg: 28px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
+            color-scheme: dark;
+        }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
-            padding: 20px;
+            padding: 48px;
+            background: radial-gradient(120% 120% at 15% 15%, #27125a 0%, #0a0b1c 55%, #050510 100%);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .main-content {
+        .app-shell {
+            width: min(1400px, 100%);
             display: grid;
-            grid-template-columns: 350px 1fr;
-            min-height: 600px;
+            grid-template-columns: 360px 1fr;
+            gap: 32px;
+            padding: 32px;
+            background: rgba(8, 11, 24, 0.65);
+            border: 1px solid rgba(120, 130, 180, 0.15);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(24px);
         }
 
         .sidebar {
-            background: #f8f9fa;
-            border-right: 1px solid #e0e0e0;
-            padding: 20px;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+            height: 100%;
+        }
+
+        .brand-card {
+            padding: 28px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(160deg, rgba(108, 92, 231, 0.35) 0%, rgba(21, 29, 73, 0.85) 100%);
+            border: 1px solid rgba(140, 120, 255, 0.25);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.16em;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(158, 142, 255, 0.35);
+            border-radius: 999px;
+            padding: 6px 14px;
+            color: var(--text-secondary);
+        }
+
+        .brand-card h1 {
+            font-size: 2.1rem;
+            font-weight: 700;
+            margin-top: 18px;
+        }
+
+        .brand-card p {
+            margin-top: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .sidebar-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .btn-new-role {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            font-weight: 600;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(120deg, #7c4dff 0%, #5b8bff 100%);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 20px 40px rgba(92, 96, 255, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-new-role:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 24px 48px rgba(92, 96, 255, 0.5);
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-light);
+            background: rgba(17, 20, 39, 0.75);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .search-box::placeholder {
+            color: rgba(195, 200, 240, 0.5);
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: rgba(124, 77, 255, 0.65);
+            box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.15);
         }
 
         .sidebar h2 {
-            font-size: 1.3em;
-            margin-bottom: 15px;
-            color: #333;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--neutral);
         }
 
         .role-list {
             list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .role-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .role-list::-webkit-scrollbar-thumb {
+            background: rgba(124, 119, 232, 0.35);
+            border-radius: 999px;
         }
 
         .role-item {
-            background: white;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
+            border-radius: var(--radius-md);
+            padding: 18px 18px 18px 20px;
+            background: linear-gradient(150deg, rgba(39, 42, 77, 0.9) 0%, rgba(20, 22, 42, 0.9) 80%);
+            border: 1px solid transparent;
+            box-shadow: 0 12px 30px rgba(10, 12, 30, 0.4);
+            position: relative;
+            overflow: hidden;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 14px;
+            cursor: pointer;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .role-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(150deg, rgba(108, 92, 231, 0.22), rgba(31, 160, 255, 0.15));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .role-item:hover {
-            background: #e8eaf6;
-            border-color: #667eea;
+            transform: translateY(-4px);
+            border-color: rgba(124, 77, 255, 0.45);
+            box-shadow: 0 18px 40px rgba(25, 32, 80, 0.55);
+        }
+
+        .role-item:hover::before {
+            opacity: 1;
+        }
+
+        .role-empty {
+            padding: 36px 24px;
+            border-radius: var(--radius-md);
+            border: 1px dashed rgba(124, 77, 255, 0.35);
+            background: rgba(17, 20, 39, 0.65);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .role-empty .empty-state {
+            padding: 0;
+        }
+
+        .role-empty .empty-state h3 {
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .role-empty .empty-state p {
+            color: var(--neutral);
         }
 
         .role-item.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            border-color: rgba(124, 77, 255, 0.75);
+            box-shadow: 0 22px 60px rgba(63, 81, 181, 0.55);
         }
 
-        .role-item-name {
+        .role-item.active::before {
+            opacity: 1;
+        }
+
+        .role-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+
+        .role-name {
+            font-size: 1.05rem;
             font-weight: 600;
-            flex-grow: 1;
         }
 
-        .role-item-provider {
-            font-size: 0.85em;
-            opacity: 0.7;
-            margin-right: 10px;
+        .role-provider {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(124, 77, 255, 0.18);
+            color: var(--accent-strong);
+            border: 1px solid rgba(124, 77, 255, 0.45);
+        }
+
+        .role-description {
+            font-size: 0.85rem;
+            color: var(--neutral);
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
         .btn-delete {
-            background: #e74c3c;
-            color: white;
+            position: absolute;
+            top: 14px;
+            right: 14px;
             border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(255, 107, 107, 0.12);
+            color: #ffb6b6;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 0.85em;
-            transition: background 0.2s;
+            z-index: 2;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
         }
 
         .btn-delete:hover {
-            background: #c0392b;
-        }
-
-        .role-item.active .btn-delete {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .role-item.active .btn-delete:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .btn-new-role {
-            width: 100%;
-            padding: 12px;
-            background: #27ae60;
+            background: rgba(255, 107, 107, 0.32);
             color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            margin-bottom: 20px;
-            transition: background 0.2s;
+            transform: scale(1.05);
         }
 
-        .btn-new-role:hover {
-            background: #229954;
+        .workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .workspace-header {
+            padding: 22px 28px;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(140deg, rgba(49, 54, 96, 0.85), rgba(18, 20, 40, 0.9));
+            border: 1px solid rgba(104, 120, 255, 0.28);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .workspace-eyebrow {
+            font-size: 0.75rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--neutral);
+        }
+
+        .workspace-header h2 {
+            margin-top: 10px;
+            font-size: 1.9rem;
+        }
+
+        .workspace-header p {
+            margin-top: 10px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: 0 24px 55px rgba(10, 12, 32, 0.5);
+        }
+
+        .panel h2 {
+            font-size: 1.6rem;
+            margin-bottom: 24px;
         }
 
         .editor-panel {
-            padding: 30px;
+            flex: 1;
+            display: block;
             overflow-y: auto;
+            max-height: 640px;
         }
 
-        .editor-panel h2 {
-            font-size: 1.8em;
-            margin-bottom: 20px;
-            color: #333;
+        .editor-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .editor-panel::-webkit-scrollbar-thumb {
+            background: rgba(105, 120, 200, 0.35);
+            border-radius: 999px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--neutral);
+        }
+
+        .empty-state h3 {
+            font-size: 1.4rem;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
 
         .form-group label {
-            display: block;
+            font-size: 0.95rem;
             font-weight: 600;
-            margin-bottom: 8px;
-            color: #555;
-            font-size: 1.05em;
+            color: var(--text-secondary);
+            letter-spacing: 0.01em;
         }
 
         .form-group input,
         .form-group select,
         .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 1em;
-            font-family: inherit;
-            transition: border-color 0.2s;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(120, 130, 180, 0.25);
+            background: rgba(13, 16, 35, 0.85);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .form-group select {
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, rgba(158, 142, 255, 0.7) 50%),
+                              linear-gradient(135deg, rgba(158, 142, 255, 0.7) 50%, transparent 50%);
+            background-position: calc(100% - 20px) calc(50% - 2px), calc(100% - 15px) calc(50% - 2px);
+            background-size: 6px 6px, 6px 6px;
+            background-repeat: no-repeat;
         }
 
         .form-group input:focus,
         .form-group select:focus,
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: rgba(124, 77, 255, 0.7);
+            box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.15);
         }
 
         .form-group textarea {
-            min-height: 120px;
+            min-height: 140px;
             resize: vertical;
-            font-family: 'Courier New', monospace;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
         }
 
         .guidelines-section {
@@ -197,221 +427,202 @@
 
         .guideline-item {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: start;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: stretch;
         }
 
         .guideline-item textarea {
             flex-grow: 1;
-            min-height: 60px;
+            min-height: 80px;
         }
 
         .btn-remove-guideline {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
+            background: rgba(255, 107, 107, 0.15);
+            color: #ffb6b6;
+            border: 1px solid rgba(255, 107, 107, 0.45);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: background 0.2s;
+            transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
         }
 
         .btn-remove-guideline:hover {
-            background: #c0392b;
+            background: rgba(255, 107, 107, 0.35);
+            color: white;
+            transform: translateY(-1px);
         }
 
         .btn-add-guideline {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            background: rgba(108, 92, 231, 0.2);
+            color: var(--accent-strong);
+            border: 1px solid rgba(108, 92, 231, 0.45);
+            padding: 12px 18px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.95em;
-            margin-top: 10px;
-            transition: background 0.2s;
+            font-size: 0.95rem;
+            transition: background 0.2s ease, transform 0.2s ease;
         }
 
         .btn-add-guideline:hover {
-            background: #2980b9;
+            background: rgba(108, 92, 231, 0.35);
+            transform: translateY(-1px);
         }
 
         .action-buttons {
             display: flex;
-            gap: 15px;
+            gap: 16px;
             margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
+            padding-top: 24px;
+            border-top: 1px solid rgba(120, 130, 180, 0.2);
+        }
+
+        .btn-save,
+        .btn-cancel {
+            flex: 1;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .btn-save {
-            flex: 1;
-            padding: 15px;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: background 0.2s;
+            background: linear-gradient(120deg, rgba(45, 212, 191, 0.92), rgba(99, 102, 241, 0.9));
+            color: #041018;
+            box-shadow: 0 22px 40px rgba(45, 212, 191, 0.35);
         }
 
         .btn-save:hover {
-            background: #229954;
+            transform: translateY(-1px);
+            box-shadow: 0 26px 48px rgba(45, 212, 191, 0.45);
         }
 
         .btn-cancel {
-            flex: 1;
-            padding: 15px;
-            background: #95a5a6;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: background 0.2s;
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-secondary);
+            border: 1px solid rgba(148, 163, 184, 0.25);
         }
 
         .btn-cancel:hover {
-            background: #7f8c8d;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #95a5a6;
-        }
-
-        .empty-state h3 {
-            font-size: 1.5em;
-            margin-bottom: 15px;
-        }
-
-        .empty-state p {
-            font-size: 1.1em;
+            transform: translateY(-1px);
+            color: var(--text-primary);
         }
 
         .wizard-container {
             display: none;
-            padding: 30px;
+            max-height: 640px;
+            overflow-y: auto;
         }
 
         .wizard-container.active {
             display: block;
         }
 
-        .wizard-step {
-            display: none;
-            animation: fadeIn 0.3s;
+        .wizard-container::-webkit-scrollbar {
+            width: 8px;
         }
 
-        .wizard-step.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .wizard-container::-webkit-scrollbar-thumb {
+            background: rgba(105, 120, 200, 0.35);
+            border-radius: 999px;
         }
 
         .wizard-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 32px;
         }
 
         .wizard-header h2 {
-            font-size: 2em;
-            color: #667eea;
-            margin-bottom: 10px;
+            font-size: 1.8rem;
         }
 
         .wizard-progress {
             display: flex;
             justify-content: center;
-            margin-bottom: 30px;
-            gap: 10px;
+            gap: 14px;
+            margin-top: 20px;
         }
 
         .progress-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: #e0e0e0;
-            transition: background 0.3s;
+            background: rgba(148, 163, 184, 0.25);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
         }
 
         .progress-dot.completed {
-            background: #27ae60;
+            background: rgba(45, 212, 191, 0.8);
+            border-color: rgba(45, 212, 191, 0.9);
         }
 
         .progress-dot.active {
-            background: #667eea;
+            background: rgba(108, 92, 231, 0.95);
+            border-color: rgba(158, 142, 255, 0.9);
             transform: scale(1.3);
         }
 
         .wizard-buttons {
             display: flex;
-            gap: 15px;
-            margin-top: 30px;
+            gap: 14px;
+            margin-top: 32px;
             justify-content: space-between;
         }
 
         .btn-wizard {
-            padding: 12px 30px;
+            border-radius: var(--radius-md);
+            padding: 14px 26px;
             border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1em;
             font-weight: 600;
-            transition: all 0.2s;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .btn-wizard-prev {
-            background: #95a5a6;
-            color: white;
-        }
-
-        .btn-wizard-prev:hover {
-            background: #7f8c8d;
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-secondary);
+            border: 1px solid rgba(148, 163, 184, 0.25);
         }
 
         .btn-wizard-next {
-            background: #667eea;
+            background: linear-gradient(120deg, rgba(108, 92, 231, 0.9), rgba(63, 136, 255, 0.9));
             color: white;
-        }
-
-        .btn-wizard-next:hover {
-            background: #5568d3;
+            box-shadow: 0 20px 45px rgba(88, 113, 255, 0.35);
         }
 
         .btn-wizard-finish {
-            background: #27ae60;
-            color: white;
+            background: linear-gradient(120deg, rgba(45, 212, 191, 0.92), rgba(56, 189, 248, 0.92));
+            color: #041018;
+            box-shadow: 0 24px 45px rgba(45, 212, 191, 0.4);
         }
 
-        .btn-wizard-finish:hover {
-            background: #229954;
+        .btn-wizard:hover {
+            transform: translateY(-2px);
         }
 
         .notification {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 25px;
-            background: #27ae60;
-            color: white;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            top: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: rgba(45, 212, 191, 0.9);
+            color: #041018;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(45, 212, 191, 0.6);
+            box-shadow: 0 16px 38px rgba(12, 18, 40, 0.4);
             display: none;
-            animation: slideIn 0.3s;
+            animation: slideIn 0.3s ease;
             z-index: 1000;
         }
 
         .notification.error {
-            background: #e74c3c;
+            background: rgba(255, 107, 107, 0.92);
+            color: white;
+            border-color: rgba(255, 107, 107, 0.6);
         }
 
         .notification.show {
@@ -419,50 +630,84 @@
         }
 
         @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
+            from { transform: translateX(40px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
 
-        .search-box {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 0.95em;
+        @media (max-width: 1200px) {
+            body {
+                padding: 32px;
+            }
+
+            .app-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                flex-direction: row;
+                align-items: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .brand-card {
+                width: 100%;
+            }
+
+            .role-list {
+                max-height: 320px;
+            }
         }
 
-        .search-box:focus {
-            outline: none;
-            border-color: #667eea;
+        @media (max-width: 768px) {
+            body {
+                padding: 24px;
+            }
+
+            .app-shell {
+                padding: 24px;
+            }
+
+            .workspace-header h2 {
+                font-size: 1.6rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎭 Roles Editor</h1>
-            <p>Manage and create AI personas for your Chat Bridge</p>
-        </div>
-
-        <div class="main-content">
-            <div class="sidebar">
-                <button class="btn-new-role" onclick="startWizard()">+ Create New Role</button>
-                <input type="text" class="search-box" placeholder="Search roles..." id="searchBox" oninput="filterRoles()">
-                <h2>Persona Library</h2>
-                <ul class="role-list" id="roleList"></ul>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-card">
+                <span class="brand-badge">AI Personas</span>
+                <h1>Chat Bridge</h1>
+                <p>Curate distinctive AI identities, tailor their tone, and orchestrate seamless multi-agent conversations.</p>
             </div>
 
-            <div class="editor-panel" id="editorPanel">
+            <div class="sidebar-actions">
+                <button class="btn-new-role" onclick="startWizard()">＋ Create Persona</button>
+                <input type="text" class="search-box" placeholder="Search personas…" id="searchBox" oninput="filterRoles()">
+            </div>
+
+            <h2>Persona Library</h2>
+            <ul class="role-list" id="roleList"></ul>
+        </aside>
+
+        <main class="workspace">
+            <div class="workspace-header">
+                <span class="workspace-eyebrow">Role Studio</span>
+                <h2>Roles Editor</h2>
+                <p>Manage, refine, and launch bespoke conversational personas that amplify your AI duets.</p>
+            </div>
+
+            <section class="panel editor-panel" id="editorPanel">
                 <div class="empty-state">
-                    <h3>👈 Select a role to edit</h3>
-                    <p>Or create a new one to get started</p>
+                    <h3>👈 Select a persona to begin</h3>
+                    <p>Or craft a new one to shape its voice, expertise, and guidelines.</p>
                 </div>
-            </div>
+            </section>
 
-            <div class="wizard-container" id="wizardContainer">
+            <section class="panel wizard-container" id="wizardContainer">
                 <div class="wizard-header">
-                    <h2>Create New Role</h2>
+                    <h2>Create New Persona</h2>
                     <div class="wizard-progress" id="wizardProgress"></div>
                 </div>
 
@@ -470,7 +715,7 @@
                     <div class="form-group">
                         <label>What's the name of this role?</label>
                         <input type="text" id="wizardName" placeholder="e.g., Software_Architect, Chef, philosopher">
-                        <small style="color: #95a5a6; display: block; margin-top: 5px;">Use underscores for spaces, keep it descriptive</small>
+                        <small style="color: var(--neutral); display: block; margin-top: 5px;">Use underscores for spaces, keep it descriptive</small>
                     </div>
                 </div>
 
@@ -493,7 +738,7 @@
                     <div class="form-group">
                         <label>Optional: Specify a model (leave blank for default)</label>
                         <input type="text" id="wizardModel" placeholder="e.g., gpt-4, claude-3-opus, gemini-pro">
-                        <small style="color: #95a5a6; display: block; margin-top: 5px;">You can leave this empty to use the provider's default model</small>
+                        <small style="color: var(--neutral); display: block; margin-top: 5px;">You can leave this empty to use the provider's default model</small>
                     </div>
                 </div>
 
@@ -501,7 +746,7 @@
                     <div class="form-group">
                         <label>Describe this role's personality and purpose</label>
                         <textarea id="wizardSystem" placeholder="You are a... [describe the persona, their tone, expertise, and approach]" rows="6"></textarea>
-                        <small style="color: #95a5a6; display: block; margin-top: 5px;">This is the core system prompt that defines who this AI is</small>
+                        <small style="color: var(--neutral); display: block; margin-top: 5px;">This is the core system prompt that defines who this AI is</small>
                     </div>
                 </div>
 
@@ -510,7 +755,7 @@
                         <label>Add behavioral guidelines (optional)</label>
                         <div id="wizardGuidelinesList"></div>
                         <button class="btn-add-guideline" onclick="addWizardGuideline()">+ Add Guideline</button>
-                        <small style="color: #95a5a6; display: block; margin-top: 10px;">Guidelines help shape specific behaviors and response patterns</small>
+                        <small style="color: var(--neutral); display: block; margin-top: 10px;">Guidelines help shape specific behaviors and response patterns</small>
                     </div>
                 </div>
 
@@ -524,10 +769,10 @@
                 <div class="wizard-buttons">
                     <button class="btn-wizard btn-wizard-prev" onclick="prevWizardStep()" id="btnPrev">← Previous</button>
                     <button class="btn-wizard btn-wizard-next" onclick="nextWizardStep()" id="btnNext">Next →</button>
-                    <button class="btn-wizard btn-wizard-finish" onclick="finishWizard()" id="btnFinish" style="display: none;">✓ Create Role</button>
+                    <button class="btn-wizard btn-wizard-finish" onclick="finishWizard()" id="btnFinish" style="display: none;">✓ Create Persona</button>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 
     <div class="notification" id="notification"></div>
@@ -537,6 +782,18 @@
         let currentRole = null;
         let currentWizardStep = 1;
         const totalWizardSteps = 6;
+
+        function escapeHTML(value) {
+            if (typeof value !== 'string') {
+                return '';
+            }
+            return value
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
 
         // Load roles on page load
         window.addEventListener('DOMContentLoaded', loadRoles);
@@ -564,29 +821,81 @@
             });
 
             filteredRoles.forEach(([key, role]) => {
-                const li = document.createElement('li');
-                li.className = 'role-item';
-                li.innerHTML = `
-                    <div class="role-item-name">${role.name || key}</div>
-                    <div class="role-item-provider">${role.provider || 'unknown'}</div>
-                    <button class="btn-delete" onclick="deleteRole('${key}', event)">×</button>
-                `;
-                li.onclick = (e) => {
-                    if (!e.target.classList.contains('btn-delete')) {
-                        editRole(key);
+                const listItem = document.createElement('li');
+                listItem.className = 'role-item';
+                listItem.dataset.roleKey = key;
+
+                const header = document.createElement('div');
+                header.className = 'role-header';
+
+                const nameEl = document.createElement('span');
+                nameEl.className = 'role-name';
+                nameEl.textContent = role.name || key;
+
+                const providerEl = document.createElement('span');
+                providerEl.className = 'role-provider';
+                providerEl.textContent = (role.provider || 'unknown').toUpperCase();
+
+                header.appendChild(nameEl);
+                header.appendChild(providerEl);
+
+                const descriptionEl = document.createElement('p');
+                descriptionEl.className = 'role-description';
+                const previewSource = [role.system, role.notes, Array.isArray(role.guidelines) ? role.guidelines[0] : '']
+                    .find(text => typeof text === 'string' && text.trim().length > 0);
+                if (previewSource) {
+                    const compact = previewSource.replace(/\s+/g, ' ').trim();
+                    descriptionEl.textContent = compact.length > 110 ? `${compact.slice(0, 110)}…` : compact;
+                } else {
+                    descriptionEl.textContent = 'No system prompt yet — draft one to define this persona\'s voice.';
+                }
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'btn-delete';
+                deleteButton.setAttribute('aria-label', `Delete ${role.name || key}`);
+                deleteButton.textContent = '×';
+                deleteButton.addEventListener('click', (event) => {
+                    deleteRole(key, event);
+                });
+
+                listItem.appendChild(header);
+                listItem.appendChild(descriptionEl);
+                listItem.appendChild(deleteButton);
+
+                if (key === currentRole) {
+                    listItem.classList.add('active');
+                }
+
+                listItem.addEventListener('click', (event) => {
+                    if (event.target.closest('.btn-delete')) {
+                        return;
                     }
-                };
-                roleList.appendChild(li);
+                    editRole(key, listItem);
+                });
+
+                roleList.appendChild(listItem);
             });
+
+            if (!filteredRoles.length) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'role-empty';
+                emptyItem.innerHTML = '<div class="empty-state"><h3>No personas match your search</h3><p>Try a different phrase or create a fresh persona.</p></div>';
+                roleList.appendChild(emptyItem);
+            }
         }
 
         function filterRoles() {
             renderRoleList();
         }
 
-        function editRole(roleKey) {
+        function editRole(roleKey, listItem = null) {
             currentRole = roleKey;
             const role = rolesData.persona_library[roleKey];
+            const safeName = escapeHTML(role.name || roleKey);
+            const safeModel = escapeHTML(role.model || '');
+            const safeSystem = escapeHTML(role.system || '');
+            const safeNotes = escapeHTML(role.notes || '');
 
             // Hide wizard, show editor
             document.getElementById('wizardContainer').classList.remove('active');
@@ -594,16 +903,29 @@
 
             // Highlight selected role
             document.querySelectorAll('.role-item').forEach(item => item.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            if (listItem) {
+                listItem.classList.add('active');
+            } else {
+                let activeItem = null;
+                if (window.CSS && CSS.escape) {
+                    activeItem = document.querySelector(`.role-item[data-role-key="${CSS.escape(roleKey)}"]`);
+                }
+                if (!activeItem) {
+                    activeItem = Array.from(document.querySelectorAll('.role-item')).find(item => item.dataset.roleKey === roleKey);
+                }
+                if (activeItem) {
+                    activeItem.classList.add('active');
+                }
+            }
 
             // Populate editor
             const editorPanel = document.getElementById('editorPanel');
             editorPanel.innerHTML = `
-                <h2>Edit Role: ${role.name || roleKey}</h2>
+                <h2>Edit Role: ${safeName}</h2>
 
                 <div class="form-group">
                     <label>Role Name</label>
-                    <input type="text" id="editName" value="${role.name || roleKey}">
+                    <input type="text" id="editName" value="${safeName}">
                 </div>
 
                 <div class="form-group">
@@ -620,12 +942,12 @@
 
                 <div class="form-group">
                     <label>Model (optional)</label>
-                    <input type="text" id="editModel" value="${role.model || ''}" placeholder="Leave blank for default">
+                    <input type="text" id="editModel" value="${safeModel}" placeholder="Leave blank for default">
                 </div>
 
                 <div class="form-group">
                     <label>System Prompt</label>
-                    <textarea id="editSystem" rows="6">${role.system || ''}</textarea>
+                    <textarea id="editSystem" rows="6">${safeSystem}</textarea>
                 </div>
 
                 <div class="form-group guidelines-section">
@@ -636,7 +958,7 @@
 
                 <div class="form-group">
                     <label>Notes (optional)</label>
-                    <textarea id="editNotes" rows="3">${role.notes || ''}</textarea>
+                    <textarea id="editNotes" rows="3">${safeNotes}</textarea>
                 </div>
 
                 <div class="action-buttons">
@@ -658,13 +980,22 @@
 
         function addEditGuidelineWithValue(value) {
             const guidelinesList = document.getElementById('editGuidelinesList');
-            const div = document.createElement('div');
-            div.className = 'guideline-item';
-            div.innerHTML = `
-                <textarea placeholder="Add a behavioral guideline...">${value}</textarea>
-                <button class="btn-remove-guideline" onclick="this.parentElement.remove()">×</button>
-            `;
-            guidelinesList.appendChild(div);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'guideline-item';
+
+            const textarea = document.createElement('textarea');
+            textarea.placeholder = 'Add a behavioral guideline...';
+            textarea.value = value || '';
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn-remove-guideline';
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', () => wrapper.remove());
+
+            wrapper.appendChild(textarea);
+            wrapper.appendChild(removeButton);
+            guidelinesList.appendChild(wrapper);
         }
 
         async function saveRole() {
@@ -682,6 +1013,8 @@
                 showNotification('Please fill in all required fields', 'error');
                 return;
             }
+
+            rolesData.persona_library = rolesData.persona_library || {};
 
             // Update the role
             rolesData.persona_library[currentRole] = {
@@ -718,10 +1051,11 @@
         function cancelEdit() {
             document.getElementById('editorPanel').innerHTML = `
                 <div class="empty-state">
-                    <h3>👈 Select a role to edit</h3>
-                    <p>Or create a new one to get started</p>
+                    <h3>👈 Select a persona to begin</h3>
+                    <p>Or craft a new one to shape its voice, expertise, and guidelines.</p>
                 </div>
             `;
+            document.getElementById('editorPanel').style.display = 'block';
             document.querySelectorAll('.role-item').forEach(item => item.classList.remove('active'));
             currentRole = null;
         }
@@ -821,13 +1155,21 @@
 
         function addWizardGuideline() {
             const guidelinesList = document.getElementById('wizardGuidelinesList');
-            const div = document.createElement('div');
-            div.className = 'guideline-item';
-            div.innerHTML = `
-                <textarea placeholder="Add a behavioral guideline..."></textarea>
-                <button class="btn-remove-guideline" onclick="this.parentElement.remove()">×</button>
-            `;
-            guidelinesList.appendChild(div);
+            const wrapper = document.createElement('div');
+            wrapper.className = 'guideline-item';
+
+            const textarea = document.createElement('textarea');
+            textarea.placeholder = 'Add a behavioral guideline...';
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn-remove-guideline';
+            removeButton.textContent = '×';
+            removeButton.addEventListener('click', () => wrapper.remove());
+
+            wrapper.appendChild(textarea);
+            wrapper.appendChild(removeButton);
+            guidelinesList.appendChild(wrapper);
         }
 
         async function finishWizard() {
@@ -845,6 +1187,8 @@
                 showNotification('Please complete all required fields', 'error');
                 return;
             }
+
+            rolesData.persona_library = rolesData.persona_library || {};
 
             // Create new role
             const roleKey = name.toLowerCase().replace(/\s+/g, '_');
@@ -893,6 +1237,7 @@
             const notification = document.getElementById('notification');
             notification.textContent = message;
             notification.className = 'notification show';
+            notification.classList.remove('error');
             if (type === 'error') {
                 notification.classList.add('error');
             }
