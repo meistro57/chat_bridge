@@ -12,6 +12,10 @@ A beautiful, interactive chat bridge that connects two AI assistants with colorf
 - **⚡ Single Setup Mode** - One intuitive flow replaces multiple setup modes
 - **🔌 Dynamic Model Queries** - Models fetched in real-time from OpenAI, Ollama, LM Studio, and OpenRouter
 
+### 📝 **Enhanced Transcript Features**
+- **🔢 Round Markers** - Conversation turns now include visible round numbers in transcripts for easy tracking
+- **👤 Persona Names** - Speaker labels now display persona names (e.g., "Steel Worker") instead of generic "Agent A"/"Agent B" labels
+
 ### 🔧 **Previous Version Highlights (1.2.1)**
 - **🎭 Enhanced Persona Library** - Added DeepSeek, ADHD Kid, and Complainer personas for diverse conversation dynamics
 - **⚙️ Improved Roles Management** - Updated roles_manager.py with better persona handling and configuration options
@@ -343,16 +347,19 @@ Overall Status: 1/2 providers online
 
 Every session produces:
 
-- `transcripts/<timestamp>__<starter-slug>.md` – Enhanced Markdown transcript with complete session configuration
+- `transcripts/<timestamp>__<starter-slug>.md` – Enhanced Markdown transcript with complete session configuration, round markers, and persona names
 - `logs/<timestamp>__<starter-slug>.log` – optional structured per-session log.
 - `chat_bridge.log` – global append-only log capturing request IDs and errors.
 - `bridge.db` – SQLite database containing metadata plus turn-by-turn content.
 
-### 📝 Enhanced Transcript Features (New!)
+### 📝 Enhanced Transcript Features
+- **Round Markers** - Each conversation turn is prefixed with `**Round N**` for easy tracking and navigation
+- **Persona Names** - When personas are selected, they appear as speaker labels (e.g., "Steel Worker" instead of "Agent A")
 - **Session Configuration Header** - Complete configuration details including providers, models, temperatures
 - **Agent Configuration** - Detailed settings for both agents including personas and system prompts
 - **Session Settings** - Max rounds, memory rounds, and stop word detection status
 - **Stop Words List** - Active stop words with current detection status
+- **Timestamps** - Each turn includes precise timestamps for debugging and analysis
 - **Structured Format** - Clear sections for easy navigation and analysis
 
 Legacy transcripts from earlier experiments may be stored in `chatlogs/`; current scripts

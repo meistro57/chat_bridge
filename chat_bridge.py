@@ -825,8 +825,8 @@ class Transcript:
     turns: List[Dict] = field(default_factory=list)
     session_config: Optional[Dict] = field(default_factory=dict)
 
-    def add(self, agent: str, role: str, timestamp: str, content: str):
-        self.turns.append({"agent": agent, "role": role, "timestamp": timestamp, "content": content})
+    def add(self, agent: str, role: str, timestamp: str, content: str, round_num: Optional[int] = None):
+        self.turns.append({"agent": agent, "role": role, "timestamp": timestamp, "content": content, "round_num": round_num})
 
     def set_session_config(self, config: Dict):
         """Set the session configuration for the transcript"""
@@ -877,6 +877,9 @@ class Transcript:
             # Write conversation turns
             f.write("## Conversation\n\n")
             for turn in self.turns:
+                # Add round marker if available
+                if turn.get('round_num'):
+                    f.write(f"**Round {turn['round_num']}**\n\n")
                 f.write(f"### {turn['agent']} ({turn['timestamp']})\n\n")
                 f.write(f"{turn['content']}\n\n")
 
@@ -2541,12 +2544,22 @@ async def run_bridge(args):
     print()
 
     agents = {"a": agent_a, "b": agent_b}
+
+    # Create display names using persona names if available, otherwise use "Agent A"/"Agent B"
+    persona_name_a = persona_a if 'persona_a' in locals() and persona_a else None
+    persona_name_b = persona_b if 'persona_b' in locals() and persona_b else None
+
+    agent_labels = {
+        "a": persona_name_a.replace('_', ' ').title() if persona_name_a else "Agent A",
+        "b": persona_name_b.replace('_', ' ').title() if persona_name_b else "Agent B"
+    }
+
     current_id = "a"
 
     try:
         for round_num in range(1, args.max_rounds + 1):
             agent = agents[current_id]
-            label = f"Agent {current_id.upper()}"
+            label = agent_labels[current_id]
 
             bridge_logger.info(f"Round {round_num}: {label} ({agent.provider_key}) starting turn")
             print(f"{colorize(f'Round {round_num}', Colors.CYAN)} - {colorize(label, Colors.GREEN, bold=True)} ({colorize(agent.provider_key, Colors.YELLOW)}) is thinking...")
@@ -2586,7 +2599,7 @@ async def run_bridge(args):
                 history.add_turn(agent.agent_id, full_reply)
 
                 nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                transcript.add(label, "assistant", nowt, full_reply)
+                transcript.add(label, "assistant", nowt, full_reply, round_num)
                 session_logger.info(f"{label}: {full_reply[:1000]}")
 
                 bridge_logger.info(f"Round {round_num} completed successfully for {label}")

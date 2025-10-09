@@ -291,12 +291,20 @@ Increase `--mem-rounds` sparingly as it increases context size. Adjust `MAX_TOKE
 
 ## File Locations
 
-- **Transcripts**: `transcripts/<timestamp>__<slug>.md` - Full conversation Markdown with session metadata
+- **Transcripts**: `transcripts/<timestamp>__<slug>.md` - Full conversation Markdown with session metadata, round markers, and persona names
 - **Session logs**: `logs/<timestamp>__<slug>.log` - Per-session structured logs
 - **Global log**: `chat_bridge.log` - Append-only log for all sessions
 - **Database**: `bridge.db` - SQLite database with conversations and messages tables
 - **Personas**: `roles.json` - Persona library and agent configurations
 - **Chatlogs** (legacy): `chatlogs/` - Old transcript location, current scripts use `transcripts/`
+
+### Transcript Format
+
+Transcripts now include:
+- **Round markers**: Each conversation turn is prefixed with `**Round N**` for easy tracking
+- **Persona names**: When personas are selected, they appear as speaker labels (e.g., "Steel Worker" instead of "Agent A")
+- **Session metadata**: Full configuration including providers, models, temperatures, and persona details
+- **Timestamps**: Each turn includes a timestamp for debugging and analysis
 
 ## Web GUI Specifics
 
