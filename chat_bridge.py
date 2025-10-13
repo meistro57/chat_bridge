@@ -2693,7 +2693,7 @@ Examples:
     parser.add_argument("--temp-b", type=float, default=0.7, help="Temperature for Agent B")
     parser.add_argument("--max-rounds", type=int, default=30, help="Maximum conversation rounds")
     parser.add_argument("--mem-rounds", type=int, default=8, help="Memory rounds for context")
-    parser.add_argument("--roles", help="Path to roles.json file for personas")
+    parser.add_argument("--roles", default="roles.json", help="Path to roles.json file for personas")
     parser.add_argument("--starter", help="Conversation starter (skips interactive mode)")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     parser.add_argument("--version", action="version", version=f"Chat Bridge {__version__}")

@@ -137,6 +137,11 @@ class OpenAIChat:
         if api_key:
             self.headers["Authorization"] = f"Bearer {api_key}"
 
+        # Add OpenRouter-specific headers for app identification in logs
+        if base_url and "openrouter.ai" in base_url:
+            self.headers["HTTP-Referer"] = os.getenv("OPENROUTER_REFERER", "https://github.com/yourusername/chat-bridge")
+            self.headers["X-Title"] = os.getenv("OPENROUTER_APP_NAME", "Chat Bridge")
+
     async def stream(
         self,
         messages: List[Dict[str, str]],
