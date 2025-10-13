@@ -384,7 +384,42 @@ async def select_provider_and_model(agent_name: str, default_provider: Optional[
     print_success(f"Selected: {spec.label}")
     print()
 
-    # Fetch and display available models
+    # Special handling for OpenRouter - use the enhanced model browser
+    if provider_key == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key and api_key != "your-api-key-here":
+            print_info("🌐 OpenRouter provides access to 300+ models from 50+ providers")
+            print_info("Would you like to browse available models? (y/n)")
+            browse = get_user_input("Browse OpenRouter models?", "y").lower()
+
+            if browse in ['y', 'yes']:
+                try:
+                    selected_model = await select_openrouter_model(api_key)
+                    if selected_model:
+                        return provider_key, selected_model
+                    else:
+                        print_info(f"Using default model: {spec.default_model}")
+                        return provider_key, None
+                except Exception as e:
+                    print_warning(f"Could not fetch OpenRouter models: {e}")
+                    print_info(f"Using default model: {spec.default_model}")
+                    return provider_key, None
+            else:
+                # Allow manual entry
+                print_info(f"Enter a model ID (e.g., 'anthropic/claude-3-5-sonnet') or press Enter for default")
+                manual_model = get_user_input("Model ID", "").strip()
+                selected_model = manual_model if manual_model else None
+                if selected_model:
+                    print_success(f"Selected model: {selected_model}")
+                else:
+                    print_success(f"Using default model: {spec.default_model}")
+                return provider_key, selected_model
+        else:
+            print_warning("OPENROUTER_API_KEY not configured")
+            print_info(f"Using default model: {spec.default_model}")
+            return provider_key, None
+
+    # Standard model selection for other providers
     print_info(f"Fetching available models for {spec.label}...")
     try:
         models = await fetch_available_models(provider_key)
@@ -489,39 +524,74 @@ async def configure_agent_simple(agent_name: str, roles_data: Optional[Dict] = N
     # Step 3: Select Model
     print_section_header(f"Step 3: Select Model for {agent_name}", "🤖")
 
-    print_info(f"Fetching available models for {spec.label}...")
     model = None
 
-    try:
-        models = await fetch_available_models(provider_key)
+    # Special handling for OpenRouter - use the enhanced model browser
+    if provider_key == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key and api_key != "your-api-key-here":
+            print_info("🌐 OpenRouter provides access to 300+ models from 50+ providers")
+            print_info("Would you like to browse available models? (y/n)")
+            browse = get_user_input("Browse OpenRouter models?", "y").lower()
 
-        if models and len(models) > 0:
-            # Show first 20 models or all if less
-            display_models = models[:20] if len(models) > 20 else models
-
-            print_info(f"Available models (showing {len(display_models)} of {len(models)}):")
-            print()
-
-            model_options = [("default", f"Use default ({spec.default_model})")]
-            for m in display_models:
-                model_options.append((m, m))
-
-            choice = select_from_menu(model_options, f"{agent_name} Model", default="1")
-
-            if model_options[int(choice) - 1][0] == "default":
-                model = None
-                print_success(f"Using default model: {spec.default_model}")
+            if browse in ['y', 'yes']:
+                try:
+                    selected_model = await select_openrouter_model(api_key)
+                    if selected_model:
+                        model = selected_model
+                    else:
+                        print_info("Using default model (you can enter a model ID manually if needed)")
+                        model = None
+                except Exception as e:
+                    print_warning(f"Could not fetch OpenRouter models: {e}")
+                    print_info(f"Using default model: {spec.default_model}")
+                    model = None
             else:
-                model = model_options[int(choice) - 1][0]
-                print_success(f"Selected model: {model}")
+                # Allow manual entry
+                print_info(f"Enter a model ID (e.g., 'anthropic/claude-3-5-sonnet') or press Enter for default")
+                manual_model = get_user_input("Model ID", "").strip()
+                model = manual_model if manual_model else None
+                if model:
+                    print_success(f"Selected model: {model}")
+                else:
+                    print_success(f"Using default model: {spec.default_model}")
         else:
-            print_warning(f"No models available, using default: {spec.default_model}")
+            print_warning("OPENROUTER_API_KEY not configured")
+            print_info(f"Using default model: {spec.default_model}")
             model = None
+    else:
+        # Standard model selection for other providers
+        print_info(f"Fetching available models for {spec.label}...")
+        try:
+            models = await fetch_available_models(provider_key)
 
-    except Exception as e:
-        print_warning(f"Error fetching models: {e}")
-        print_info(f"Using default model: {spec.default_model}")
-        model = None
+            if models and len(models) > 0:
+                # Show first 20 models or all if less
+                display_models = models[:20] if len(models) > 20 else models
+
+                print_info(f"Available models (showing {len(display_models)} of {len(models)}):")
+                print()
+
+                model_options = [("default", f"Use default ({spec.default_model})")]
+                for m in display_models:
+                    model_options.append((m, m))
+
+                choice = select_from_menu(model_options, f"{agent_name} Model", default="1")
+
+                if model_options[int(choice) - 1][0] == "default":
+                    model = None
+                    print_success(f"Using default model: {spec.default_model}")
+                else:
+                    model = model_options[int(choice) - 1][0]
+                    print_success(f"Selected model: {model}")
+            else:
+                print_warning(f"No models available, using default: {spec.default_model}")
+                model = None
+
+        except Exception as e:
+            print_warning(f"Error fetching models: {e}")
+            print_info(f"Using default model: {spec.default_model}")
+            model = None
 
     print()
 
