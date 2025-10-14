@@ -47,6 +47,10 @@ from bridge_agents import (
 )
 from version import __version__
 
+# MCP imports
+import urllib.request
+import urllib.parse
+
 # ───────────────────────── Colors & Styling ─────────────────────────
 
 class Colors:
@@ -142,6 +146,66 @@ def print_warning(message: str):
 def print_info(message: str):
     """Print an info message"""
     print(f"{colorize('ℹ️ ', Colors.BLUE)} {colorize(message, Colors.BLUE)}")
+
+# ───────────────────────── MCP Memory Integration ─────────────────────────
+
+def query_mcp_memory(topic: str, limit: int = 3) -> str:
+    """Query MCP server for contextual memory about a topic."""
+    try:
+        url = f"http://localhost:5001/contextual_memory?topic={urllib.parse.quote(topic)}&limit={limit}"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('context', '')
+    except Exception as e:
+        logging.debug(f"MCP memory query failed: {e}")
+        return ""
+
+def get_recent_conversations(limit: int = 3) -> List[Dict]:
+    """Get recent conversations from MCP server."""
+    try:
+        url = f"http://localhost:5001/recent_chats?limit={limit}"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            return data.get('chats', [])
+    except Exception as e:
+        logging.debug(f"MCP recent conversations query failed: {e}")
+        return []
+
+def check_mcp_server() -> bool:
+    """Check if MCP server is available."""
+    try:
+        with urllib.request.urlopen('http://localhost:5001/health', timeout=3) as response:
+            return response.status == 200
+    except:
+        return False
+
+def enhance_prompt_with_memory(original_prompt: str, enable_mcp: bool) -> str:
+    """Enhance a prompt with relevant memory context if MCP is enabled."""
+    if not enable_mcp or not check_mcp_server():
+        return original_prompt
+
+    # Extract key topics from the prompt for memory search
+    key_terms = []
+    words = original_prompt.lower().split()
+    # Look for important words (skip common words)
+    skip_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
+
+    for word in words:
+        clean_word = re.sub(r'[^\w]', '', word)
+        if len(clean_word) > 3 and clean_word not in skip_words:
+            key_terms.append(clean_word)
+
+    # Get memory for key terms
+    memory_context = ""
+    for term in key_terms[:3]:  # Limit to top 3 terms
+        context = query_mcp_memory(term, limit=2)
+        if context:
+            memory_context += f"\n[Memory about {term}]: {context}"
+
+    if memory_context:
+        return f"{original_prompt}{memory_context}\n\n[Note: The above memory context is from previous conversations - use it if relevant, ignore if not.]"
+
+    return original_prompt
 
 # ───────────────────────── Config / Env ─────────────────────────
 
@@ -2600,17 +2664,33 @@ async def run_bridge(args):
 
     transcript.set_session_config(session_config)
 
-    history.add_turn("human", starter)
+    # Enhance starter with MCP memory if enabled
+    if hasattr(args, 'enable_mcp') and args.enable_mcp:
+        enhanced_starter = enhance_prompt_with_memory(starter, True)
+        if enhanced_starter != starter:
+            print_info("MCP memory context added to conversation starter")
+    else:
+        enhanced_starter = starter
+
+    history.add_turn("human", enhanced_starter)
 
     nowt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    transcript.add("Human", "user", nowt, starter)
-    log_message_sql(cid, "human", "user", starter)
+    transcript.add("Human", "user", nowt, starter)  # Log original starter
+    log_message_sql(cid, "human", "user", starter)  # Log original starter
 
     # Get stop words
     stop_words = set(roles_data.get('stop_words', [])) if roles_data else STOP_WORDS_DEFAULT
 
     print_section_header("Conversation in Progress", "💭")
     print_info(f"Starting conversation: {colorize(starter, Colors.WHITE, bold=True)}")
+
+    # Show MCP status if enabled
+    if hasattr(args, 'enable_mcp') and args.enable_mcp:
+        if check_mcp_server():
+            print_success("🧠 MCP Memory System: ACTIVE")
+        else:
+            print_warning("🧠 MCP Memory System: OFFLINE (conversations will continue without memory)")
+
     print()
 
     agents = {"a": agent_a, "b": agent_b}
@@ -2766,6 +2846,7 @@ Examples:
     parser.add_argument("--roles", default="roles.json", help="Path to roles.json file for personas")
     parser.add_argument("--starter", help="Conversation starter (skips interactive mode)")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument("--enable-mcp", action="store_true", help="Enable MCP memory integration")
     parser.add_argument("--version", action="version", version=f"Chat Bridge {__version__}")
 
     # Legacy compatibility
