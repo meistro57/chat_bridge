@@ -50,7 +50,7 @@ from version import __version__
 # MCP imports
 import urllib.request
 import urllib.parse
-from fastmcp import Client
+from fastmcp.client import Client, PythonStdioTransport
 
 # ───────────────────────── Colors & Styling ─────────────────────────
 
@@ -151,9 +151,12 @@ def print_info(message: str):
 # ───────────────────────── MCP Memory Integration ─────────────────────────
 
 async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic using FastMCP client."""
+    """Query MCP server for contextual memory about a topic using FastMCP stdio client."""
     try:
-        async with Client("http://localhost:5001/mcp/") as client:
+        # Create stdio transport for Python MCP server
+        transport = PythonStdioTransport("mcp_server.py")
+
+        async with Client(transport) as client:
             result = await client.call_tool("get_contextual_memory", {"topic": topic, "limit": limit})
             return result.data if result.data else ""
     except Exception as e:
@@ -169,9 +172,12 @@ def query_mcp_memory(topic: str, limit: int = 3) -> str:
         return ""
 
 async def get_recent_conversations_async(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server using FastMCP client."""
+    """Get recent conversations from MCP server using FastMCP stdio client."""
     try:
-        async with Client("http://localhost:5001/mcp/") as client:
+        # Create stdio transport for Python MCP server
+        transport = PythonStdioTransport("mcp_server.py")
+
+        async with Client(transport) as client:
             result = await client.call_tool("get_recent_chats", {"limit": limit})
             return result.data if result.data else []
     except Exception as e:
@@ -187,10 +193,13 @@ def get_recent_conversations(limit: int = 3) -> List[Dict]:
         return []
 
 async def check_mcp_server_async() -> bool:
-    """Check if MCP server is available using FastMCP client."""
+    """Check if MCP server is available using FastMCP stdio client."""
     try:
-        async with Client("http://localhost:5001/mcp/") as client:
-            # Try to read the health resource
+        # Create stdio transport for Python MCP server
+        transport = PythonStdioTransport("mcp_server.py")
+
+        async with Client(transport) as client:
+            # Try to list resources to verify the server works
             resources = await client.list_resources()
             return True
     except Exception as e:

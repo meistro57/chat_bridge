@@ -209,10 +209,16 @@ class OpenAIChat:
                                 logger.error(f"Raw chunk data: {data}")
                                 continue
 
-        except httpx.TimeoutException as timeout_error:
-            logger.error(f"OpenAI request timeout after {STALL_TIMEOUT_SEC}s: {timeout_error}")
-            logger.error(f"Model: {self.model}, Messages: {len(messages)}")
-            raise RuntimeError(f"OpenAI request timed out after {STALL_TIMEOUT_SEC} seconds")
+        except httpx.RemoteProtocolError as remote_error:
+            logger.error(f"Connection lost during OpenAI streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
+            logger.error(f"Model: {self.model}, URL: {self.url}")
+            logger.error(f"Context: {len(messages)} messages, Temperature: {temperature}")
+            import asyncio
+            await asyncio.sleep(0.1)  # Make this async
+            raise RuntimeError(
+                f"OpenAI streaming connection interrupted. The server closed the connection before completing the response. "
+                f"This is usually a temporary network issue - try again in a few moments."
+            ) from remote_error
         except httpx.HTTPStatusError as http_error:
             logger.error(f"OpenAI HTTP error: {http_error}")
             logger.error(f"Response status: {http_error.response.status_code}")
@@ -607,10 +613,16 @@ class OllamaChat:
         except httpx.ConnectError as connect_error:
             logger.error(f"Cannot connect to Ollama server at {self.base}: {connect_error}")
             raise RuntimeError(f"Ollama server unreachable at {self.base}. Is Ollama running?")
-        except httpx.TimeoutException as timeout_error:
-            logger.error(f"Ollama request timeout after {STALL_TIMEOUT_SEC}s: {timeout_error}")
-            logger.error(f"Model: {self.model}, Messages: {len(messages)}")
-            raise RuntimeError(f"Ollama request timed out after {STALL_TIMEOUT_SEC} seconds")
+        except httpx.RemoteProtocolError as remote_error:
+            logger.error(f"Connection lost during Ollama streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
+            logger.error(f"Model: {self.model}, URL: {url}")
+            logger.error(f"Context: {len(messages)} messages, Temperature: {temperature}")
+            import asyncio
+            await asyncio.sleep(0.1)  # Make this async
+            raise RuntimeError(
+                f"Ollama streaming connection interrupted. The server closed the connection before completing the response. "
+                f"Make sure Ollama server is running and accessible at {self.base}."
+            ) from remote_error
         except Exception as unexpected_error:
             logger.error(f"Unexpected Ollama error: {unexpected_error}", exc_info=True)
             logger.error(f"Model: {self.model}, URL: {url}")

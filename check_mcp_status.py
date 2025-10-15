@@ -7,8 +7,9 @@ Verifies FastMCP server and database content.
 import sqlite3
 import sys
 import asyncio
+import subprocess
 from pathlib import Path
-from fastmcp import Client
+from fastmcp.client import Client, PythonStdioTransport
 
 
 def check_db():
@@ -37,9 +38,12 @@ def check_db():
 
 
 async def check_mcp_server_async():
-    """Check FastMCP server health."""
+    """Check FastMCP server health via stdio."""
     try:
-        async with Client("http://localhost:5001/mcp/") as client:
+        # Create stdio transport for Python MCP server
+        transport = PythonStdioTransport("mcp_server.py")
+
+        async with Client(transport) as client:
             # List available resources
             resources = await client.list_resources()
 
@@ -94,9 +98,12 @@ def check_log_files():
 
 
 async def test_mcp_tools():
-    """Test MCP tools by calling them."""
+    """Test MCP tools by calling them via stdio."""
     try:
-        async with Client("http://localhost:5001/mcp/") as client:
+        # Create stdio transport for Python MCP server
+        transport = PythonStdioTransport("mcp_server.py")
+
+        async with Client(transport) as client:
             # Test get_recent_chats tool
             result = await client.call_tool("get_recent_chats", {"limit": 1})
             return {"status": "ok", "sample_data": result.data}
@@ -122,8 +129,8 @@ def main():
     print("\n🚀 FastMCP Server Status:")
     server_status = check_mcp_server()
     if server_status["status"] == "ok":
-        print("  ✅ Server: RUNNING")
-        print(f"  📍 Endpoint: http://localhost:5001/mcp/")
+        print("  ✅ Server: ACCESSIBLE")
+        print(f"  📍 Transport: stdio")
         print(f"  🛠️  Tools available: {server_status.get('tools', 0)}")
         print(f"  📦 Resources available: {server_status.get('resources', 0)}")
     else:
@@ -165,13 +172,13 @@ def main():
     if all_good:
         print("  ✅ MCP System: FULLY OPERATIONAL")
         print("  🎯 Ready for conversations with memory!")
-        print("  💡 Using FastMCP 2.0 for Model Context Protocol")
+        print("  💡 Using FastMCP 2.0 with stdio transport")
     else:
         print("  ⚠️  MCP System: INCOMPLETE")
         if db_status["status"] != "ok":
             print("    🔧 Run chat_bridge.py first to create database")
         if server_status["status"] != "ok":
-            print("    🔧 Run python3 mcp_server.py to start FastMCP server")
+            print("    🔧 Ensure mcp_server.py is accessible in the current directory")
         if log_status['transcripts'] + log_status['logs'] == 0:
             print("    🔧 Run python populate_mcp_logs.py to import logs")
 

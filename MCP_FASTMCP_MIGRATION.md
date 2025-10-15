@@ -1,5 +1,7 @@
 # MCP to FastMCP Migration
 
+> **Note**: This document describes the Flask → FastMCP HTTP migration. The system has since been migrated from HTTP to stdio transport (October 15, 2025). See [MCP_STDIO_MIGRATION.md](./MCP_STDIO_MIGRATION.md) for the latest architecture.
+
 ## Overview
 
 The MCP (Memory, Continuity, Protocol) server has been successfully migrated from Flask to FastMCP 2.0, providing a more robust and standards-compliant Model Context Protocol implementation.

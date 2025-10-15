@@ -114,8 +114,7 @@ python test_roles_manager_validation.py
 python test_roles_debug.py
 
 # Test MCP server
-python mcp_server.py &  # Start in background
-python check_mcp_status.py  # Verify status
+python check_mcp_status.py  # Verify status and functionality
 ```
 
 ## Architecture
@@ -134,7 +133,7 @@ python check_mcp_status.py  # Verify status
 
 ### MCP Memory System (FastMCP 2.0)
 
-**mcp_server.py** - FastMCP-based Model Context Protocol server providing conversation memory and context. Running on `http://localhost:5001/mcp/`, it exposes:
+**mcp_server.py** - FastMCP-based Model Context Protocol server providing conversation memory and context. Uses **stdio transport** for direct process communication, it exposes:
 
 **Tools (callable by LLMs):**
 - `get_recent_chats(limit)` - Query recent conversations from database
@@ -146,17 +145,19 @@ python check_mcp_status.py  # Verify status
 - `bridge://stats` - Database statistics (conversation and message counts)
 - `bridge://health` - Server health status and version info
 
-**check_mcp_status.py** - Status checker using FastMCP client to verify server health, list available tools/resources, and test functionality.
+**check_mcp_status.py** - Status checker using FastMCP stdio client to verify server accessibility, list available tools/resources, and test functionality.
 
 **MCP Integration in chat_bridge.py:**
-- Uses FastMCP Client for protocol-compliant communication
+- Uses FastMCP stdio client for protocol-compliant communication
+- Launches MCP server as subprocess on-demand for each query
 - Async-first implementation with sync wrappers for compatibility
 - Functions: `query_mcp_memory()`, `get_recent_conversations()`, `check_mcp_server()`
 - Enhances agent prompts with relevant historical context when `--enable-mcp` flag is used
 - Continuous memory integration provides fresh context on every conversation turn
 
-**Migration from Flask:**
-The MCP system was migrated from Flask REST API to FastMCP 2.0 (2025-10-15) for standards compliance and better protocol support. See `MCP_FASTMCP_MIGRATION.md` for details.
+**Migration History:**
+- **2025-10-15**: Migrated from Flask REST API to FastMCP 2.0 with HTTP transport for standards compliance
+- **Latest**: Migrated from HTTP to stdio transport for better process isolation and no port conflicts
 
 ### Web GUI Architecture
 
@@ -360,20 +361,15 @@ Increase `--mem-rounds` sparingly as it increases context size. Adjust `MAX_TOKE
 
 ### Working with MCP Memory System
 
-The FastMCP-based memory system provides contextual memory to AI conversations:
+The FastMCP-based memory system provides contextual memory to AI conversations using stdio transport:
 
-**Starting the MCP server:**
-
-```bash
-python mcp_server.py
-# Server runs on http://localhost:5001/mcp/
-```
+**No manual server startup required!** The MCP server is launched automatically as a subprocess when needed.
 
 **Checking MCP status:**
 
 ```bash
 python check_mcp_status.py
-# Shows: database status, server health, available tools/resources
+# Shows: database status, server accessibility, available tools/resources
 ```
 
 **Using MCP in conversations:**
@@ -387,6 +383,8 @@ python chat_bridge.py
 ```
 
 **Key features:**
+- **Stdio transport**: MCP server runs as subprocess, no HTTP server or port conflicts
+- **On-demand launch**: Server starts automatically when needed, no manual management
 - **Continuous memory**: Fresh context retrieved on every conversation turn
 - **Topic-based search**: Automatically finds relevant past conversations
 - **4 Tools**: Recent chats, search, contextual memory, conversation details
@@ -394,10 +392,10 @@ python chat_bridge.py
 - **Standards compliant**: Uses official Model Context Protocol
 
 **Troubleshooting MCP:**
-- If MCP queries fail, check server is running: `python check_mcp_status.py`
-- Server logs show detailed debugging info
-- Database must exist with conversation data for meaningful results
+- If MCP queries fail, check `mcp_server.py` exists in the working directory
+- Check database exists with conversation data: `python check_mcp_status.py`
 - MCP integration gracefully degrades if server unavailable
+- Server logs are written to stderr for debugging
 
 ## File Locations
 

@@ -261,24 +261,25 @@ def health_check() -> str:
 
 
 if __name__ == '__main__':
-    print("🚀 Starting Chat Bridge MCP Memory Server...")
-    print("=" * 50)
-    print()
-    print("📚 Available Tools (callable by LLMs):")
-    print("  • get_recent_chats(limit) - Get recent conversations")
-    print("  • search_chats(keyword, limit) - Search by keyword")
-    print("  • get_contextual_memory(topic, limit) - Get topic-relevant memory")
-    print("  • get_conversation_by_id(conversation_id) - Get full conversation")
-    print()
-    print("📦 Available Resources (data for LLM context):")
-    print("  • bridge://stats - Database statistics")
-    print("  • bridge://health - Server health status")
-    print()
-    print("🗄️  Connected to bridge.db for conversation history")
-    print("🎯 Using FastMCP 2.0 for Model Context Protocol")
-    print()
-    print("Press Ctrl+C to stop")
-    print()
+    import sys
 
-    # Run the FastMCP server with HTTP transport
-    mcp.run(transport="http", host="0.0.0.0", port=5001)
+    # Log startup info to stderr (won't interfere with stdio protocol)
+    print("🚀 Starting Chat Bridge MCP Memory Server...", file=sys.stderr)
+    print("=" * 50, file=sys.stderr)
+    print("", file=sys.stderr)
+    print("📚 Available Tools (callable by LLMs):", file=sys.stderr)
+    print("  • get_recent_chats(limit) - Get recent conversations", file=sys.stderr)
+    print("  • search_chats(keyword, limit) - Search by keyword", file=sys.stderr)
+    print("  • get_contextual_memory(topic, limit) - Get topic-relevant memory", file=sys.stderr)
+    print("  • get_conversation_by_id(conversation_id) - Get full conversation", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("📦 Available Resources (data for LLM context):", file=sys.stderr)
+    print("  • bridge://stats - Database statistics", file=sys.stderr)
+    print("  • bridge://health - Server health status", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("🗄️  Connected to bridge.db for conversation history", file=sys.stderr)
+    print("🎯 Using FastMCP 2.0 with stdio transport", file=sys.stderr)
+    print("", file=sys.stderr)
+
+    # Run the FastMCP server with stdio transport
+    mcp.run(transport="stdio")
