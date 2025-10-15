@@ -2,4 +2,4 @@ httpx
 python-dotenv
 google-generativeai
 inquirer
-flask
+fastmcp

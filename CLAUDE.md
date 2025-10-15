@@ -112,6 +112,10 @@ python simple_test.py
 # Test roles manager
 python test_roles_manager_validation.py
 python test_roles_debug.py
+
+# Test MCP server
+python mcp_server.py &  # Start in background
+python check_mcp_status.py  # Verify status
 ```
 
 ## Architecture
@@ -127,6 +131,32 @@ python test_roles_debug.py
 **launch.py** - Quick launcher with preset conversation configurations to bypass interactive setup.
 
 **certify.py** - Automated certification suite testing all providers, database operations, file system operations, and integration health.
+
+### MCP Memory System (FastMCP 2.0)
+
+**mcp_server.py** - FastMCP-based Model Context Protocol server providing conversation memory and context. Running on `http://localhost:5001/mcp/`, it exposes:
+
+**Tools (callable by LLMs):**
+- `get_recent_chats(limit)` - Query recent conversations from database
+- `search_chats(keyword, limit)` - Search messages by keyword
+- `get_contextual_memory(topic, limit)` - Retrieve topic-relevant memories
+- `get_conversation_by_id(conversation_id)` - Get full conversation details
+
+**Resources (data for LLM context):**
+- `bridge://stats` - Database statistics (conversation and message counts)
+- `bridge://health` - Server health status and version info
+
+**check_mcp_status.py** - Status checker using FastMCP client to verify server health, list available tools/resources, and test functionality.
+
+**MCP Integration in chat_bridge.py:**
+- Uses FastMCP Client for protocol-compliant communication
+- Async-first implementation with sync wrappers for compatibility
+- Functions: `query_mcp_memory()`, `get_recent_conversations()`, `check_mcp_server()`
+- Enhances agent prompts with relevant historical context when `--enable-mcp` flag is used
+- Continuous memory integration provides fresh context on every conversation turn
+
+**Migration from Flask:**
+The MCP system was migrated from Flask REST API to FastMCP 2.0 (2025-10-15) for standards compliance and better protocol support. See `MCP_FASTMCP_MIGRATION.md` for details.
 
 ### Web GUI Architecture
 
@@ -240,6 +270,7 @@ BRIDGE_SYSTEM_B="Custom system prompt for Agent B"
 - `python-dotenv` - Environment variable loading
 - `google-generativeai` - Gemini API client
 - `inquirer` - Interactive CLI menus
+- `fastmcp` - Model Context Protocol (MCP) server and client framework
 
 **Web GUI Backend**:
 - `fastapi` - Web framework
@@ -326,6 +357,47 @@ Providers have different rate limits. When hitting limits:
 - **Local providers** (Ollama, LM Studio): No limits
 
 Increase `--mem-rounds` sparingly as it increases context size. Adjust `MAX_TOKENS` in bridge_agents.py:16 to control response length (default 800).
+
+### Working with MCP Memory System
+
+The FastMCP-based memory system provides contextual memory to AI conversations:
+
+**Starting the MCP server:**
+
+```bash
+python mcp_server.py
+# Server runs on http://localhost:5001/mcp/
+```
+
+**Checking MCP status:**
+
+```bash
+python check_mcp_status.py
+# Shows: database status, server health, available tools/resources
+```
+
+**Using MCP in conversations:**
+
+```bash
+# Enable MCP memory integration
+python chat_bridge.py --enable-mcp
+
+# Or use interactive mode and enable MCP when prompted
+python chat_bridge.py
+```
+
+**Key features:**
+- **Continuous memory**: Fresh context retrieved on every conversation turn
+- **Topic-based search**: Automatically finds relevant past conversations
+- **4 Tools**: Recent chats, search, contextual memory, conversation details
+- **2 Resources**: Database stats and health check
+- **Standards compliant**: Uses official Model Context Protocol
+
+**Troubleshooting MCP:**
+- If MCP queries fail, check server is running: `python check_mcp_status.py`
+- Server logs show detailed debugging info
+- Database must exist with conversation data for meaningful results
+- MCP integration gracefully degrades if server unavailable
 
 ## File Locations
 

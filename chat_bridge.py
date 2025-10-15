@@ -50,6 +50,7 @@ from version import __version__
 # MCP imports
 import urllib.request
 import urllib.parse
+from fastmcp import Client
 
 # ───────────────────────── Colors & Styling ─────────────────────────
 
@@ -149,33 +150,57 @@ def print_info(message: str):
 
 # ───────────────────────── MCP Memory Integration ─────────────────────────
 
-def query_mcp_memory(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic."""
+async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
+    """Query MCP server for contextual memory about a topic using FastMCP client."""
     try:
-        url = f"http://localhost:5001/contextual_memory?topic={urllib.parse.quote(topic)}&limit={limit}"
-        with urllib.request.urlopen(url, timeout=5) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            return data.get('context', '')
+        async with Client("http://localhost:5001/mcp/") as client:
+            result = await client.call_tool("get_contextual_memory", {"topic": topic, "limit": limit})
+            return result.data if result.data else ""
     except Exception as e:
         logging.debug(f"MCP memory query failed: {e}")
         return ""
 
-def get_recent_conversations(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server."""
+def query_mcp_memory(topic: str, limit: int = 3) -> str:
+    """Query MCP server for contextual memory about a topic (sync wrapper)."""
     try:
-        url = f"http://localhost:5001/recent_chats?limit={limit}"
-        with urllib.request.urlopen(url, timeout=5) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            return data.get('chats', [])
+        return asyncio.run(query_mcp_memory_async(topic, limit))
+    except Exception as e:
+        logging.debug(f"MCP memory query failed: {e}")
+        return ""
+
+async def get_recent_conversations_async(limit: int = 3) -> List[Dict]:
+    """Get recent conversations from MCP server using FastMCP client."""
+    try:
+        async with Client("http://localhost:5001/mcp/") as client:
+            result = await client.call_tool("get_recent_chats", {"limit": limit})
+            return result.data if result.data else []
     except Exception as e:
         logging.debug(f"MCP recent conversations query failed: {e}")
         return []
 
-def check_mcp_server() -> bool:
-    """Check if MCP server is available."""
+def get_recent_conversations(limit: int = 3) -> List[Dict]:
+    """Get recent conversations from MCP server (sync wrapper)."""
     try:
-        with urllib.request.urlopen('http://localhost:5001/health', timeout=3) as response:
-            return response.status == 200
+        return asyncio.run(get_recent_conversations_async(limit))
+    except Exception as e:
+        logging.debug(f"MCP recent conversations query failed: {e}")
+        return []
+
+async def check_mcp_server_async() -> bool:
+    """Check if MCP server is available using FastMCP client."""
+    try:
+        async with Client("http://localhost:5001/mcp/") as client:
+            # Try to read the health resource
+            resources = await client.list_resources()
+            return True
+    except Exception as e:
+        logging.debug(f"MCP server check failed: {e}")
+        return False
+
+def check_mcp_server() -> bool:
+    """Check if MCP server is available (sync wrapper)."""
+    try:
+        return asyncio.run(check_mcp_server_async())
     except:
         return False
 
@@ -206,6 +231,61 @@ def enhance_prompt_with_memory(original_prompt: str, enable_mcp: bool) -> str:
         return f"{original_prompt}{memory_context}\n\n[Note: The above memory context is from previous conversations - use it if relevant, ignore if not.]"
 
     return original_prompt
+
+
+def get_turn_memory_context(agent_id: str, turns: List[Turn], enable_mcp: bool, max_terms: int = 2) -> str:
+    """Get contextual memory for a specific agent's turn.
+
+    Args:
+        agent_id: Identifier of the agent ('a' or 'b')
+        turns: Recent conversation turns for context
+        enable_mcp: Whether MCP is enabled
+        max_terms: Maximum number of key terms to query
+
+    Returns:
+        Memory context string for the turn, or empty string if MCP unavailable/disabled
+    """
+    if not enable_mcp or not check_mcp_server():
+        return ""
+
+    try:
+        # Extract recent messages for context
+        recent_messages = [turn.text for turn in turns[-3:]]  # Last 3 turns
+
+        # Combine recent messages to find key topics
+        combined_text = " ".join(recent_messages)
+        words = combined_text.lower().split()
+
+        # Find important keywords
+        skip_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
+        key_terms = []
+
+        for word in words:
+            clean_word = re.sub(r'[^\w]', '', word)
+            if len(clean_word) > 2 and clean_word not in skip_words:
+                key_terms.append(clean_word)
+
+        # Get unique terms, limit to max_terms
+        unique_terms = list(set(key_terms))[:max_terms]
+
+        # Query MCP for each term
+        memory_contexts = []
+        for term in unique_terms:
+            context = query_mcp_memory(term, limit=1)  # Single result per term for speed
+            if context:
+                memory_contexts.append(f"[{term.upper()}: {context}]")
+
+        if memory_contexts:
+            context_block = "\n".join(memory_contexts)
+            bridge_logger.debug(f"MCP context for agent {agent_id}: {len(memory_contexts)} terms found")
+            return f"\n[Recent Memory Context]\n{context_block}\n[Use this context if relevant to the current conversation]\n"
+
+        bridge_logger.debug(f"No MCP context found for agent {agent_id}")
+        return ""
+
+    except Exception as e:
+        bridge_logger.debug(f"Error getting MCP context for agent {agent_id}: {e}")
+        return ""
 
 # ───────────────────────── Config / Env ─────────────────────────
 

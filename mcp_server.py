@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
 MCP Memory Server
-HTTP API server for the Memory, Continuity, Protocol system.
+FastMCP-based server for the Memory, Continuity, Protocol system.
 
-Provides endpoints for querying conversation history from bridge.db.
+Provides tools and resources for querying conversation history from bridge.db.
 """
 
 import sqlite3
-import json
-from flask import Flask, request, jsonify
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict
 import logging
+from fastmcp import FastMCP
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# Initialize FastMCP server
+mcp = FastMCP("Chat Bridge Memory 🧠")
 
 def get_db_connection():
     """Get database connection."""
@@ -25,120 +25,260 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def query_recent_chats(limit: int = 10) -> List[Dict]:
-    """Query recent conversations from database."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT id, timestamp, starter, agent_a_provider, agent_b_provider, status
-        FROM conversations
-        ORDER BY timestamp DESC
-        LIMIT ?
-    ''', (limit,))
+# MCP Tools (functions that can be called by LLMs)
 
-    rows = cursor.fetchall()
-    conn.close()
+@mcp.tool()
+def get_recent_chats(limit: int = 10) -> List[Dict]:
+    """
+    Query recent conversations from the database.
 
-    return [{
-        'id': row['id'],
-        'timestamp': row['timestamp'],
-        'starter': row['starter'],
-        'agent_a_provider': row['agent_a_provider'],
-        'agent_b_provider': row['agent_b_provider'],
-        'status': row['status']
-    } for row in rows]
+    Args:
+        limit: Maximum number of conversations to return (default: 10)
 
+    Returns:
+        List of recent conversations with metadata
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT id, timestamp, starter, agent_a_provider, agent_b_provider, status
+            FROM conversations
+            ORDER BY timestamp DESC
+            LIMIT ?
+        ''', (limit,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [{
+            'id': row['id'],
+            'timestamp': row['timestamp'],
+            'starter': row['starter'],
+            'agent_a_provider': row['agent_a_provider'],
+            'agent_b_provider': row['agent_b_provider'],
+            'status': row['status']
+        } for row in rows]
+    except Exception as e:
+        logger.error(f"Error getting recent chats: {e}")
+        return []
+
+
+@mcp.tool()
 def search_chats(keyword: str, limit: int = 5) -> List[Dict]:
-    """Search conversations by keyword in messages."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """
+    Search conversations by keyword in message content.
 
-    cursor.execute('''
-        SELECT DISTINCT c.id, c.timestamp, c.starter, m.content
-        FROM conversations c
-        JOIN messages m ON c.id = m.conversation_id
-        WHERE m.content LIKE ?
-        ORDER BY c.timestamp DESC
-        LIMIT ?
-    ''', (f'%{keyword}%', limit))
+    Args:
+        keyword: The search term to look for in message content
+        limit: Maximum number of results to return (default: 5)
 
-    rows = cursor.fetchall()
-    conn.close()
+    Returns:
+        List of conversations containing the keyword
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    return [{
-        'conversation_id': row['id'],
-        'timestamp': row['timestamp'],
-        'starter': row['starter'],
-        'content': row['content']
-    } for row in rows]
+        cursor.execute('''
+            SELECT DISTINCT c.id, c.timestamp, c.starter, m.content
+            FROM conversations c
+            JOIN messages m ON c.id = m.conversation_id
+            WHERE m.content LIKE ?
+            ORDER BY c.timestamp DESC
+            LIMIT ?
+        ''', (f'%{keyword}%', limit))
 
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [{
+            'conversation_id': row['id'],
+            'timestamp': row['timestamp'],
+            'starter': row['starter'],
+            'content': row['content']
+        } for row in rows]
+    except Exception as e:
+        logger.error(f"Error searching chats: {e}")
+        return []
+
+
+@mcp.tool()
 def get_contextual_memory(topic: str, limit: int = 3) -> str:
-    """Get contextual memory related to a topic."""
-    # Simple implementation: search for topic keyword
-    results = search_chats(topic, limit)
+    """
+    Get contextual memory related to a specific topic.
 
-    if not results:
+    Args:
+        topic: The topic to search for in conversation history
+        limit: Maximum number of relevant memories to return (default: 3)
+
+    Returns:
+        Formatted string containing relevant conversation excerpts
+    """
+    try:
+        # Search for topic keyword
+        results = search_chats(topic, limit)
+
+        if not results:
+            return ""
+
+        # Build context string
+        context_parts = []
+        for result in results:
+            context_parts.append(
+                f"From {result['timestamp']}: {result['content'][:100]}..."
+            )
+
+        return "\n".join(context_parts) if context_parts else ""
+    except Exception as e:
+        logger.error(f"Error getting contextual memory: {e}")
         return ""
 
-    # Build context string
-    context_parts = []
-    for result in results:
-        context_parts.append(f"From {result['timestamp']}: {result['content'][:100]}...")
 
-    return "\n".join(context_parts) if context_parts else ""
+@mcp.tool()
+def get_conversation_by_id(conversation_id: str) -> Dict:
+    """
+    Get full conversation details by ID.
 
-@app.route('/health')
-def health_check():
-    """Health check endpoint."""
-    return jsonify({
-        'status': 'healthy',
-        'port': 5001,
-        'timestamp': datetime.now().isoformat(),
-        'version': '1.0.0'
-    })
+    Args:
+        conversation_id: The unique conversation ID
 
-@app.route('/recent_chats', methods=['GET'])
-def recent_chats_endpoint():
-    """Get recent conversations."""
+    Returns:
+        Dictionary containing conversation metadata and all messages
+    """
     try:
-        limit = int(request.args.get('limit', 10))
-        chats = query_recent_chats(limit)
-        return jsonify({'chats': chats})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-@app.route('/search_chats', methods=['GET'])
-def search_chats_endpoint():
-    """Search conversations by keyword."""
-    try:
-        keyword = request.args.get('keyword', '')
-        limit = int(request.args.get('limit', 5))
-        results = search_chats(keyword, limit)
-        return jsonify({'results': results})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Get conversation metadata
+        cursor.execute('''
+            SELECT id, timestamp, starter, agent_a_provider, agent_b_provider, status
+            FROM conversations
+            WHERE id = ?
+        ''', (conversation_id,))
 
-@app.route('/contextual_memory', methods=['GET'])
-def contextual_memory_endpoint():
-    """Get contextual memory for a topic."""
-    try:
-        topic = request.args.get('topic', '')
-        limit = int(request.args.get('limit', 3))
-        context = get_contextual_memory(topic, limit)
-        return jsonify({'context': context})
+        conv_row = cursor.fetchone()
+        if not conv_row:
+            conn.close()
+            return {"error": "Conversation not found"}
+
+        # Get all messages for this conversation
+        cursor.execute('''
+            SELECT agent_provider, role, content, timestamp
+            FROM messages
+            WHERE conversation_id = ?
+            ORDER BY timestamp ASC
+        ''', (conversation_id,))
+
+        message_rows = cursor.fetchall()
+        conn.close()
+
+        return {
+            'id': conv_row['id'],
+            'timestamp': conv_row['timestamp'],
+            'starter': conv_row['starter'],
+            'agent_a_provider': conv_row['agent_a_provider'],
+            'agent_b_provider': conv_row['agent_b_provider'],
+            'status': conv_row['status'],
+            'messages': [{
+                'agent_provider': msg['agent_provider'],
+                'role': msg['role'],
+                'content': msg['content'],
+                'timestamp': msg['timestamp']
+            } for msg in message_rows]
+        }
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error getting conversation: {e}")
+        return {"error": str(e)}
+
+
+# MCP Resources (data that can be loaded into LLM context)
+
+@mcp.resource("bridge://stats")
+def get_database_stats() -> str:
+    """
+    Get statistics about the conversation database.
+
+    Returns:
+        Formatted statistics about conversations and messages
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Count conversations
+        cursor.execute('SELECT COUNT(*) FROM conversations')
+        conv_count = cursor.fetchone()[0]
+
+        # Count messages
+        cursor.execute('SELECT COUNT(*) FROM messages')
+        msg_count = cursor.fetchone()[0]
+
+        # Get most recent conversation time
+        cursor.execute('SELECT MAX(timestamp) FROM conversations')
+        last_conv = cursor.fetchone()[0]
+
+        conn.close()
+
+        return f"""Chat Bridge Database Statistics:
+- Total conversations: {conv_count}
+- Total messages: {msg_count}
+- Last conversation: {last_conv or 'None'}
+- Average messages per conversation: {msg_count / conv_count if conv_count > 0 else 0:.1f}
+"""
+    except Exception as e:
+        logger.error(f"Error getting database stats: {e}")
+        return f"Error: {str(e)}"
+
+
+@mcp.resource("bridge://health")
+def health_check() -> str:
+    """
+    Check the health status of the MCP server.
+
+    Returns:
+        Health status information
+    """
+    try:
+        # Test database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        conn.close()
+
+        return f"""MCP Server Health Check:
+- Status: Healthy ✅
+- Server: Chat Bridge Memory
+- Timestamp: {datetime.now().isoformat()}
+- Database: Connected
+- Version: 2.0.0 (FastMCP)
+"""
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return f"MCP Server Health Check:\n- Status: Unhealthy ❌\n- Error: {str(e)}"
+
 
 if __name__ == '__main__':
-    print("🚀 Starting MCP Memory Server on port 5001...")
-    print("Available endpoints:")
-    print("  GET /health - Server health check")
-    print("  GET /recent_chats?limit=N - Recent conversations")
-    print("  GET /search_chats?keyword=X&limit=N - Keyword search")
-    print("  GET /contextual_memory?topic=X&limit=N - Topic-relevant memory")
+    print("🚀 Starting Chat Bridge MCP Memory Server...")
+    print("=" * 50)
+    print()
+    print("📚 Available Tools (callable by LLMs):")
+    print("  • get_recent_chats(limit) - Get recent conversations")
+    print("  • search_chats(keyword, limit) - Search by keyword")
+    print("  • get_contextual_memory(topic, limit) - Get topic-relevant memory")
+    print("  • get_conversation_by_id(conversation_id) - Get full conversation")
+    print()
+    print("📦 Available Resources (data for LLM context):")
+    print("  • bridge://stats - Database statistics")
+    print("  • bridge://health - Server health status")
     print()
     print("🗄️  Connected to bridge.db for conversation history")
+    print("🎯 Using FastMCP 2.0 for Model Context Protocol")
+    print()
     print("Press Ctrl+C to stop")
+    print()
 
-    app.run(host='0.0.0.0', port=5001, debug=False)
+    # Run the FastMCP server with HTTP transport
+    mcp.run(transport="http", host="0.0.0.0", port=5001)
