@@ -10,7 +10,13 @@ import sqlite3
 from datetime import datetime
 from typing import List, Dict
 import logging
-from fastmcp import FastMCP
+
+try:
+    # Try the expected mcp.server.fastmcp import first (for mcp dev CLI)
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    # Fall back to standalone fastmcp package
+    from fastmcp import FastMCP
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -261,25 +267,5 @@ def health_check() -> str:
 
 
 if __name__ == '__main__':
-    import sys
-
-    # Log startup info to stderr (won't interfere with stdio protocol)
-    print("🚀 Starting Chat Bridge MCP Memory Server...", file=sys.stderr)
-    print("=" * 50, file=sys.stderr)
-    print("", file=sys.stderr)
-    print("📚 Available Tools (callable by LLMs):", file=sys.stderr)
-    print("  • get_recent_chats(limit) - Get recent conversations", file=sys.stderr)
-    print("  • search_chats(keyword, limit) - Search by keyword", file=sys.stderr)
-    print("  • get_contextual_memory(topic, limit) - Get topic-relevant memory", file=sys.stderr)
-    print("  • get_conversation_by_id(conversation_id) - Get full conversation", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("📦 Available Resources (data for LLM context):", file=sys.stderr)
-    print("  • bridge://stats - Database statistics", file=sys.stderr)
-    print("  • bridge://health - Server health status", file=sys.stderr)
-    print("", file=sys.stderr)
-    print("🗄️  Connected to bridge.db for conversation history", file=sys.stderr)
-    print("🎯 Using FastMCP 2.0 with stdio transport", file=sys.stderr)
-    print("", file=sys.stderr)
-
     # Run the FastMCP server with stdio transport
     mcp.run(transport="stdio")
