@@ -50,7 +50,7 @@ from version import __version__
 # MCP imports
 import urllib.request
 import urllib.parse
-from fastmcp.client import Client, PythonStdioTransport
+import httpx
 
 # ───────────────────────── Colors & Styling ─────────────────────────
 
@@ -150,15 +150,25 @@ def print_info(message: str):
 
 # ───────────────────────── MCP Memory Integration ─────────────────────────
 
-async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic using FastMCP stdio client."""
-    try:
-        # Create stdio transport for Python MCP server
-        transport = PythonStdioTransport("mcp_server.py")
+# Load MCP base URL from environment (default to localhost:8000)
+MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8000")
 
-        async with Client(transport) as client:
-            result = await client.call_tool("get_contextual_memory", {"topic": topic, "limit": limit})
-            return result.data if result.data else ""
+async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
+    """Query MCP server for contextual memory about a topic using HTTP client."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{MCP_BASE_URL}/api/mcp/contextual-memory",
+                params={"topic": topic, "limit": limit}
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get("success"):
+                return data.get("context", "")
+            else:
+                logging.debug(f"MCP memory query failed: {data.get('error', 'Unknown error')}")
+                return ""
     except Exception as e:
         logging.debug(f"MCP memory query failed: {e}")
         return ""
@@ -172,14 +182,21 @@ def query_mcp_memory(topic: str, limit: int = 3) -> str:
         return ""
 
 async def get_recent_conversations_async(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server using FastMCP stdio client."""
+    """Get recent conversations from MCP server using HTTP client."""
     try:
-        # Create stdio transport for Python MCP server
-        transport = PythonStdioTransport("mcp_server.py")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{MCP_BASE_URL}/api/mcp/recent-chats",
+                params={"limit": limit}
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        async with Client(transport) as client:
-            result = await client.call_tool("get_recent_chats", {"limit": limit})
-            return result.data if result.data else []
+            if data.get("success"):
+                return data.get("data", [])
+            else:
+                logging.debug(f"MCP recent conversations query failed: {data.get('error', 'Unknown error')}")
+                return []
     except Exception as e:
         logging.debug(f"MCP recent conversations query failed: {e}")
         return []
@@ -193,15 +210,13 @@ def get_recent_conversations(limit: int = 3) -> List[Dict]:
         return []
 
 async def check_mcp_server_async() -> bool:
-    """Check if MCP server is available using FastMCP stdio client."""
+    """Check if MCP server is available using HTTP client."""
     try:
-        # Create stdio transport for Python MCP server
-        transport = PythonStdioTransport("mcp_server.py")
-
-        async with Client(transport) as client:
-            # Try to list resources to verify the server works
-            resources = await client.list_resources()
-            return True
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{MCP_BASE_URL}/api/mcp/health")
+            response.raise_for_status()
+            data = response.json()
+            return data.get("success", False) and data.get("status") == "healthy"
     except Exception as e:
         logging.debug(f"MCP server check failed: {e}")
         return False

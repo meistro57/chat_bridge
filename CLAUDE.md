@@ -131,33 +131,34 @@ python check_mcp_status.py  # Verify status and functionality
 
 **certify.py** - Automated certification suite testing all providers, database operations, file system operations, and integration health.
 
-### MCP Memory System (FastMCP 2.0)
+### MCP Memory System (HTTP-based)
 
-**mcp_server.py** - FastMCP-based Model Context Protocol server providing conversation memory and context. Uses **stdio transport** for direct process communication, it exposes:
+**main.py** - FastAPI server with integrated MCP (Memory, Continuity, Protocol) endpoints providing conversation memory and context via RESTful HTTP API. Uses **SQLAlchemy database** (`db/chat_bridge.db`) for unified data storage.
 
-**Tools (callable by LLMs):**
-- `get_recent_chats(limit)` - Query recent conversations from database
-- `search_chats(keyword, limit)` - Search messages by keyword
-- `get_contextual_memory(topic, limit)` - Retrieve topic-relevant memories
-- `get_conversation_by_id(conversation_id)` - Get full conversation details
-
-**Resources (data for LLM context):**
-- `bridge://stats` - Database statistics (conversation and message counts)
-- `bridge://health` - Server health status and version info
-
-**check_mcp_status.py** - Status checker using FastMCP stdio client to verify server accessibility, list available tools/resources, and test functionality.
+**MCP HTTP Endpoints (RESTful API):**
+- `GET /api/mcp/health` - Health check and server status
+- `GET /api/mcp/stats` - Database statistics (conversation and message counts)
+- `GET /api/mcp/recent-chats?limit=N` - Query recent conversations from database
+- `GET /api/mcp/search-chats?keyword=X&limit=N` - Search messages by keyword
+- `GET /api/mcp/contextual-memory?topic=X&limit=N` - Retrieve topic-relevant memories
+- `GET /api/mcp/conversation/{id}` - Get full conversation details by ID
 
 **MCP Integration in chat_bridge.py:**
-- Uses FastMCP stdio client for protocol-compliant communication
-- Launches MCP server as subprocess on-demand for each query
+- Uses `httpx` HTTP client for async communication with FastAPI server
+- Configurable via `MCP_BASE_URL` environment variable (default: `http://localhost:8000`)
 - Async-first implementation with sync wrappers for compatibility
 - Functions: `query_mcp_memory()`, `get_recent_conversations()`, `check_mcp_server()`
 - Enhances agent prompts with relevant historical context when `--enable-mcp` flag is used
 - Continuous memory integration provides fresh context on every conversation turn
 
+**Legacy Files:**
+- **mcp_server.py** - Standalone FastMCP stdio server (deprecated, kept for reference)
+- **check_mcp_status.py** - Legacy status checker for stdio-based MCP (deprecated)
+
 **Migration History:**
-- **2025-10-15**: Migrated from Flask REST API to FastMCP 2.0 with HTTP transport for standards compliance
-- **Latest**: Migrated from HTTP to stdio transport for better process isolation and no port conflicts
+- **v1.0 (Early 2025)**: Flask REST API with basic memory endpoints
+- **v1.1 (2025-10-15)**: Migrated to FastMCP 2.0 with stdio transport for standards compliance
+- **v1.2 (2025-10-15)**: Migrated to HTTP-based integration via main.py FastAPI server for better scalability, unified database, and RESTful API access
 
 ### Web GUI Architecture
 
@@ -256,6 +257,9 @@ LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
 OLLAMA_HOST=http://localhost:11434
 LMSTUDIO_BASE_URL=http://localhost:1234/v1
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+
+# Optional: MCP Memory System
+MCP_BASE_URL=http://localhost:8000  # FastAPI server URL for MCP endpoints
 
 # Optional: Agent-specific overrides
 BRIDGE_MODEL_A=gpt-4o-mini
@@ -361,20 +365,36 @@ Increase `--mem-rounds` sparingly as it increases context size. Adjust `MAX_TOKE
 
 ### Working with MCP Memory System
 
-The FastMCP-based memory system provides contextual memory to AI conversations using stdio transport:
+The HTTP-based MCP memory system provides contextual memory to AI conversations via FastAPI server:
 
-**No manual server startup required!** The MCP server is launched automatically as a subprocess when needed.
+**Starting the MCP server:**
+
+```bash
+# Start the FastAPI server with MCP endpoints
+python main.py
+
+# Or use uvicorn for development with auto-reload
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
 
 **Checking MCP status:**
 
 ```bash
-python check_mcp_status.py
-# Shows: database status, server accessibility, available tools/resources
+# Health check
+curl http://localhost:8000/api/mcp/health
+
+# Database statistics
+curl http://localhost:8000/api/mcp/stats
+
+# Test recent chats
+curl "http://localhost:8000/api/mcp/recent-chats?limit=5"
 ```
 
 **Using MCP in conversations:**
 
 ```bash
+# Make sure the FastAPI server is running first!
+
 # Enable MCP memory integration
 python chat_bridge.py --enable-mcp
 
@@ -383,19 +403,31 @@ python chat_bridge.py
 ```
 
 **Key features:**
-- **Stdio transport**: MCP server runs as subprocess, no HTTP server or port conflicts
-- **On-demand launch**: Server starts automatically when needed, no manual management
+- **HTTP-based**: RESTful API endpoints accessible from anywhere
+- **Unified database**: Single SQLAlchemy database for all conversation data
+- **No subprocess overhead**: Direct HTTP requests instead of process spawning
+- **Scalable**: FastAPI server handles multiple concurrent MCP requests
 - **Continuous memory**: Fresh context retrieved on every conversation turn
 - **Topic-based search**: Automatically finds relevant past conversations
-- **4 Tools**: Recent chats, search, contextual memory, conversation details
-- **2 Resources**: Database stats and health check
-- **Standards compliant**: Uses official Model Context Protocol
+- **6 HTTP endpoints**: Health, stats, recent chats, search, contextual memory, conversation details
+- **Standards compliant**: RESTful HTTP API with JSON responses
+
+**Configuration:**
+
+Set the MCP server URL via environment variable (defaults to localhost:8000):
+
+```bash
+export MCP_BASE_URL=http://localhost:8000
+# Or set in .env file
+echo "MCP_BASE_URL=http://localhost:8000" >> .env
+```
 
 **Troubleshooting MCP:**
-- If MCP queries fail, check `mcp_server.py` exists in the working directory
-- Check database exists with conversation data: `python check_mcp_status.py`
+- Ensure FastAPI server is running: `curl http://localhost:8000/health`
+- Check MCP endpoints are accessible: `curl http://localhost:8000/api/mcp/health`
+- Verify database exists with data: `curl http://localhost:8000/api/mcp/stats`
 - MCP integration gracefully degrades if server unavailable
-- Server logs are written to stderr for debugging
+- Check server logs for errors if MCP queries fail
 
 ## File Locations
 
@@ -418,11 +450,23 @@ Transcripts now include:
 
 ### API Endpoints
 
+**Web GUI Endpoints:**
 - `GET /` - Health check returning "Chat Bridge Web API"
+- `GET /health` - Server health check
 - `GET /api/providers` - Returns list of available providers with labels and descriptions
 - `GET /api/personas` - Returns persona library from roles.json
 - `POST /api/conversations` - Creates conversation, returns conversation_id
+- `GET /api/conversations` - List conversations with optional search
+- `GET /api/conversations/{id}` - Get conversation details
 - `WS /ws/conversations/{id}` - WebSocket stream for messages
+
+**MCP Memory Endpoints:**
+- `GET /api/mcp/health` - MCP server health check and status
+- `GET /api/mcp/stats` - Database statistics (conversation and message counts)
+- `GET /api/mcp/recent-chats?limit=N` - Get N most recent conversations
+- `GET /api/mcp/search-chats?keyword=X&limit=N` - Search conversations by keyword
+- `GET /api/mcp/contextual-memory?topic=X&limit=N` - Get topic-relevant conversation memories
+- `GET /api/mcp/conversation/{id}` - Get full conversation details by ID
 
 ### WebSocket Message Format
 
