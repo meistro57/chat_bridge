@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter), custom persona management, real-time conversation streaming, and comprehensive logging/transcription. The project now includes both **Windows 95-style retro web GUI** and traditional CLI interfaces.
+Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription. The project now includes both **Windows 95-style retro web GUI** and traditional CLI interfaces.
+
+**Current Version**: 1.4.0
 
 ## New In v1.4.0: Windows 95-Style Retro Web GUI 🎨⚡🤖
 
@@ -159,6 +161,7 @@ python check_mcp_status.py  # Verify status and functionality
 - **v1.0 (Early 2025)**: Flask REST API with basic memory endpoints
 - **v1.1 (2025-10-15)**: Migrated to FastMCP 2.0 with stdio transport for standards compliance
 - **v1.2 (2025-10-15)**: Migrated to HTTP-based integration via main.py FastAPI server for better scalability, unified database, and RESTful API access
+- **v1.4 (2025-10-16)**: Improved MCP server import fallback handling and enhanced HTTP integration
 
 ### Web GUI Architecture
 
@@ -185,6 +188,8 @@ The system uses a plugin-style provider architecture. Each provider is registere
 - `default_model`: Model name (overridable via env vars like `OPENAI_MODEL`)
 - `needs_key`: Whether API key is required
 - `key_env`: Environment variable name for API key
+
+**OpenRouter Provider**: Special provider that provides access to 200+ models through a unified API. Uses OpenAI-compatible chat completions format with additional headers (`HTTP-Referer`, `X-Title`) for app identification. Features categorized model browsing with provider filtering detection.
 
 **Adding a new provider**: Add entry to `PROVIDER_REGISTRY`, implement chat class inheriting from appropriate base, and ensure `create_agent()` handles the new provider type.
 
@@ -252,6 +257,13 @@ GEMINI_MODEL=gemini-2.5-flash
 DEEPSEEK_MODEL=deepseek-chat
 OLLAMA_MODEL=llama3.1:8b-instruct
 LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
+
+# Optional: OpenRouter - Access 200+ models through unified API
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_APP_NAME="Chat Bridge"  # Optional: appears in OpenRouter logs
+OPENROUTER_REFERER="https://github.com/yourusername/chat-bridge"  # Optional
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1  # Optional: override base URL
 
 # Optional: Local provider URLs
 OLLAMA_HOST=http://localhost:11434

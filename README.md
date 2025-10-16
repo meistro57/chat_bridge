@@ -137,9 +137,11 @@ Comprehensive automated testing and certification system for validating the enti
 ## Features at a Glance
 
 - **Multi-provider bridge** – choose any combination of OpenAI, Anthropic, Gemini,
-  DeepSeek, Ollama, or LM Studio for Agent A and Agent B.
+  DeepSeek, Ollama, LM Studio, or **OpenRouter** for Agent A and Agent B.
 - **Turbo defaults** – out of the box the scripts target GPT-4o Mini, Claude 3.5 Sonnet (Oct 2024),
   Gemini 2.5 Flash, llama3.1 8B (Ollama), and LM Studio's meta-llama3 instruct build.
+- **OpenRouter integration** – access 200+ AI models through a unified API with categorized browsing and model discovery.
+- **MCP Memory System** – HTTP-based memory integration provides contextual awareness across conversations using RESTful API endpoints.
 - **Interactive setup** – each run offers a multiple-choice picker for providers and
   models alongside CLI flags and environment overrides.
 - **Streaming transcripts** – watch tokens arrive live, capture the Markdown transcript,
@@ -166,15 +168,19 @@ Comprehensive automated testing and certification system for validating the enti
 Create a `.env` file in the project root with your API keys:
 
 ```bash
-# Primary API Keys (OpenRouter recommended for Web GUI)
-OPENROUTER_API_KEY=sk-or-v1-...
+# Primary API Keys
 OPENAI_API_KEY=sk-proj-...
 ANTHROPIC_API_KEY=sk-ant-...
 GEMINI_API_KEY=AIza...
 DEEPSEEK_API_KEY=sk-...
 
-# Model Configuration
+# OpenRouter - Access 200+ models through unified API
+OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_APP_NAME="Chat Bridge"  # Optional: appears in OpenRouter logs
+OPENROUTER_REFERER="https://github.com/yourusername/chat-bridge"  # Optional
+
+# Model Configuration
 OPENAI_MODEL=gpt-4o-mini
 ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 GEMINI_MODEL=gemini-2.5-flash
@@ -185,6 +191,9 @@ OLLAMA_HOST=http://localhost:11434
 OLLAMA_MODEL=llama3.1:8b-instruct
 LMSTUDIO_BASE_URL=http://localhost:1234/v1
 LMSTUDIO_MODEL=lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
+
+# MCP Memory System (HTTP-based)
+MCP_BASE_URL=http://localhost:8000  # FastAPI server for conversation memory
 ```
 
 ## Running the Bridge
@@ -490,6 +499,50 @@ Use the built-in **Provider Connectivity Test** from the main menu to quickly di
 - **Server Not Started**: Enable local server in LM Studio (usually port 1234)
 - **API Endpoint (404)**: Verify server is running, check if model is loaded
 - **Port Conflicts**: Check if another application uses port 1234, verify `LMSTUDIO_BASE_URL`
+
+#### 🔀 OpenRouter
+- **Invalid API Key (401)**: Verify `OPENROUTER_API_KEY`, ensure key is valid at openrouter.ai/keys
+- **Provider Filtering (404)**: Model's provider is blocked in OpenRouter settings, visit https://openrouter.ai/settings/preferences to adjust
+- **Model Not Found (404)**: Check model ID format (e.g., `openai/gpt-4o-mini`, `anthropic/claude-3-5-sonnet`)
+- **Rate Limited (429)**: Wait before retrying, check credits at openrouter.ai/account
+- **Network Issues**: Verify connection to openrouter.ai API endpoint
+
+### 🧠 MCP Memory System
+
+The MCP (Memory, Continuity, Protocol) system provides conversation memory via HTTP-based RESTful API:
+
+**Starting MCP:**
+```bash
+# Start the FastAPI server with MCP endpoints
+python main.py
+
+# Or use uvicorn for development
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**MCP Features:**
+- **HTTP-based integration**: RESTful API endpoints for memory operations
+- **Unified database**: SQLAlchemy-powered storage with SQLite backend
+- **6 endpoints**: Health, stats, recent chats, search, contextual memory, conversation details
+- **Continuous memory**: Fresh context retrieved on every conversation turn
+- **Graceful degradation**: Conversations work without MCP if server unavailable
+
+**Using MCP in conversations:**
+```bash
+# Enable MCP memory integration (requires MCP server running)
+python chat_bridge.py --enable-mcp
+
+# Check MCP status
+curl http://localhost:8000/api/mcp/health
+curl http://localhost:8000/api/mcp/stats
+```
+
+**MCP Troubleshooting:**
+- Ensure FastAPI server is running: `curl http://localhost:8000/health`
+- Check MCP endpoints are accessible: `curl http://localhost:8000/api/mcp/health`
+- Verify database exists with data: `curl http://localhost:8000/api/mcp/stats`
+- MCP integration gracefully degrades if server unavailable
+- Check server logs if MCP queries fail
 
 Happy bridging!
 

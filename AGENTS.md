@@ -8,10 +8,12 @@ This document captures a high-level understanding of how the Chat Bridge project
 - **`roles_manager.py`** – Standalone persona manager. It maintains `roles.json`, offers defaults for agent baselines and persona library, backs up prior versions, and provides interactive flows for creating/editing personas, temperatures, stop-word lists, and import/export/reset utilities.
 
 ## 2. Provider Abstractions (`bridge_agents.py`)
-- Declares the provider registry with metadata (labels, default models/system prompts, env var names, and connectivity notes) for OpenAI, Anthropic, Gemini, Ollama, LM Studio, and DeepSeek.
-- Supplies streaming client wrappers per provider: OpenAI/LM Studio/DeepSeek (Chat Completions compatible), Anthropic Messages, Gemini, and Ollama HTTP streaming. Each wrapper logs request/response details and yields token chunks.
+- Declares the provider registry with metadata (labels, default models/system prompts, env var names, and connectivity notes) for OpenAI, Anthropic, Gemini, Ollama, LM Studio, DeepSeek, and **OpenRouter**.
+- Supplies streaming client wrappers per provider: OpenAI/LM Studio/DeepSeek/OpenRouter (Chat Completions compatible), Anthropic Messages, Gemini, and Ollama HTTP streaming. Each wrapper logs request/response details and yields token chunks.
+- **OpenRouter Integration**: Special provider wrapper with OpenAI-compatible format plus custom headers (`HTTP-Referer`, `X-Title`) for app identification and enhanced error detection for provider filtering.
 - Offers helper utilities: environment override resolution, stop-key validation, turn slicing for memory windows, provider-specific message formatting (chatml, Claude, Gemini, Ollama), and a unified `AgentRuntime` object with a `stream_reply` coroutine.
 - Exposes `create_agent` to instantiate provider clients with credential checks and error logging.
+- Features dynamic model fetching from OpenRouter API with categorized browsing support.
 
 ## 3. Conversation Lifecycle (`chat_bridge.py`)
 - **Configuration helpers**: argument parsing, `.env` loading, provider/persona selection menus, random/default conversation starters, and persona import from `roles.json` (including fallbacks if missing).

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-10-16
+
+### Added
+- **OpenRouter Provider Integration**: Access 200+ AI models through unified OpenRouter API with categorized browsing
+- **HTTP-based MCP Memory System**: RESTful API endpoints for conversation memory and contextual awareness
+- **Enhanced OpenRouter Support**: Added app name and referer headers for better logging, provider filtering detection
+- **MCP HTTP Endpoints**: 6 RESTful endpoints (health, stats, recent chats, search, contextual memory, conversation details)
+- **Improved Error Handling**: OpenRouter-specific error messages for provider filtering and model availability
+- **Continuous Memory Integration**: Fresh context retrieved on every conversation turn via MCP
+- **Database Migration**: Unified SQLAlchemy database for both web GUI and MCP system
+
+### Changed
+- **MCP Architecture**: Migrated from stdio-based FastMCP to HTTP-based integration via main.py FastAPI server
+- **Import Fallback**: Improved MCP server import fallback handling for better reliability
+- **Documentation Updates**: Comprehensive updates to README, CLAUDE.md, and web_gui/README.md with OpenRouter and MCP details
+
+### Fixed
+- **OpenRouter Provider Filtering**: Better error detection and user guidance for blocked providers
+- **MCP Server Stability**: Enhanced error handling and graceful degradation when MCP unavailable
+
+### Technical Details
+- Modified `bridge_agents.py` to add OpenRouter provider with OpenAI-compatible format
+- Enhanced `main.py` with MCP memory endpoints and SQLAlchemy integration
+- Updated provider registry to include OpenRouter with proper authentication headers
+- Added environment variables: `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_APP_NAME`, `OPENROUTER_REFERER`, `MCP_BASE_URL`
+
 ## [1.2.2] - 2025-09-29
 
 ### Fixed
