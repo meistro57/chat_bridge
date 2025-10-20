@@ -28,7 +28,6 @@ const CyberpunkChatBridge = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'agentA' | 'agentB' | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -50,7 +49,6 @@ const CyberpunkChatBridge = () => {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setIsConnected(true);
       };
 
       ws.onmessage = (event) => {
@@ -60,16 +58,13 @@ const CyberpunkChatBridge = () => {
           setIsTyping(false);
           setMessages(prev => [...prev, data.data]);
         } else if (data.type === 'conversation_end') {
-          setIsConnected(false);
         }
       };
 
       ws.onerror = () => {
-        setIsConnected(false);
       };
 
       ws.onclose = () => {
-        setIsConnected(false);
       };
 
       return () => {
@@ -148,300 +143,431 @@ const CyberpunkChatBridge = () => {
     setConversationId(null);
     setMessages([]);
     setInputMessage('');
-    setIsConnected(false);
   };
 
   return (
-    <div className="relative min-h-screen bg-black text-white overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 to-black text-white overflow-hidden">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         * { 
-          font-family: 'MS Sans Serif', sans-serif; 
-          -webkit-font-smoothing: none;
-          -moz-osx-font-smoothing: none;
+          font-family: 'Inter', sans-serif;
         }
         
-        .window {
-          background: linear-gradient(to bottom, #c8c8c8 0%, #d0d0d0 50%, #e8e8e8 100%);
-          border: 2px inset #808080;
-          box-shadow: 
-            inset 1px 1px 0px #ffffff,
-            inset -1px -1px 0px #000000,
-            2px 2px 2px rgba(0,0,0,0.5);
+        .glass-effect {
+          background: rgba(30, 30, 40, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .title-bar {
-          background: linear-gradient(to right, #000080 0%, #0000a0 100%);
-          color: #ffffff;
-          padding: 2px 4px;
-          text-shadow: 1px 1px 0px #000000;
-          font-weight: bold;
+        .gradient-border {
+          position: relative;
+          border: 1px solid transparent;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background-clip: padding-box;
         }
         
-        .button-3d {
-          background: linear-gradient(to bottom, #d0d0d0 0%, #c8c8c8 100%);
-          border: 2px outset #c0c0c0;
-          padding: 2px 6px;
-          color: #000000;
-          font-size: 11px;
-          text-transform: uppercase;
-          font-weight: bold;
+        .gradient-border::before {
+          content: '';
+          position: absolute;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+          bottom: -1px;
+          z-index: -1;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: inherit;
+        }
+        
+        .card-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .persona-card {
+          transition: all 0.3s ease;
           cursor: pointer;
         }
         
-        .button-3d:active {
-          background: linear-gradient(to bottom, #a0a0a0 0%, #b0b0b0 100%);
-          border: 2px inset #c0c0c0;
-          padding: 3px 5px 1px 7px;
+        .persona-card:hover {
+          background: rgba(102, 126, 234, 0.15);
+          border-color: rgba(102, 126, 234, 0.5);
         }
         
-        .input-winamp {
-          background: #ffffff;
-          border: 2px inset #c0c0c0;
-          padding: 2px;
-          font-family: 'MS Sans Serif', sans-serif;
-          font-size: 11px;
+        .persona-card.selected {
+          background: rgba(102, 126, 234, 0.25);
+          border-color: #667eea;
         }
         
-        .scrollbar-winamp {
-          scrollbar-width: thin;
-          scrollbar-color: #c0c0c0 #f0f0f0;
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          border: none;
         }
         
-        .scrollbar-winamp::-webkit-scrollbar {
-          width: 16px;
+        .btn-primary:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
-        .scrollbar-winamp::-webkit-scrollbar-track {
-          background: #f0f0f0;
-          border: 2px inset #c0c0c0;
+        .btn-primary:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         
-        .scrollbar-winamp::-webkit-scrollbar-thumb {
-          background: #c0c0c0;
-          border: 1px solid #808080;
+        .btn-secondary {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
-        .message-bubble-winamp {
-          background: #ffffe1;
-          border: 1px inset #c0c0c0;
-          padding: 4px;
-          font-size: 11px;
+        .btn-secondary:hover {
+          background: rgba(255, 255, 255, 0.2);
         }
         
-        .agent-winamp { background: #e0f0ff; }
-        .user-winamp { background: #f0f0e0; }
-        
-        .status-indicator {
-          background: #c0c0c0;
-          border: 1px outset #808080;
-          padding: 1px;
-          font-size: 10px;
+        .message-user {
+          background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+          color: white;
         }
         
-        .pulse-winamp {
-          animation: pulse-winamp 2s infinite;
+        .message-agent-a {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
         }
         
-        @keyframes pulse-winamp {
-          0%, 100% { background-color: #c8c8c8; }
-          50% { background-color: #a8a8a8; }
+        .message-agent-b {
+          background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+          color: white;
         }
         
-        .rounded-winamp { border-radius: 0; }
+        .typing-indicator {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
         
-        .text-winamp { color: #000000; font-size: 11px; }
+        .typing-dot {
+          width: 8px;
+          height: 8px;
+          background: #667eea;
+          border-radius: 50%;
+          animation: bounce 1.5s infinite;
+        }
         
-        .icon-winamp {
-          width: 16px;
-          height: 16px;
-          background: #800000;
-          clip-path: polygon(0 0, 100% 0, 50% 100%);
+        .typing-dot:nth-child(2) {
+          animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+          animation-delay: 0.4s;
+        }
+        
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        
+        .input-field {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: white;
+          transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
         }
       `}</style>
 
-      <div className="window scrollbar-winamp">
-        <div className="title-bar text-sm font-bold">
-          Chat Bridge v1.4.0 - Winamp Inspired
-          <div className="float-right text-xs">AI Chat Player</div>
-        </div>
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <header className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
+            Chat Bridge
+          </h1>
+          <p className="text-gray-400 text-lg">Connect two AI agents and watch them converse</p>
+        </header>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 p-4 overflow-y-auto scrollbar-winamp">
-            {!conversationId ? (
-              <div className="p-4 bg-gray-100 border border-gray-800 max-w-md mx-auto mt-8">
-                <h2 className="text-lg font-bold text-black mb-4">Welcome to Chat Bridge</h2>
-                <p className="text-sm text-black mb-4">
-                  Connect two AI agents and watch them converse! Select personas and start chatting.
-                </p>
-                
-                {/* Settings Panel */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Settings Panel */}
+          <div className="lg:col-span-1">
+            <div className="glass-effect rounded-xl p-6 card-hover">
+              <h2 className="text-2xl font-bold mb-6 text-center">Configuration</h2>
+              
+              <div className="space-y-6">
+                {/* Personas Selection */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-gray-200">Select Personas</h3>
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-black mb-1">Max Rounds</label>
+                      <button 
+                        onClick={() => openModal('agentA')}
+                        className={`w-full text-left p-4 rounded-lg border transition-all ${
+                          selectedPersonaA 
+                            ? 'border-blue-500 bg-blue-500/10' 
+                            : 'border-gray-700 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="font-medium">
+                          {selectedPersonaA ? selectedPersonaA.name : 'Agent A'}
+                        </div>
+                        {selectedPersonaA && selectedPersonaA.description && (
+                          <div className="text-sm text-gray-400 mt-1">
+                            {selectedPersonaA.description}
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                    
+                    <div>
+                      <button 
+                        onClick={() => openModal('agentB')}
+                        className={`w-full text-left p-4 rounded-lg border transition-all ${
+                          selectedPersonaB 
+                            ? 'border-purple-500 bg-purple-500/10' 
+                            : 'border-gray-700 hover:border-gray-500'
+                        }`}
+                      >
+                        <div className="font-medium">
+                          {selectedPersonaB ? selectedPersonaB.name : 'Agent B'}
+                        </div>
+                        {selectedPersonaB && selectedPersonaB.description && (
+                          <div className="text-sm text-gray-400 mt-1">
+                            {selectedPersonaB.description}
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Conversation Settings */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-gray-200">Settings</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-gray-300 mb-2">Max Rounds</label>
                       <input
                         type="number"
                         value={maxRounds}
                         onChange={(e) => setMaxRounds(Number(e.target.value))}
                         min="1"
                         max="100"
-                        className="input-winamp w-full"
+                        className="input-field w-full p-3 rounded-lg"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs text-black mb-1">Temp A</label>
-                      <input
-                        type="number"
-                        value={temperatureA}
-                        onChange={(e) => setTemperatureA(Number(e.target.value))}
-                        min="0"
-                        max="2"
-                        step="0.1"
-                        className="input-winamp w-full"
-                      />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">Temp A</label>
+                        <input
+                          type="number"
+                          value={temperatureA}
+                          onChange={(e) => setTemperatureA(Number(e.target.value))}
+                          min="0"
+                          max="2"
+                          step="0.1"
+                          className="input-field w-full p-3 rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">Temp B</label>
+                        <input
+                          type="number"
+                          value={temperatureB}
+                          onChange={(e) => setTemperatureB(Number(e.target.value))}
+                          min="0"
+                          max="2"
+                          step="0.1"
+                          className="input-field w-full p-3 rounded-lg"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-black mb-1">Temp B</label>
-                      <input
-                        type="number"
-                        value={temperatureB}
-                        onChange={(e) => setTemperatureB(Number(e.target.value))}
-                        min="0"
-                        max="2"
-                        step="0.1"
-                        className="input-winamp w-full"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-black mb-1">Provider A</label>
-                      <select value={selectedProviderA} onChange={(e) => setSelectedProviderA(e.target.value)} className="input-winamp w-full">
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
-                        <option value="gemini">Gemini</option>
-                        <option value="deepseek">DeepSeek</option>
-                        <option value="ollama">Ollama</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-black mb-1">Provider B</label>
-                      <select value={selectedProviderB} onChange={(e) => setSelectedProviderB(e.target.value)} className="input-winamp w-full">
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
-                        <option value="gemini">Gemini</option>
-                        <option value="deepseek">DeepSeek</option>
-                        <option value="ollama">Ollama</option>
-                      </select>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">Provider A</label>
+                        <select 
+                          value={selectedProviderA} 
+                          onChange={(e) => setSelectedProviderA(e.target.value)}
+                          className="input-field w-full p-3 rounded-lg"
+                        >
+                          <option value="openai">OpenAI</option>
+                          <option value="anthropic">Anthropic</option>
+                          <option value="gemini">Gemini</option>
+                          <option value="deepseek">DeepSeek</option>
+                          <option value="ollama">Ollama</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-300 mb-2">Provider B</label>
+                        <select 
+                          value={selectedProviderB} 
+                          onChange={(e) => setSelectedProviderB(e.target.value)}
+                          className="input-field w-full p-3 rounded-lg"
+                        >
+                          <option value="openai">OpenAI</option>
+                          <option value="anthropic">Anthropic</option>
+                          <option value="gemini">Gemini</option>
+                          <option value="deepseek">DeepSeek</option>
+                          <option value="ollama">Ollama</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {messages.map((msg, i) => {
-                  const isUser = msg.sender === 'user';
-                  const isAgentA = msg.sender === 'agent_a';
-                  
-                  return (
-                    <div key={i} className={`mb-3 flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`message-bubble-winamp ${isUser ? 'message-bubble-winamp user-winamp' : 'message-bubble-winamp agent-winamp'} max-w-[70%]`}>
-                        <div className="text-xs text-black font-bold mb-1">
-                          {isUser ? 'You' : isAgentA ? 'Agent A' : 'Agent B'} - {new Date(msg.timestamp).toLocaleTimeString()}
-                        </div>
-                        <div className="text-sm text-black">{msg.content}</div>
-                      </div>
-                    </div>
-                  );
-                })}
                 
-                {isTyping && (
-                  <div className="mb-3 flex justify-start">
-                    <div className="status-indicator pulse-winamp">
-                      Processing...
-                    </div>
-                  </div>
-                )}
-                
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
-
-          {/* Controls Panel */}
-          {!conversationId ? (
-            <div className="p-4 bg-gray-300 border-t border-gray-800">
-              <div className="flex gap-2 mb-2">
-                <button onClick={() => openModal('agentA')} className="button-3d">
-                  {selectedPersonaA ? selectedPersonaA.name : 'Select Agent A'}
-                </button>
-                <button onClick={() => openModal('agentB')} className="button-3d">
-                  {selectedPersonaB ? selectedPersonaB.name : 'Select Agent B'}
-                </button>
-                {conversationId && (
-                  <button onClick={resetConversation} className="button-3d">
-                    New Session
-                  </button>
-                )}
-              </div>
-              
-              <div className="flex gap-2">
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Enter starter message..."
-                  className="input-winamp flex-1 resize-none"
-                  rows={2}
-                />
+                {/* Start Button */}
                 <button
                   onClick={startConversation}
                   disabled={!selectedPersonaA || !selectedPersonaB || !inputMessage.trim()}
-                  className="button-3d"
+                  className="btn-primary w-full py-3 px-6 rounded-lg text-lg"
                 >
-                  Start
+                  Start Conversation
                 </button>
               </div>
             </div>
-          ) : null}
+          </div>
+          
+          {/* Chat Area */}
+          <div className="lg:col-span-2">
+            <div className="glass-effect rounded-xl h-full flex flex-col">
+              {/* Messages Area */}
+              <div className="flex-1 p-6 overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                {messages.length === 0 && !conversationId ? (
+                  <div className="h-full flex items-center justify-center text-gray-400">
+                    <div className="text-center">
+                      <div className="text-2xl mb-2">👋</div>
+                      <p>Select personas and start a conversation!</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg, i) => {
+                      const isUser = msg.sender === 'user';
+                      const isAgentA = msg.sender === 'agent_a';
+                      
+                      return (
+                        <div key={i} className={`mb-6 ${isUser ? 'text-right' : 'text-left'}`}>
+                          <div className={`inline-block max-w-[80%] rounded-2xl p-4 shadow-lg ${
+                            isUser 
+                              ? 'message-user' 
+                              : isAgentA 
+                                ? 'message-agent-a' 
+                                : 'message-agent-b'
+                          }`}>
+                            <div className="font-bold text-sm mb-1">
+                              {isUser ? 'You' : isAgentA ? 'Agent A' : 'Agent B'}
+                            </div>
+                            <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                            <div className="text-xs opacity-80 mt-2">
+                              {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {isTyping && (
+                      <div className="mb-6">
+                        <div className="inline-block rounded-2xl p-4 shadow-lg message-agent-a">
+                          <div className="typing-indicator">
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                            <div className="typing-dot"></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div ref={messagesEndRef} />
+                  </>
+                )}
+              </div>
+              
+              {/* Input Area */}
+              {!conversationId && (
+                <div className="p-6 border-t border-gray-700">
+                  <div className="flex gap-3">
+                    <textarea
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      placeholder="Enter starter message..."
+                      className="input-field flex-1 p-3 rounded-lg resize-none"
+                      rows={2}
+                    />
+                    {conversationId && (
+                      <button
+                        onClick={resetConversation}
+                        className="btn-secondary px-4 rounded-lg self-end"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Persona Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-400 flex items-center justify-center z-50 p-8">
-          <div className="window w-full max-w-md p-4">
-            <div className="title-bar text-sm font-bold mb-4">
-              Select Persona
-              <button onClick={() => setIsModalOpen(false)} className="float-right button-3d text-xs w-6 h-6">X</button>
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="glass-effect rounded-xl w-full max-w-md max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+              <h3 className="text-xl font-bold">
+                Select {modalType === 'agentA' ? 'Agent A' : 'Agent B'} Persona
+              </h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="btn-secondary w-8 h-8 rounded-full flex items-center justify-center"
+              >
+                ×
+              </button>
             </div>
             
-            <div className="space-y-2 scrollbar-winamp max-h-64 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {personas.map(persona => (
                 <div
                   key={persona.id}
                   onClick={() => selectPersona(persona)}
-                  className="p-2 border border-gray-600 cursor-pointer hover:bg-gray-200"
+                  className={`persona-card p-4 rounded-lg border cursor-pointer transition-all ${
+                    (modalType === 'agentA' && selectedPersonaA?.id === persona.id) || 
+                    (modalType === 'agentB' && selectedPersonaB?.id === persona.id)
+                      ? 'selected border-blue-500 bg-blue-500/10'
+                      : 'border-gray-700'
+                  }`}
                 >
-                  <div className="font-bold text-sm text-black">{persona.name}</div>
-                  <div className="text-xs text-gray-600">{persona.description}</div>
+                  <div className="font-bold text-white">{persona.name}</div>
+                  {persona.description && (
+                    <div className="text-sm text-gray-300 mt-1">{persona.description}</div>
+                  )}
                   {persona.system_preview && (
-                    <div className="text-xs text-gray-500 mt-1">{persona.system_preview}</div>
+                    <div className="text-xs text-gray-400 mt-2 line-clamp-2">{persona.system_preview}</div>
                   )}
                 </div>
               ))}
             </div>
+            
+            <div className="p-4 border-t border-gray-700 text-center">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="btn-secondary px-4 py-2 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-        </div>
-      )}
-
     </div>
   );
 };

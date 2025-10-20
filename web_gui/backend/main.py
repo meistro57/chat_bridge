@@ -15,6 +15,10 @@ from pathlib import Path
 from datetime import datetime
 import asyncio
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import Chat Bridge functionality
 import sys

@@ -3,6 +3,14 @@
 # Start Chat Bridge Web GUI Services
 echo "🚀 Starting Chat Bridge Web GUI Services..."
 
+# Load environment variables from .env file
+if [ -f ".env" ]; then
+    export $(cat .env | xargs)
+    echo "✅ Loaded environment variables from .env"
+else
+    echo "⚠️  .env file not found, using system environment variables"
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -19,6 +27,7 @@ install_backend() {
     else
         echo -e "${YELLOW}⚠️  Backend dependency installation may have issues${NC}"
     fi
+    cd ../..
 }
 
 # Function to install frontend dependencies
@@ -31,16 +40,20 @@ install_frontend() {
     else
         echo -e "${YELLOW}⚠️  Frontend dependency installation may have issues${NC}"
     fi
+    cd ../..
 }
 
 # Function to start backend server
 start_backend() {
     echo -e "${BLUE}🖥️  Starting backend server (FastAPI)...${NC}"
     cd web_gui/backend
+    # Kill any process on port 8000 first
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
     uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
     BACKEND_PID=$!
     echo -e "${GREEN}✅ Backend server started (PID: $BACKEND_PID)${NC}"
     echo "🌐 Backend API available at: http://localhost:8000"
+    cd ../..
 }
 
 # Function to start frontend server
@@ -51,6 +64,7 @@ start_frontend() {
     FRONTEND_PID=$!
     echo -e "${GREEN}✅ Frontend server started (PID: $FRONTEND_PID)${NC}"
     echo "🌐 Frontend available at: http://localhost:5173"
+    cd ../..
 }
 
 # Function to cleanup processes on exit
@@ -77,9 +91,7 @@ echo ""
 
 # Install dependencies
 install_backend
-cd ../..
 install_frontend
-cd ../..
 
 # Start services
 start_backend
