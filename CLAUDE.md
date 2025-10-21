@@ -6,9 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription. The project now includes both **Windows 95-style retro web GUI** and traditional CLI interfaces.
 
-**Current Version**: 1.4.0
+**Current Version**: 1.4.1
 
-## New In v1.4.0: Windows 95-Style Retro Web GUI 🎨⚡🤖
+## New In v1.4.1: Bug Fixes & Improvements 🔧
+
+- **Fixed Web GUI Provider Status**: Added missing `/api/provider-status` endpoint that was causing 404 errors
+- **Improved Provider Validation**: Provider status now accurately reflects configured credentials
+  - API-based providers (OpenAI, Anthropic, etc.) show connected only when valid credentials exist
+  - Local providers (Ollama, LM Studio) accurately show as unverifiable without testing
+  - Better error messages for missing or invalid API keys
+
+## Previous In v1.4.0: Windows 95-Style Retro Web GUI 🎨⚡🤖
 
 Experience AI conversations like never before with the immersive Windows 95-style retro web interface featuring:
 
@@ -162,11 +170,13 @@ python check_mcp_status.py  # Verify status and functionality
 - **v1.1 (2025-10-15)**: Migrated to FastMCP 2.0 with stdio transport for standards compliance
 - **v1.2 (2025-10-15)**: Migrated to HTTP-based integration via main.py FastAPI server for better scalability, unified database, and RESTful API access
 - **v1.4 (2025-10-16)**: Improved MCP server import fallback handling and enhanced HTTP integration
+- **v1.4.1 (2025-10-21)**: Fixed provider status endpoint and improved credential validation
 
 ### Web GUI Architecture
 
 **web_gui/backend/main.py** - FastAPI server providing RESTful API and WebSocket support for real-time conversations. Imports bridge_agents functionality and exposes endpoints:
 - `GET /api/providers` - List available AI providers
+- `GET /api/provider-status` - Check provider credential status (validates API keys)
 - `GET /api/personas` - Load personas from roles.json
 - `POST /api/conversations` - Create conversation session
 - `WS /ws/conversations/{id}` - WebSocket for streaming messages
@@ -466,6 +476,7 @@ Transcripts now include:
 - `GET /` - Health check returning "Chat Bridge Web API"
 - `GET /health` - Server health check
 - `GET /api/providers` - Returns list of available providers with labels and descriptions
+- `GET /api/provider-status` - Returns credential validation status for each provider
 - `GET /api/personas` - Returns persona library from roles.json
 - `POST /api/conversations` - Creates conversation, returns conversation_id
 - `GET /api/conversations` - List conversations with optional search
