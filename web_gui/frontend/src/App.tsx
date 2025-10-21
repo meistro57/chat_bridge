@@ -1,6 +1,6 @@
-// App.tsx
+// App.tsx - Windows 95/WinAmp Theme
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import type { Persona, Message } from './types';
+import type { Persona, Message, Model } from './types';
 
 interface BannerState {
   type: 'info' | 'success' | 'warning' | 'error';
@@ -16,7 +16,9 @@ const PROVIDER_OPTIONS = [
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'openrouter', label: 'OpenRouter' },
   { value: 'ollama', label: 'Ollama' },
+  { value: 'lmstudio', label: 'LM Studio' },
 ];
 
 const STATUS_COPY: Record<ConversationStatus, { label: string; description: string }> = {
@@ -43,11 +45,11 @@ const STATUS_COPY: Record<ConversationStatus, { label: string; description: stri
 };
 
 const statusTone: Record<ConversationStatus, string> = {
-  idle: 'bg-slate-700/40 text-slate-200',
-  configuring: 'bg-amber-500/20 text-amber-200',
-  running: 'bg-emerald-500/20 text-emerald-200',
-  finished: 'bg-indigo-500/20 text-indigo-200',
-  error: 'bg-rose-500/20 text-rose-200',
+  idle: 'bg-win-gray-300 text-win-gray-600 border-win-gray-400',
+  configuring: 'bg-winamp-orange text-win-gray-600 border-win-gray-400',
+  running: 'bg-winamp-green text-win-gray-600 border-win-gray-400',
+  finished: 'bg-winamp-blue text-win-gray-600 border-win-gray-400',
+  error: 'bg-winamp-red text-win-gray-600 border-win-gray-400',
 };
 
 const Banner = ({ banner, onClose }: { banner: BannerState | null; onClose: () => void }) => {
@@ -68,7 +70,7 @@ const Banner = ({ banner, onClose }: { banner: BannerState | null; onClose: () =
       <div className="flex-1 leading-relaxed">{banner.message}</div>
       <button
         type="button"
-        className="rounded-md border border-white/10 px-2 py-1 text-xs uppercase tracking-wide text-white/80 transition hover:text-white"
+        className="rounded-md border border-win-gray-400 px-2 py-1 text-xs uppercase tracking-wide text-win-gray-600 transition hover:text-win-gray-800 hover:border-win-gray-600"
         onClick={onClose}
       >
         Dismiss
@@ -79,29 +81,29 @@ const Banner = ({ banner, onClose }: { banner: BannerState | null; onClose: () =
 
 const PersonaSummary = ({ title, persona, onSelect }: { title: string; persona: Persona | null; onSelect: () => void }) => (
   <div className="space-y-2">
-    <p className="text-xs uppercase tracking-wide text-slate-300">{title}</p>
+    <p className="text-xs uppercase tracking-wide text-win-gray-600">{title}</p>
     <button
       type="button"
       onClick={onSelect}
-      className={`group w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-white/30 hover:bg-white/[0.06] ${
-        persona ? 'shadow-lg shadow-indigo-500/10' : 'border-dashed'
+      className={`group w-full rounded-lg border border-win-gray-400 bg-win-gray-100 p-4 text-left transition hover:border-win-gray-600 hover:bg-win-gray-200 ${
+        persona ? 'shadow-inner shadow-win-gray-500' : 'border-dashed'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-white">
+          <p className="text-lg font-semibold text-win-gray-800">
             {persona ? persona.name : 'Choose a persona'}
           </p>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="mt-1 text-sm text-win-gray-600">
             {persona?.description ?? 'Open the library to assign a persona to this agent.'}
           </p>
         </div>
-        <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/70 transition group-hover:border-white/40 group-hover:text-white">
+        <span className="rounded-full border border-win-gray-400 px-3 py-1 text-xs text-win-gray-600 transition group-hover:border-win-gray-600 group-hover:text-win-gray-800">
           Configure
         </span>
       </div>
       {persona?.system_preview && (
-        <p className="mt-3 line-clamp-2 text-xs text-slate-400">
+        <p className="mt-3 line-clamp-2 text-xs text-win-gray-500">
           {persona.system_preview}
         </p>
       )}
@@ -110,9 +112,35 @@ const PersonaSummary = ({ title, persona, onSelect }: { title: string; persona: 
 );
 
 const StatusBadge = ({ status }: { status: ConversationStatus }) => (
-  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide ${statusTone[status]}`}>
+  <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wide ${statusTone[status]}`}>
     <span className="inline-block h-2.5 w-2.5 rounded-full bg-current shadow-lg" />
     {STATUS_COPY[status].label}
+  </div>
+);
+
+const ProviderStatusIndicator = ({ providerStatus, isLoading }: { providerStatus: Record<string, any>; isLoading: boolean }) => (
+  <div className="mb-6 rounded-lg border border-win-gray-400 bg-win-gray-200 p-4 shadow-inner shadow-win-gray-500">
+    <h3 className="text-sm font-semibold text-win-gray-800 mb-3">Provider Status</h3>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      {Object.entries(providerStatus).map(([key, status]: [string, any]) => (
+        <div key={key} className="flex flex-col items-center gap-1">
+          <div className="text-xs text-win-gray-600 uppercase tracking-wide">{status?.label || key}</div>
+          <div className="flex items-center gap-2">
+            {isLoading ? (
+              <div className="w-2.5 h-2.5 rounded-full bg-win-gray-400 animate-pulse" />
+            ) : (
+              <div className={`w-2.5 h-2.5 rounded-full ${status?.connected ? 'bg-winamp-green' : 'bg-winamp-red'}`} />
+            )}
+            <span className="text-xs text-win-gray-700">
+              {isLoading ? 'Checking' : (status?.connected ? 'Connected' : 'Needs Auth')}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+    <div className="mt-3 text-xs text-win-gray-500 text-center">
+      {isLoading ? 'Checking provider connectivity...' : 'Display shows which providers have valid API keys configured.'}
+    </div>
   </div>
 );
 
@@ -128,7 +156,7 @@ const formatTimestamp = (timestamp: string) => {
   }
 };
 
-const CyberpunkChatBridge = () => {
+const Windows95ChatBridge = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(true);
   const [selectedPersonaA, setSelectedPersonaA] = useState<Persona | null>(null);
@@ -137,6 +165,12 @@ const CyberpunkChatBridge = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [selectedProviderA, setSelectedProviderA] = useState(PROVIDER_OPTIONS[0]?.value ?? 'openai');
   const [selectedProviderB, setSelectedProviderB] = useState(PROVIDER_OPTIONS[1]?.value ?? 'anthropic');
+  const [selectedModelA, setSelectedModelA] = useState<string>('');
+  const [selectedModelB, setSelectedModelB] = useState<string>('');
+  const [modelsA, setModelsA] = useState<Model[]>([]);
+  const [modelsB, setModelsB] = useState<Model[]>([]);
+  const [isLoadingModelsA, setIsLoadingModelsA] = useState(false);
+  const [isLoadingModelsB, setIsLoadingModelsB] = useState(false);
   const [maxRounds, setMaxRounds] = useState(24);
   const [temperatureA, setTemperatureA] = useState(0.7);
   const [temperatureB, setTemperatureB] = useState(0.7);
@@ -151,30 +185,73 @@ const CyberpunkChatBridge = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  useEffect(() => {
-    const fetchPersonas = async () => {
-      setIsLoadingPersonas(true);
-      try {
-        const response = await fetch('/api/personas');
-        if (!response.ok) {
-          throw new Error(`Server responded with ${response.status}`);
-        }
-        const data = await response.json();
-        setPersonas(data.personas ?? []);
-        setBanner(null);
-      } catch (error) {
-        console.error('Failed to load personas:', error);
-        setBanner({
-          type: 'error',
-          message: 'Could not fetch personas from the server. Please confirm the backend is online and refresh.',
-        });
-      } finally {
-        setIsLoadingPersonas(false);
-      }
-    };
+  const [providerStatus, setProviderStatus] = useState<Record<string, any>>({});
+  const [isLoadingProviderStatus, setIsLoadingProviderStatus] = useState(true);
 
-    fetchPersonas();
-  }, []);
+  const fetchProviderStatus = async () => {
+    setIsLoadingProviderStatus(true);
+    try {
+      const response = await fetch('/api/provider-status');
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      const data = await response.json();
+      setProviderStatus(data.providers ?? {});
+    } catch (error) {
+      console.error('Failed to fetch provider status:', error);
+      // Set all providers to disconnected on error
+      const disconnectedStatus: Record<string, any> = {};
+      Object.keys(PROVIDER_OPTIONS.reduce((acc, opt) => ({ ...acc, [opt.value]: true }), {})).forEach(key => {
+        disconnectedStatus[key] = { connected: false, label: key, error: 'Status check failed' };
+      });
+      setProviderStatus(disconnectedStatus);
+    } finally {
+      setIsLoadingProviderStatus(false);
+    }
+  };
+
+  const fetchModels = async (provider: string, isAgentA: boolean) => {
+    if (isAgentA) {
+      setIsLoadingModelsA(true);
+    } else {
+      setIsLoadingModelsB(true);
+    }
+    try {
+      const response = await fetch(`/api/models?provider=${provider}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch models for ${provider}`);
+      }
+      const data = await response.json();
+      const models = data.models ?? [];
+      if (isAgentA) {
+        setModelsA(models);
+        if (models.length > 0) {
+          setSelectedModelA(models[0].id);
+        }
+      } else {
+        setModelsB(models);
+        if (models.length > 0) {
+          setSelectedModelB(models[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error);
+    } finally {
+      if (isAgentA) {
+        setIsLoadingModelsA(false);
+      } else {
+        setIsLoadingModelsB(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchModels(selectedProviderA, true);
+  }, [selectedProviderA]);
+
+  useEffect(() => {
+    fetchModels(selectedProviderB, false);
+  }, [selectedProviderB]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -185,51 +262,95 @@ const CyberpunkChatBridge = () => {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setBanner({ type: 'info', message: 'Agents connected. The dialogue will appear here in real-time.' });
+      console.log('WebSocket connected');
+      setConversationStatus('running');
+      setBanner({ type: 'success', message: 'Connected! Agents are now conversing in real-time.' });
     };
 
     ws.onmessage = (event) => {
       try {
-        const payload = JSON.parse(event.data);
-        if (payload.type === 'message') {
+        const data = JSON.parse(event.data);
+        console.log('Received message:', data);
+
+        if (data.type === 'message' && data.data) {
           setIsTyping(false);
-          setConversationStatus('running');
-          setMessages((prev) => [...prev, payload.data as Message]);
-        }
-        if (payload.type === 'conversation_end') {
+          setMessages((prev) => [
+            ...prev,
+            {
+              content: data.data.content,
+              sender: data.data.sender,
+              timestamp: data.data.timestamp || new Date().toISOString(),
+              persona: data.data.persona,
+            },
+          ]);
+          setIsTyping(true); // Show typing indicator for next message
+        } else if (data.type === 'complete') {
+          setIsTyping(false);
           setConversationStatus('finished');
-          setBanner({
-            type: 'success',
-            message: 'Conversation ended gracefully. Reset the stage to host another debate.',
-          });
+          setBanner({ type: 'success', message: 'Conversation completed successfully!' });
+        } else if (data.type === 'error') {
+          setIsTyping(false);
+          setConversationStatus('error');
+          setBanner({ type: 'error', message: data.message || 'An error occurred during the conversation.' });
         }
       } catch (error) {
-        console.error('Unable to parse WebSocket payload', error);
+        console.error('Failed to parse WebSocket message:', error);
       }
     };
 
-    ws.onerror = () => {
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsTyping(false);
       setConversationStatus('error');
-      setBanner({ type: 'error', message: 'WebSocket connection failed. Please reset and try again.' });
+      setBanner({ type: 'error', message: 'WebSocket connection error. Check that the backend is running.' });
     };
 
     ws.onclose = () => {
-      wsRef.current = null;
+      console.log('WebSocket closed');
+      setIsTyping(false);
+      if (conversationStatus === 'running') {
+        setConversationStatus('finished');
+      }
     };
 
     return () => {
       ws.close();
+      wsRef.current = null;
     };
   }, [conversationId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef?.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
     setModalType(null);
     setPersonaSearchTerm('');
+  }, []);
+
+  useEffect(() => {
+    fetchProviderStatus();
+
+    // Fetch personas
+    const fetchPersonas = async () => {
+      setIsLoadingPersonas(true);
+      try {
+        const response = await fetch('/api/personas');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch personas: ${response.status}`);
+        }
+        const data = await response.json();
+        setPersonas(data.personas ?? []);
+      } catch (error) {
+        console.error('Failed to fetch personas:', error);
+        setPersonas([]);
+      } finally {
+        setIsLoadingPersonas(false);
+      }
+    };
+
+    fetchPersonas();
   }, []);
 
   useEffect(() => {
@@ -288,6 +409,8 @@ const CyberpunkChatBridge = () => {
           max_rounds: maxRounds,
           temperature_a: temperatureA,
           temperature_b: temperatureB,
+          model_a: selectedModelA,
+          model_b: selectedModelB,
         }),
       });
 
@@ -335,59 +458,117 @@ const CyberpunkChatBridge = () => {
     setBanner({ type: 'info', message: 'Conversation reset. Adjust the settings and launch another exchange.' });
   };
 
-  const renderProviderSelect = (
+  const renderProviderModelSelect = (
     label: string,
-    value: string,
-    onChange: (next: string) => void,
+    provider: string,
+    model: string,
+    onProviderChange: (next: string) => void,
+    onModelChange: (next: string) => void,
+    models: Model[],
+    isLoading: boolean,
   ) => (
-    <label className="flex flex-col gap-2 text-sm text-slate-200">
-      <span className="text-xs uppercase tracking-wide text-slate-400">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white shadow-inner shadow-black/20 transition focus:border-indigo-400 focus:outline-none"
-      >
-        {PROVIDER_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value} className="bg-slate-900 text-white">
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="flex flex-col gap-2">
+      <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+        <span className="text-xs uppercase tracking-wide text-win-gray-600">{label} Provider</span>
+        <select
+          value={provider}
+          onChange={(event) => onProviderChange(event.target.value)}
+          className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
+        >
+          {PROVIDER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value} className="bg-win-gray-100 text-win-gray-800">
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+        <span className="text-xs uppercase tracking-wide text-win-gray-600">{label} Model</span>
+        <select
+          value={model}
+          onChange={(event) => onModelChange(event.target.value)}
+          disabled={isLoading || models.length === 0}
+          className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none disabled:opacity-50"
+        >
+          {isLoading ? (
+            <option>Loading models...</option>
+          ) : models.length === 0 ? (
+            <option>No models available</option>
+          ) : (
+            models.map((m) => (
+              <option key={m.id} value={m.id} className="bg-win-gray-100 text-win-gray-800">
+                {m.name}
+              </option>
+            ))
+          )}
+        </select>
+      </label>
+    </div>
   );
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 text-white">
-      <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden="true">
-        <div className="absolute -left-24 top-32 h-72 w-72 rounded-full bg-indigo-600/40 blur-3xl" />
-        <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-500/20 blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-blue-600/30 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-10">
-        <header className="space-y-4 text-center lg:text-left">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2 text-xs font-semibold uppercase tracking-widest text-white/70">
-            <span role="img" aria-label="spark">✨</span>
-            Orchestrate meaningful multi-agent conversations
-          </div>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <h1 className="text-4xl font-bold sm:text-5xl">Chat Bridge Studio</h1>
-              <p className="max-w-2xl text-base text-slate-300 sm:text-lg">
-                Configure two AI personas, calibrate their tone, and launch beautifully rendered debates complete with live feedback and session history.
-              </p>
+    <div className="min-h-screen bg-win-gray-100 font-sans">
+      {/* Windows 95 frame */}
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-10">
+        {/* Title bar */}
+        <header className="flex flex-col gap-4 border-b-2 border-win-gray-400 bg-win-gray-300 px-4 py-2 shadow-md">
+          <div className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span role="img" aria-label="spark" className="text-xl">🎵</span>
+              <h1 className="text-xl font-bold text-win-gray-800">Chat Bridge Studio</h1>
             </div>
-            <StatusBadge status={conversationStatus} />
+            <div className="flex items-center gap-3">
+              {conversationId && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(`/api/conversations/${conversationId}/transcript`);
+                      if (!response.ok) {
+                        throw new Error(`Server responded with ${response.status}`);
+                      }
+                      const data = await response.json();
+                      
+                      // Create a blob and download
+                      const blob = new Blob([data.transcript], { type: 'text/markdown' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = data.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      
+                      setBanner({ type: 'success', message: `Transcript downloaded as ${data.filename}` });
+                    } catch (error) {
+                      console.error('Failed to download transcript:', error);
+                      setBanner({ type: 'error', message: 'Failed to download transcript' });
+                    }
+                  }}
+                  className="rounded-lg border-2 border-win-gray-400 bg-win-gray-200 px-4 py-2 text-sm font-semibold text-win-gray-800 shadow-inner shadow-win-gray-300 transition hover:border-win-gray-600 hover:bg-win-gray-300"
+                >
+                  📄 Transcript
+                </button>
+              )}
+              <StatusBadge status={conversationStatus} />
+            </div>
           </div>
-          <p className="text-sm text-slate-400">{STATUS_COPY[conversationStatus].description}</p>
+          <p className="text-sm text-win-gray-600">{STATUS_COPY[conversationStatus].description}</p>
         </header>
+
+        <ProviderStatusIndicator 
+          providerStatus={providerStatus} 
+          isLoading={isLoadingProviderStatus} 
+        />
 
         {banner && <Banner banner={banner} onClose={() => setBanner(null)} />}
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[360px,1fr]">
-          <aside className="space-y-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-indigo-900/30 backdrop-blur-xl">
-            <h2 className="text-lg font-semibold">Agent configuration</h2>
-            <p className="text-sm text-slate-400">Select personas, providers, and temperatures to craft the perfect dialogue.</p>
+          {/* Configuration panel - styled like a Windows 95 dialog box */}
+          <aside className="space-y-6 rounded-lg border-2 border-win-gray-400 bg-win-gray-200 p-4 shadow-inner shadow-win-gray-500">
+            <h2 className="text-lg font-semibold text-win-gray-800">Agent configuration</h2>
+            <p className="text-sm text-win-gray-600">Select personas, providers, and temperatures to craft the perfect dialogue.</p>
 
             <div className="space-y-5">
               <PersonaSummary title="Agent A" persona={selectedPersonaA} onSelect={() => openModal('agentA')} />
@@ -395,28 +576,28 @@ const CyberpunkChatBridge = () => {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm text-slate-200">
-                <span className="text-xs uppercase tracking-wide text-slate-400">Max rounds</span>
+              <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+                <span className="text-xs uppercase tracking-wide text-win-gray-600">Max rounds</span>
                 <input
                   type="number"
                   value={maxRounds}
                   min={1}
                   max={100}
                   onChange={(event) => setMaxRounds(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white shadow-inner shadow-black/20 transition focus:border-indigo-400 focus:outline-none"
+                  className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm text-slate-200">
-                <span className="text-xs uppercase tracking-wide text-slate-400">Starter tone</span>
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white text-sm">
+              <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+                <span className="text-xs uppercase tracking-wide text-win-gray-600">Starter tone</span>
+                <div className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 text-sm shadow-inner shadow-win-gray-300">
                   {inputMessage.trim().length > 0 ? `${inputMessage.trim().length} characters` : 'Awaiting your starter prompt'}
                 </div>
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm text-slate-200">
-                <span className="text-xs uppercase tracking-wide text-slate-400">Temperature A</span>
+              <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+                <span className="text-xs uppercase tracking-wide text-win-gray-600">Temperature A</span>
                 <input
                   type="number"
                   value={temperatureA}
@@ -424,11 +605,11 @@ const CyberpunkChatBridge = () => {
                   max={2}
                   step={0.1}
                   onChange={(event) => setTemperatureA(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white shadow-inner shadow-black/20 transition focus:border-indigo-400 focus:outline-none"
+                  className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
                 />
               </label>
-              <label className="flex flex-col gap-2 text-sm text-slate-200">
-                <span className="text-xs uppercase tracking-wide text-slate-400">Temperature B</span>
+              <label className="flex flex-col gap-2 text-sm text-win-gray-600">
+                <span className="text-xs uppercase tracking-wide text-win-gray-600">Temperature B</span>
                 <input
                   type="number"
                   value={temperatureB}
@@ -436,38 +617,54 @@ const CyberpunkChatBridge = () => {
                   max={2}
                   step={0.1}
                   onChange={(event) => setTemperatureB(Number(event.target.value))}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-white shadow-inner shadow-black/20 transition focus:border-indigo-400 focus:outline-none"
+                  className="rounded-lg border border-win-gray-400 bg-win-gray-100 px-3 py-2 text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
                 />
               </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              {renderProviderSelect('Provider A', selectedProviderA, setSelectedProviderA)}
-              {renderProviderSelect('Provider B', selectedProviderB, setSelectedProviderB)}
+              {renderProviderModelSelect(
+                'A',
+                selectedProviderA,
+                selectedModelA,
+                setSelectedProviderA,
+                setSelectedModelA,
+                modelsA,
+                isLoadingModelsA,
+              )}
+              {renderProviderModelSelect(
+                'B',
+                selectedProviderB,
+                selectedModelB,
+                setSelectedProviderB,
+                setSelectedModelB,
+                modelsB,
+                isLoadingModelsB,
+              )}
             </div>
 
             <div className="space-y-3">
-              <label className="text-xs uppercase tracking-wide text-slate-400">Starter message</label>
+              <label className="text-xs uppercase tracking-wide text-win-gray-600">Starter message</label>
               <textarea
                 value={inputMessage}
                 onChange={(event) => setInputMessage(event.target.value)}
                 placeholder="Describe the topic the agents should explore..."
                 rows={4}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white shadow-inner shadow-black/20 transition focus:border-indigo-400 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-win-gray-400 bg-win-gray-100 px-4 py-3 text-sm text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
               />
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={startConversation}
                   disabled={!canStartConversation}
-                  className="flex-1 rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/40 transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-lg border-2 border-win-gray-400 bg-gradient-to-r from-winamp-teal to-winamp-green px-6 py-3 text-sm font-semibold text-win-gray-800 shadow-inner shadow-win-gray-300 transition hover:shadow-win-gray-500 disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-md"
                 >
                   {conversationStatus === 'configuring' ? 'Launching…' : 'Launch conversation'}
                 </button>
                 <button
                   type="button"
                   onClick={resetConversation}
-                  className="rounded-2xl border border-white/10 px-6 py-3 text-sm font-semibold text-white/70 transition hover:border-white/30 hover:text-white"
+                  className="rounded-lg border-2 border-win-gray-400 px-6 py-3 text-sm font-semibold text-win-gray-600 shadow-inner shadow-win-gray-300 transition hover:border-win-gray-600 hover:bg-win-gray-300 hover:text-win-gray-800"
                 >
                   Reset
                 </button>
@@ -475,19 +672,21 @@ const CyberpunkChatBridge = () => {
             </div>
           </aside>
 
-          <section className="flex flex-col rounded-3xl border border-white/10 bg-black/40 shadow-2xl shadow-indigo-900/30 backdrop-blur-xl">
-            <div className="border-b border-white/5 px-6 py-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Chat area with window styling */}
+          <section className="flex flex-col rounded-lg border-2 border-win-gray-400 bg-win-gray-100 shadow-inner shadow-win-gray-500">
+            {/* Chat title bar */}
+            <div className="border-b-2 border-win-gray-400 bg-win-gray-300 px-4 py-3 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold">Live conversation</h2>
-                  <p className="text-sm text-slate-400">
+                  <h2 className="text-lg font-semibold text-win-gray-800">Live conversation</h2>
+                  <p className="text-sm text-win-gray-600">
                     {conversationId ? `Conversation ID: ${conversationId}` : 'No active conversation yet. Configure the agents to begin.'}
                   </p>
                 </div>
                 {conversationId && (
-                  <div className="flex items-center gap-3 text-xs text-slate-300">
+                  <div className="flex items-center gap-3 text-xs text-win-gray-600">
                     <div className="flex items-center gap-1">
-                      <span className={`h-2.5 w-2.5 rounded-full ${conversationStatus === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                      <span className={`h-2.5 w-2.5 rounded-full ${conversationStatus === 'running' ? 'bg-winamp-green animate-pulse' : 'bg-win-gray-400'}`} />
                       {conversationStatus === 'running' ? 'Streaming' : 'Standing by'}
                     </div>
                     <span className="hidden sm:inline">•</span>
@@ -497,11 +696,12 @@ const CyberpunkChatBridge = () => {
               </div>
             </div>
 
-            <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6" role="log" aria-live="polite">
+            {/* Chat messages */}
+            <div className="h-[calc(100vh-20rem)] min-h-[500px] space-y-4 overflow-y-auto p-4" role="log" aria-live="polite">
               {messages.length === 0 && conversationStatus === 'idle' && (
-                <div className="flex h-full flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-10 text-center">
-                  <p className="text-lg font-semibold text-white/80">Ready when you are</p>
-                  <p className="mt-2 max-w-md text-sm text-slate-400">
+                <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-win-gray-400 bg-win-gray-200 p-6 text-center">
+                  <p className="text-lg font-semibold text-win-gray-800">Ready when you are</p>
+                  <p className="mt-2 max-w-md text-sm text-win-gray-600">
                     Choose two personas, brief them with a starter message, and press “Launch conversation” to watch the dialogue unfold in real-time.
                   </p>
                 </div>
@@ -510,34 +710,47 @@ const CyberpunkChatBridge = () => {
               {messages.map((message, index) => {
                 const isUser = message.sender === 'user';
                 const isAgentA = message.sender === 'agent_a';
-                const bubbleTone = isUser
-                  ? 'bg-sky-500/30 border-sky-400/40'
+                const textColor = isUser ? 'text-win-gray-800' : isAgentA ? 'text-winamp-blue' : 'text-winamp-red';
+                const bgColor = isUser
+                  ? 'bg-win-gray-200 border-win-gray-400'
                   : isAgentA
-                    ? 'bg-indigo-500/30 border-indigo-400/40'
-                    : 'bg-rose-500/25 border-rose-400/40';
+                    ? 'bg-winamp-blue/10 border-winamp-blue/30'
+                    : 'bg-winamp-red/10 border-winamp-red/30';
+
+                // Determine display name
+                let displayName = 'You';
+                if (!isUser) {
+                  if (message.persona) {
+                    displayName = message.persona;
+                  } else if (isAgentA) {
+                    displayName = selectedPersonaA?.name || 'Agent A';
+                  } else {
+                    displayName = selectedPersonaB?.name || 'Agent B';
+                  }
+                }
 
                 return (
                   <article
                     key={`${message.timestamp}-${index}`}
-                    className={`max-w-2xl rounded-3xl border px-5 py-4 shadow-lg shadow-black/20 ${bubbleTone} ${
+                    className={`max-w-2xl rounded-lg border px-4 py-3 shadow-inner shadow-win-gray-300 ${bgColor} ${
                       isUser ? 'ml-auto text-right' : 'mr-auto text-left'
-                    } animate-fade-in`}
+                    }`}
                   >
-                    <header className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-white/70">
-                      <span>{isUser ? 'You' : isAgentA ? 'Agent A' : 'Agent B'}</span>
+                    <header className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-win-gray-600">
+                      <span>{displayName}</span>
                       <span>{formatTimestamp(message.timestamp)}</span>
                     </header>
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-100">{message.content}</p>
+                    <p className={`mt-2 whitespace-pre-wrap text-sm ${textColor}`}>{message.content}</p>
                   </article>
                 );
               })}
 
               {isTyping && (
-                <div className="flex items-center gap-2 rounded-2xl border border-indigo-400/40 bg-indigo-500/20 px-4 py-3 text-sm text-indigo-100 shadow-lg shadow-indigo-900/30">
+                <div className="flex items-center gap-2 rounded-lg border-2 border-winamp-blue/30 bg-winamp-blue/10 px-4 py-2 text-sm text-winamp-blue shadow-sm">
                   <div className="flex items-center gap-1">
-                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-indigo-300" />
-                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-indigo-200" style={{ animationDelay: '0.1s' }} />
-                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-indigo-100" style={{ animationDelay: '0.2s' }} />
+                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-winamp-blue" />
+                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-winamp-blue" style={{ animationDelay: '0.1s' }} />
+                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-winamp-blue" style={{ animationDelay: '0.2s' }} />
                   </div>
                   <span>Agents are drafting their next response…</span>
                 </div>
@@ -549,20 +762,21 @@ const CyberpunkChatBridge = () => {
         </div>
       </div>
 
+      {/* Modal dialog - styled like a Windows 95 dialog */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur">
-          <div className="flex w-full max-w-xl flex-col gap-4 rounded-3xl border border-white/10 bg-slate-900/90 p-6 shadow-2xl shadow-indigo-900/40">
-            <header className="flex items-start justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-win-gray-300/70 px-4 py-6 backdrop-blur-sm">
+          <div className="flex w-full max-w-xl flex-col gap-4 rounded-lg border-2 border-win-gray-400 bg-win-gray-100 p-4 shadow-lg shadow-win-gray-500">
+            <header className="flex items-start justify-between border-b-2 border-win-gray-400 pb-2">
               <div>
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-lg font-semibold text-win-gray-800">
                   Select {modalType === 'agentA' ? 'Agent A' : 'Agent B'} persona
                 </h3>
-                <p className="text-sm text-slate-400">Browse the persona library and tap to assign.</p>
+                <p className="text-sm text-win-gray-600">Browse the persona library and tap to assign.</p>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/70 transition hover:border-white/40 hover:text-white"
+                className="rounded border-2 border-win-gray-400 bg-win-gray-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-win-gray-600 transition hover:border-win-gray-600 hover:bg-win-gray-300 hover:text-win-gray-800"
               >
                 Close
               </button>
@@ -573,16 +787,16 @@ const CyberpunkChatBridge = () => {
                 value={personaSearchTerm}
                 onChange={(event) => setPersonaSearchTerm(event.target.value)}
                 placeholder="Search personas by name or description"
-                className="w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-white shadow-inner shadow-black/40 transition focus:border-indigo-400 focus:outline-none"
+                className="w-full rounded border-2 border-win-gray-400 bg-win-gray-100 px-4 py-2 text-sm text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
               />
               {isLoadingPersonas && (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-300">Loading…</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-win-gray-500">Loading…</span>
               )}
             </div>
 
-            <div className="grid max-h-80 gap-3 overflow-y-auto pr-2">
+            <div className="grid max-h-[500px] gap-2 overflow-y-auto pr-2">
               {filteredPersonas.length === 0 && !isLoadingPersonas && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center text-sm text-slate-400">
+                <div className="rounded-lg border-2 border-dashed border-win-gray-400 bg-win-gray-200 p-4 text-center text-sm text-win-gray-500">
                   No personas match that description. Adjust your search and try again.
                 </div>
               )}
@@ -597,16 +811,23 @@ const CyberpunkChatBridge = () => {
                     key={persona.id}
                     type="button"
                     onClick={() => selectPersona(persona)}
-                    className={`flex flex-col gap-2 rounded-2xl border px-4 py-3 text-left transition ${
+                    className={`flex flex-col gap-1 rounded-lg border-2 px-4 py-2 text-left transition ${
                       isSelected
-                        ? 'border-indigo-400 bg-indigo-500/20 text-white'
-                        : 'border-white/10 bg-white/[0.04] text-slate-100 hover:border-white/30 hover:bg-white/[0.08]'
+                        ? 'border-winamp-teal bg-winamp-teal/10 text-win-gray-800 shadow-inner shadow-win-gray-300'
+                        : 'border-win-gray-400 bg-win-gray-100 text-win-gray-600 hover:border-win-gray-600 hover:bg-win-gray-200 hover:shadow-inner hover:shadow-win-gray-300'
                     }`}
                   >
-                    <span className="text-sm font-semibold">{persona.name}</span>
-                    {persona.description && <span className="text-xs text-slate-300">{persona.description}</span>}
+                    <div className="flex items-start justify-between">
+                      <span className="text-sm font-semibold">{persona.name}</span>
+                      {isSelected && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-winamp-teal text-xs text-win-gray-800">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    {persona.description && <span className="text-xs text-win-gray-500">{persona.description}</span>}
                     {persona.system_preview && (
-                      <span className="text-xs text-slate-400 line-clamp-2">{persona.system_preview}</span>
+                      <span className="text-xs text-win-gray-500 line-clamp-2">{persona.system_preview}</span>
                     )}
                   </button>
                 );
@@ -619,4 +840,4 @@ const CyberpunkChatBridge = () => {
   );
 };
 
-export default CyberpunkChatBridge;
+export default Windows95ChatBridge;

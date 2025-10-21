@@ -13,3 +13,13 @@ export interface Message {
   timestamp: string;
   persona?: string;
 }
+
+export interface Model {
+  id: string;
+  name: string;
+}
+
+export interface ProviderModels {
+  provider: string;
+  models: Model[];
+}

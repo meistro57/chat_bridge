@@ -6,7 +6,6 @@ FastAPI server providing RESTful API for the Chat Bridge web interface.
 
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 import json
@@ -16,8 +15,6 @@ from datetime import datetime
 import asyncio
 import logging
 import sys
-import os
-from pathlib import Path
 
 # Add the project root to the Python path before importing
 script_dir = Path(__file__).parent.resolve()
@@ -264,6 +261,51 @@ async def create_conversation(request: ConversationRequest):
     except Exception as e:
         logger.error("Failed to create conversation: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.get("/api/conversations/{conversation_id}/transcript")
+async def get_conversation_transcript(conversation_id: str):
+    """Generate and return a markdown transcript of the conversation"""
+    if conversation_id not in conversations:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conversation = conversations[conversation_id]
+
+    # Generate transcript
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"transcript_{conversation_id}_{timestamp}.md"
+
+    transcript_lines = [
+        f"# Chat Bridge Conversation Transcript",
+        f"",
+        f"**Conversation ID:** {conversation_id}",
+        f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Provider A:** {conversation.request.provider_a}",
+        f"**Provider B:** {conversation.request.provider_b}",
+        f"**Max Rounds:** {conversation.request.max_rounds}",
+        f"",
+        f"---",
+        f""
+    ]
+
+    # Add messages
+    for i, msg in enumerate(conversation.messages):
+        sender_label = msg.persona if msg.persona else msg.sender.replace('_', ' ').title()
+        transcript_lines.append(f"## Message {i + 1} - {sender_label}")
+        transcript_lines.append(f"*{msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}*")
+        transcript_lines.append(f"")
+        transcript_lines.append(msg.content)
+        transcript_lines.append(f"")
+        transcript_lines.append(f"---")
+        transcript_lines.append(f"")
+
+    transcript = "\n".join(transcript_lines)
+
+    return {
+        "transcript": transcript,
+        "filename": filename,
+        "conversation_id": conversation_id,
+        "message_count": len(conversation.messages)
+    }
 
 @app.websocket("/ws/conversations/{conversation_id}")
 async def websocket_conversation(websocket: WebSocket, conversation_id: str):

@@ -394,6 +394,28 @@ async def create_conversation(request: ConversationRequest):
         logger.error("Failed to create conversation: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
+@app.get("/api/conversations/{conversation_id}/transcript")
+async def get_conversation_transcript(conversation_id: str):
+    """Generate and return a markdown transcript of the conversation"""
+    if conversation_id not in conversations:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conversation = conversations[conversation_id]
+
+    # Use the existing transcript generation from the Conversation class
+    transcript_content = conversation._generate_transcript_content()
+
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"transcript_{conversation_id}_{timestamp}.md"
+
+    return {
+        "transcript": transcript_content,
+        "filename": filename,
+        "conversation_id": conversation_id,
+        "message_count": len(conversation.messages)
+    }
+
 @app.get("/api/models")
 async def get_models(provider: str):
     """Get available models for a provider"""

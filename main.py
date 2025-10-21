@@ -19,7 +19,11 @@ from database import (
 )
 from sqlalchemy import text
 
-# Import your existing chat_bridge components
+# Import Chat Bridge functionality
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.resolve()))
+
 from bridge_agents import create_agent, get_spec, PROVIDER_REGISTRY
 
 app = FastAPI(title="Chat Bridge API", version="2.0.0")
@@ -170,16 +174,67 @@ async def create_conversation_endpoint(
         starter_message=request.starter_message
     )
 
+@app.get("/api/conversations/{conversation_id}/transcript")
+async def get_conversation_transcript(conversation_id: str, db: Session = Depends(get_db)):
+    """Generate and return a markdown transcript of the conversation"""
+    conversation = get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    messages = get_conversation_messages(db, conversation_id)
+
+    # Generate transcript
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"transcript_{conversation_id[:8]}_{timestamp}.md"
+
+    transcript_lines = [
+        f"# Chat Bridge Conversation Transcript",
+        f"",
+        f"**Conversation ID:** {conversation_id}",
+        f"**Date:** {conversation.created_at.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"**Provider A:** {conversation.provider_a}",
+        f"**Provider B:** {conversation.provider_b}",
+        f"**Persona A:** {conversation.persona_a or 'None'}",
+        f"**Persona B:** {conversation.persona_b or 'None'}",
+        f"**Max Rounds:** {conversation.max_rounds}",
+        f"**Status:** {conversation.status}",
+        f"",
+        f"---",
+        f""
+    ]
+
+    # Add messages
+    for i, msg in enumerate(messages):
+        sender_label = msg.persona if msg.persona else msg.sender.replace('_', ' ').title()
+        transcript_lines.append(f"## Message {i + 1} - {sender_label}")
+        transcript_lines.append(f"*{msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}*")
+        if msg.round_number > 0:
+            transcript_lines.append(f"*Round {msg.round_number}*")
+        transcript_lines.append(f"")
+        transcript_lines.append(msg.content)
+        transcript_lines.append(f"")
+        transcript_lines.append(f"---")
+        transcript_lines.append(f"")
+
+    transcript = "\n".join(transcript_lines)
+
+    return {
+        "transcript": transcript,
+        "filename": filename,
+        "conversation_id": conversation_id,
+        "message_count": len(messages)
+    }
+
 @app.get("/api/conversations/{conversation_id}")
 async def get_conversation_endpoint(conversation_id: str, db: Session = Depends(get_db)):
     """Get conversation details"""
     conversation = get_conversation(db, conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     messages = get_conversation_messages(db, conversation_id)
     stats = get_conversation_stats(db, conversation_id)
-    
+
     return {
         "conversation": {
             "id": conversation.id,
@@ -204,13 +259,13 @@ async def get_conversation_endpoint(conversation_id: str, db: Session = Depends(
 
 @app.get("/api/conversations")
 async def list_conversations(
-    query: Optional[str] = None, 
-    limit: int = 10, 
+    query: Optional[str] = None,
+    limit: int = 10,
     db: Session = Depends(get_db)
 ):
     """List conversations with optional search"""
     conversations = search_conversations(db, query, limit)
-    
+
     return {
         "conversations": [
             {

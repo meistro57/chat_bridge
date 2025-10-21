@@ -85,8 +85,13 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Main execution
-echo -e "${GREEN}🎨 Chat Bridge Web GUI - Cyberpunk Edition${NC}"
+echo -e "${GREEN}🎨 Chat Bridge Web GUI - Windows 95 Edition${NC}"
 echo -e "${GREEN}⚡ Real-time AI conversation bridging${NC}"
+echo ""
+
+# Check for API keys FIRST
+check_api_keys
+
 echo ""
 
 # Install dependencies
