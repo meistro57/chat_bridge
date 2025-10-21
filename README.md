@@ -1,6 +1,8 @@
 # 🌉 Chat Bridge - Unified Edition: Windows 95-Style Retro edition 🎨⚡🤖
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with **retro Windows 95-style web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
+<img width="1132" height="1759" alt="image" src="https://github.com/user-attachments/assets/0c513cb4-8c29-43f8-bd93-57d3cacc0a80" />
+
 
 ## ✨ What's New in Version 1.4.0 **Windows 95-Style Retro Edition** 🎨⚡🤖
 
