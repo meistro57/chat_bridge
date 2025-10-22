@@ -140,6 +140,157 @@ async def get_providers():
         })
     return {"providers": providers}
 
+@app.get("/api/provider-status")
+async def get_provider_status():
+    """Check provider connectivity status based on available credentials
+
+    This performs a quick credential check without making actual API calls.
+    Returns:
+    - connected: true if credentials are configured
+    - connected: false if credentials are missing or invalid
+    """
+    import os
+    provider_status = {}
+
+    for provider_key, spec in PROVIDER_REGISTRY.items():
+        provider_info = {
+            "label": spec.label,
+            "connected": False,
+            "error": None
+        }
+
+        try:
+            # Check if provider needs an API key
+            if spec.needs_key and spec.key_env:
+                # Check if environment variable is set
+                api_key = os.getenv(spec.key_env, "").strip()
+                if api_key and len(api_key) >= 10:
+                    provider_info["connected"] = True
+                else:
+                    provider_info["connected"] = False
+                    provider_info["error"] = f"{spec.key_env} not configured or appears invalid"
+            else:
+                # Local providers (Ollama, LM Studio) don't require API keys
+                # Mark as available but note that service must be running
+                provider_info["connected"] = False
+                provider_info["error"] = "Cannot verify - service may not be running"
+
+        except Exception as e:
+            provider_info["connected"] = False
+            provider_info["error"] = "Check failed"
+
+        provider_status[provider_key] = provider_info
+
+    return {"providers": provider_status}
+
+@app.get("/api/models")
+async def get_models(provider: str):
+    """Get available models for a provider"""
+    import os
+    import httpx
+
+    try:
+        if provider == 'openai':
+            models = [
+                {'id': 'gpt-4o', 'name': 'GPT-4o'},
+                {'id': 'gpt-4o-mini', 'name': 'GPT-4o Mini'},
+                {'id': 'gpt-4-turbo', 'name': 'GPT-4 Turbo'},
+                {'id': 'gpt-4', 'name': 'GPT-4'},
+                {'id': 'gpt-3.5-turbo', 'name': 'GPT-3.5 Turbo'}
+            ]
+        elif provider == 'anthropic':
+            models = [
+                {'id': 'claude-3-5-sonnet-20241022', 'name': 'Claude 3.5 Sonnet'},
+                {'id': 'claude-3-opus-20240229', 'name': 'Claude 3 Opus'},
+                {'id': 'claude-3-sonnet-20240229', 'name': 'Claude 3 Sonnet'},
+                {'id': 'claude-3-haiku-20240307', 'name': 'Claude 3 Haiku'}
+            ]
+        elif provider == 'gemini':
+            models = [
+                {'id': 'gemini-1.5-flash', 'name': 'Gemini 1.5 Flash'},
+                {'id': 'gemini-1.5-pro', 'name': 'Gemini 1.5 Pro'},
+                {'id': 'gemini-1.0-pro', 'name': 'Gemini 1.0 Pro'}
+            ]
+        elif provider == 'deepseek':
+            models = [
+                {'id': 'deepseek-chat', 'name': 'DeepSeek Chat'},
+                {'id': 'deepseek-coder', 'name': 'DeepSeek Coder'}
+            ]
+        elif provider == 'openrouter':
+            openrouter_key = os.getenv('OPENROUTER_API_KEY')
+
+            if openrouter_key:
+                try:
+                    # Fetch from real OpenRouter API
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(
+                            "https://openrouter.ai/api/v1/models",
+                            timeout=10.0
+                        )
+                        response.raise_for_status()
+                        data = response.json()
+
+                        models = []
+                        for model in data.get('data', []):
+                            pricing = model.get('pricing', {})
+                            prompt_price = pricing.get('prompt', '0.000')
+                            completion_price = pricing.get('completion', '0.000')
+
+                            # Format pricing nicely
+                            if prompt_price == completion_price:
+                                price_display = f"${prompt_price}/1000 tokens"
+                            else:
+                                price_display = f"Prompt: ${prompt_price}, Completion: ${completion_price}/1000 tokens"
+
+                            name = model.get('name', model.get('id', 'Unknown'))
+                            full_name = f"{name} ({price_display})"
+
+                            models.append({
+                                'id': model.get('id'),
+                                'name': full_name
+                            })
+
+                        # Sort by name for better UX
+                        models.sort(key=lambda x: x['name'])
+
+                        return {"models": models}
+
+                except Exception as e:
+                    # Fall back to static list if API fails
+                    pass
+
+            # Fallback static list (basic models)
+            models = [
+                {'id': 'openai/gpt-4o', 'name': 'GPT-4o (free)'},
+                {'id': 'openai/gpt-4o-mini', 'name': 'GPT-4o Mini (free)'},
+                {'id': 'anthropic/claude-3-5-sonnet', 'name': 'Claude 3.5 Sonnet (free)'},
+                {'id': 'anthropic/claude-3-haiku', 'name': 'Claude 3 Haiku (free)'},
+                {'id': 'google/gemini-pro', 'name': 'Gemini Pro (free)'},
+                {'id': 'meta-llama/llama-3.1-8b-instruct', 'name': 'Llama 3.1 8B (free)'}
+            ]
+        elif provider == 'ollama':
+            # For Ollama, we use the model names directly
+            models = [
+                {'id': 'llama3.2:3b', 'name': 'Llama 3.2 3B'},
+                {'id': 'llama3.2:1b', 'name': 'Llama 3.2 1B'},
+                {'id': 'llama3.1:8b', 'name': 'Llama 3.1 8B'},
+                {'id': 'mistral:7b', 'name': 'Mistral 7B'}
+            ]
+        elif provider == 'lmstudio':
+            models = [
+                {'id': 'local-model', 'name': 'Local Model'},
+                {'id': 'llama-3.1-8b-instruct', 'name': 'Llama 3.1 8B Instruct'},
+                {'id': 'mistral-7b-instruct', 'name': 'Mistral 7B Instruct'},
+                {'id': 'qwen-2.5-7b-instruct', 'name': 'Qwen 2.5 7B Instruct'},
+                {'id': 'wizardlm-2-8x22b', 'name': 'WizardLM-2 8x22B'}
+            ]
+        else:
+            models = [{'id': 'default-model', 'name': 'Default Model'}]
+
+        return {"models": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
+
 @app.post("/api/conversations", response_model=ConversationResponse)
 async def create_conversation_endpoint(
     request: ConversationRequest, 
@@ -652,6 +803,92 @@ async def mcp_health_check(db: Session = Depends(get_db)):
             "error": str(e)
         }
 
+
+# Guides API
+@app.get("/api/guides")
+async def get_guides():
+    """Get list of available guide documents"""
+    guides = [
+        {
+            "id": "quickstart",
+            "title": "Quick Start Guide",
+            "category": "Getting Started",
+            "file": "QUICKSTART.md",
+            "description": "Get up and running in seconds with one command"
+        },
+        {
+            "id": "readme",
+            "title": "README - Full Overview",
+            "category": "Getting Started",
+            "file": "README.md",
+            "description": "Complete introduction and feature overview"
+        },
+        {
+            "id": "claude",
+            "title": "Project Documentation (CLAUDE.md)",
+            "category": "Documentation",
+            "file": "CLAUDE.md",
+            "description": "Comprehensive project architecture and development guide"
+        },
+        {
+            "id": "mcp_mode",
+            "title": "MCP Mode Toggle Guide",
+            "category": "Configuration",
+            "file": "MCP_MODE_GUIDE.md",
+            "description": "Guide for switching between HTTP and stdio MCP modes"
+        },
+        {
+            "id": "openrouter",
+            "title": "OpenRouter Setup",
+            "category": "Configuration",
+            "file": "OPENROUTER_SETUP.md",
+            "description": "How to configure and use OpenRouter provider"
+        },
+        {
+            "id": "debug",
+            "title": "Quick Debug Guide",
+            "category": "Troubleshooting",
+            "file": "QUICK_DEBUG_GUIDE.md",
+            "description": "Common issues and debugging tips"
+        },
+        {
+            "id": "changelog",
+            "title": "Changelog",
+            "category": "Information",
+            "file": "CHANGELOG.md",
+            "description": "Version history and release notes"
+        }
+    ]
+    return {"guides": guides}
+
+@app.get("/api/guides/{guide_id}")
+async def get_guide_content(guide_id: str):
+    """Get content of a specific guide"""
+    # Map guide IDs to files
+    guide_files = {
+        "quickstart": "QUICKSTART.md",
+        "readme": "README.md",
+        "claude": "CLAUDE.md",
+        "mcp_mode": "MCP_MODE_GUIDE.md",
+        "openrouter": "OPENROUTER_SETUP.md",
+        "debug": "QUICK_DEBUG_GUIDE.md",
+        "changelog": "CHANGELOG.md"
+    }
+
+    if guide_id not in guide_files:
+        raise HTTPException(status_code=404, detail="Guide not found")
+
+    file_path = Path(__file__).parent / guide_files[guide_id]
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Guide file not found")
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"guide_id": guide_id, "content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading guide: {str(e)}")
 
 # Health check
 @app.get("/health")

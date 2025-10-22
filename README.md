@@ -1,15 +1,14 @@
-# 🌉 Chat Bridge - Unified Edition: Windows 95-Style Retro edition 🎨⚡🤖
+# 🌉 Chat Bridge - Unified Edition: Retro Edition 🎨⚡🤖
 https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with **retro Windows 95-style web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
 <img width="1132" height="1759" alt="image" src="https://github.com/user-attachments/assets/0c513cb4-8c29-43f8-bd93-57d3cacc0a80" />
 
+## ✨ What's New in Version 1.4.0 **Retro Edition** 🎨⚡🤖
 
-## ✨ What's New in Version 1.4.0 **Windows 95-Style Retro Edition** 🎨⚡🤖
-
-### 🌈 **Windows 95-Style Retro Web GUI - Nostalgic AI Conversations**
+### 🌈 **Retro Web GUI - Nostalgic AI Conversations**
 - **🎭 Intimate 4-Step Setup**: Persona → Provider → Settings → Start flow
 - **⚡ Real-Time Streaming**: Watch AI responses appear live as they're generated
-- **🎨 Retro Computing Aesthetic**: Classic Windows 95/98-inspired interface with beveled buttons, classic color schemes, and throwback design
+- **🎨 Retro Computing Aesthetic**: Classic retro-inspired interface with beveled buttons, classic color schemes, and throwback design
 - **🏙️ Immersive Experience**: Window-like interface, scrollbars, and vintage computer styling
 - **🎯 Dual Provider Selection**: Choose any combination of AI providers (OpenAI, Anthropic, Gemini, OpenRouter, etc.)
 - **🌡️ Advanced Controls**: Adjustable max rounds, temperature settings per agent
@@ -17,7 +16,7 @@ A beautiful, interactive chat bridge that connects two AI assistants with **retr
 - **📱 Modern Interface**: React + TypeScript + Tailwind CSS for smooth, professional experience
 - **🎪 Modal Persona Selection**: Interactive persona selection with descriptions and previews
 - **📊 Live Status**: Real-time connection indicators and typing animations
-- **🎨 Classic Color Scheme**: Windows 95 grays, blues, and system colors throughout
+- **🎨 Classic Color Scheme**: Classic grays, blues, and system colors throughout
 - **⚡ Quick Startup Script**: New `start_web_gui.sh` for easy single-command startup
 
 ### 🚀 **Multiple Interface Options**
@@ -25,11 +24,11 @@ A beautiful, interactive chat bridge that connects two AI assistants with **retr
 - **💻 CLI Mode**: Traditional command-line interface (always reliable)
 - **🔌 Hybrid**: Switch between interfaces based on your needs
 
-### 📝 **Enhanced Windows 95-Style Features**
+### 📝 **Enhanced Retro Features**
 - **Window-Like Menus**: Classic window management with title bars and buttons
 - **3D Button Effects**: Outset/inset button styling for authentic retro feel
 - **Scrollbar Styling**: Classic gray scrollbars throughout the interface
-- **Bubble Messages**: Vintage chat bubble design with Win95 colors
+- **Bubble Messages**: Vintage chat bubble design with retro colors
 - **Animated Elements**: Pulsing status indicators and smooth transitions
 - **Responsive Design**: Adapts beautifully to desktop, tablet, and mobile
 - **WebSocket Streaming**: Ultra-fast real-time message delivery
@@ -66,28 +65,40 @@ A beautiful, interactive chat bridge that connects two AI assistants with **retr
 
 ### 🌐 **Web GUI (Retro Computing Experience) - Recommended**
 
-The new Windows 95-style web interface provides a nostalgic AI conversation experience:
+The new retro web interface provides a nostalgic AI conversation experience:
 
 ```bash
-# Quick startup (recommended)
-./start_web_gui.sh
+# 🚀 One-Command Startup (Recommended)
+./start.sh
 
-# Or manual startup:
-# Start the backend server
-cd web_gui/backend
-python main.py
+# Development mode with hot-reload
+./start.sh --dev
 
-# In a new terminal, start the frontend
-cd web_gui/frontend  
-npm install
-npm run dev
-
-# Open browser: http://localhost:5173
-# Follow the 4-step setup: Persona → Provider → Settings → Start
+# Stop all services
+./stop.sh
 ```
 
-**🌟 Windows 95-Style GUI Features:**
-- **🎨 Retro Aesthetic**: Classical Windows 95/98-inspired design with beveled buttons, classic colors, and window-like interface
+**What gets started:**
+- ✅ FastAPI backend server (includes MCP HTTP endpoints)
+- ✅ Retro web GUI at http://localhost:8000
+- ✅ MCP memory system (HTTP or stdio mode)
+- ✅ Live status monitoring and logs
+
+**See [QUICKSTART.md](QUICKSTART.md) for detailed instructions**
+
+**Alternative: Manual startup**
+```bash
+# Backend only
+python main.py
+
+# Frontend development
+cd web_gui/frontend
+npm run dev
+# Open: http://localhost:5173
+```
+
+**🌟 Retro GUI Features:**
+- **🎨 Retro Aesthetic**: Classical retro-inspired design with beveled buttons, classic colors, and window-like interface
 - **⚡ Live Streaming**: Watch AI responses appear in real-time as they're generated
 - **🎭 32 Personas**: Scientist, Philosopher, Comedian, Steel Worker, and many more
 - **🚀 Multiple Providers**: OpenAI, Anthropic, Gemini, OpenRouter, Ollama, LM Studio

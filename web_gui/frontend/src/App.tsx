@@ -1,13 +1,13 @@
-// App.tsx - Windows 95/WinAmp Theme
+// App.tsx - Retro Theme
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import type { Persona, Message, Model } from './types';
+import type { Persona, Message, Model, Guide, GuideContent } from './types';
 
 interface BannerState {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
 }
 
-type ModalType = 'agentA' | 'agentB' | null;
+type ModalType = 'agentA' | 'agentB' | 'guides' | null;
 
 type ConversationStatus = 'idle' | 'configuring' | 'running' | 'finished' | 'error';
 
@@ -156,7 +156,7 @@ const formatTimestamp = (timestamp: string) => {
   }
 };
 
-const Windows95ChatBridge = () => {
+const RetroChatBridge = () => {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoadingPersonas, setIsLoadingPersonas] = useState(true);
   const [selectedPersonaA, setSelectedPersonaA] = useState<Persona | null>(null);
@@ -181,6 +181,11 @@ const Windows95ChatBridge = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [conversationStatus, setConversationStatus] = useState<ConversationStatus>('idle');
   const [banner, setBanner] = useState<BannerState | null>(null);
+
+  // Guides state
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const [selectedGuide, setSelectedGuide] = useState<GuideContent | null>(null);
+  const [isLoadingGuide, setIsLoadingGuide] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -207,6 +212,37 @@ const Windows95ChatBridge = () => {
       setProviderStatus(disconnectedStatus);
     } finally {
       setIsLoadingProviderStatus(false);
+    }
+  };
+
+  const fetchGuides = async () => {
+    try {
+      const response = await fetch('/api/guides');
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      const data = await response.json();
+      setGuides(data.guides ?? []);
+    } catch (error) {
+      console.error('Failed to fetch guides:', error);
+      setBanner({ type: 'error', message: 'Failed to load guides list' });
+    }
+  };
+
+  const fetchGuideContent = async (guideId: string) => {
+    setIsLoadingGuide(true);
+    try {
+      const response = await fetch(`/api/guides/${guideId}`);
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      const data = await response.json();
+      setSelectedGuide(data);
+    } catch (error) {
+      console.error('Failed to fetch guide content:', error);
+      setBanner({ type: 'error', message: 'Failed to load guide content' });
+    } finally {
+      setIsLoadingGuide(false);
     }
   };
 
@@ -327,10 +363,12 @@ const Windows95ChatBridge = () => {
     setIsModalOpen(false);
     setModalType(null);
     setPersonaSearchTerm('');
+    setSelectedGuide(null);
   }, []);
 
   useEffect(() => {
     fetchProviderStatus();
+    fetchGuides();
 
     // Fetch personas
     const fetchPersonas = async () => {
@@ -508,7 +546,7 @@ const Windows95ChatBridge = () => {
 
   return (
     <div className="min-h-screen bg-win-gray-100 font-sans">
-      {/* Windows 95 frame */}
+      {/* Retro frame */}
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-10">
         {/* Title bar */}
         <header className="flex flex-col gap-4 border-b-2 border-win-gray-400 bg-win-gray-300 px-4 py-2 shadow-md">
@@ -518,6 +556,18 @@ const Windows95ChatBridge = () => {
               <h1 className="text-xl font-bold text-win-gray-800">Chat Bridge Studio</h1>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setModalType('guides');
+                  setIsModalOpen(true);
+                  setSelectedGuide(null);
+                }}
+                className="rounded-lg border-2 border-win-gray-400 bg-win-gray-200 px-4 py-2 text-sm font-semibold text-win-gray-800 shadow-inner shadow-win-gray-300 transition hover:border-win-gray-600 hover:bg-win-gray-300"
+                title="View guides and documentation"
+              >
+                📚 Help
+              </button>
               {conversationId && (
                 <button
                   type="button"
@@ -528,7 +578,7 @@ const Windows95ChatBridge = () => {
                         throw new Error(`Server responded with ${response.status}`);
                       }
                       const data = await response.json();
-                      
+
                       // Create a blob and download
                       const blob = new Blob([data.transcript], { type: 'text/markdown' });
                       const url = URL.createObjectURL(blob);
@@ -539,7 +589,7 @@ const Windows95ChatBridge = () => {
                       a.click();
                       document.body.removeChild(a);
                       URL.revokeObjectURL(url);
-                      
+
                       setBanner({ type: 'success', message: `Transcript downloaded as ${data.filename}` });
                     } catch (error) {
                       console.error('Failed to download transcript:', error);
@@ -565,7 +615,7 @@ const Windows95ChatBridge = () => {
         {banner && <Banner banner={banner} onClose={() => setBanner(null)} />}
 
         <div className="grid flex-1 gap-6 lg:grid-cols-[360px,1fr]">
-          {/* Configuration panel - styled like a Windows 95 dialog box */}
+          {/* Configuration panel - styled like a retro dialog box */}
           <aside className="space-y-6 rounded-lg border-2 border-win-gray-400 bg-win-gray-200 p-4 shadow-inner shadow-win-gray-500">
             <h2 className="text-lg font-semibold text-win-gray-800">Agent configuration</h2>
             <p className="text-sm text-win-gray-600">Select personas, providers, and temperatures to craft the perfect dialogue.</p>
@@ -762,16 +812,18 @@ const Windows95ChatBridge = () => {
         </div>
       </div>
 
-      {/* Modal dialog - styled like a Windows 95 dialog */}
+      {/* Modal dialog - styled like a retro dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-win-gray-300/70 px-4 py-6 backdrop-blur-sm">
           <div className="flex w-full max-w-xl flex-col gap-4 rounded-lg border-2 border-win-gray-400 bg-win-gray-100 p-4 shadow-lg shadow-win-gray-500">
             <header className="flex items-start justify-between border-b-2 border-win-gray-400 pb-2">
               <div>
                 <h3 className="text-lg font-semibold text-win-gray-800">
-                  Select {modalType === 'agentA' ? 'Agent A' : 'Agent B'} persona
+                  {modalType === 'guides' ? '📚 Help & Guides' : `Select ${modalType === 'agentA' ? 'Agent A' : 'Agent B'} persona`}
                 </h3>
-                <p className="text-sm text-win-gray-600">Browse the persona library and tap to assign.</p>
+                <p className="text-sm text-win-gray-600">
+                  {modalType === 'guides' ? 'Browse documentation and guides' : 'Browse the persona library and tap to assign.'}
+                </p>
               </div>
               <button
                 type="button"
@@ -782,57 +834,114 @@ const Windows95ChatBridge = () => {
               </button>
             </header>
 
-            <div className="relative">
-              <input
-                value={personaSearchTerm}
-                onChange={(event) => setPersonaSearchTerm(event.target.value)}
-                placeholder="Search personas by name or description"
-                className="w-full rounded border-2 border-win-gray-400 bg-win-gray-100 px-4 py-2 text-sm text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
-              />
-              {isLoadingPersonas && (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-win-gray-500">Loading…</span>
-              )}
-            </div>
-
-            <div className="grid max-h-[500px] gap-2 overflow-y-auto pr-2">
-              {filteredPersonas.length === 0 && !isLoadingPersonas && (
-                <div className="rounded-lg border-2 border-dashed border-win-gray-400 bg-win-gray-200 p-4 text-center text-sm text-win-gray-500">
-                  No personas match that description. Adjust your search and try again.
-                </div>
-              )}
-
-              {filteredPersonas.map((persona) => {
-                const isSelected =
-                  (modalType === 'agentA' && selectedPersonaA?.id === persona.id) ||
-                  (modalType === 'agentB' && selectedPersonaB?.id === persona.id);
-
-                return (
-                  <button
-                    key={persona.id}
-                    type="button"
-                    onClick={() => selectPersona(persona)}
-                    className={`flex flex-col gap-1 rounded-lg border-2 px-4 py-2 text-left transition ${
-                      isSelected
-                        ? 'border-winamp-teal bg-winamp-teal/10 text-win-gray-800 shadow-inner shadow-win-gray-300'
-                        : 'border-win-gray-400 bg-win-gray-100 text-win-gray-600 hover:border-win-gray-600 hover:bg-win-gray-200 hover:shadow-inner hover:shadow-win-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <span className="text-sm font-semibold">{persona.name}</span>
-                      {isSelected && (
-                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-winamp-teal text-xs text-win-gray-800">
-                          ✓
-                        </span>
+            {modalType === 'guides' ? (
+              // Guides modal content
+              <>
+                {selectedGuide ? (
+                  // Guide viewer
+                  <div className="flex flex-col gap-3 max-h-[600px]">
+                    <button
+                      onClick={() => setSelectedGuide(null)}
+                      className="self-start rounded border-2 border-win-gray-400 bg-win-gray-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-win-gray-600 transition hover:border-win-gray-600 hover:bg-win-gray-300 hover:text-win-gray-800"
+                    >
+                      ← Back to guides
+                    </button>
+                    <div className="prose prose-sm max-w-none overflow-y-auto rounded border-2 border-win-gray-400 bg-white p-4 text-win-gray-800 shadow-inner shadow-win-gray-300">
+                      {isLoadingGuide ? (
+                        <p className="text-center text-win-gray-500">Loading...</p>
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-mono text-xs">{selectedGuide.content}</pre>
                       )}
                     </div>
-                    {persona.description && <span className="text-xs text-win-gray-500">{persona.description}</span>}
-                    {persona.system_preview && (
-                      <span className="text-xs text-win-gray-500 line-clamp-2">{persona.system_preview}</span>
+                  </div>
+                ) : (
+                  // Guides list
+                  <div className="grid max-h-[500px] gap-2 overflow-y-auto pr-2">
+                    {guides.length === 0 && (
+                      <div className="rounded-lg border-2 border-dashed border-win-gray-400 bg-win-gray-200 p-4 text-center text-sm text-win-gray-500">
+                        No guides available
+                      </div>
                     )}
-                  </button>
-                );
-              })}
-            </div>
+                    {Object.entries(
+                      guides.reduce((acc, guide) => {
+                        if (!acc[guide.category]) acc[guide.category] = [];
+                        acc[guide.category].push(guide);
+                        return acc;
+                      }, {} as Record<string, Guide[]>)
+                    ).map(([category, categoryGuides]) => (
+                      <div key={category} className="space-y-2">
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-win-gray-600">{category}</h4>
+                        {categoryGuides.map((guide) => (
+                          <button
+                            key={guide.id}
+                            onClick={() => fetchGuideContent(guide.id)}
+                            className="flex w-full flex-col gap-1 rounded-lg border-2 border-win-gray-400 bg-win-gray-100 px-4 py-2 text-left transition hover:border-win-gray-600 hover:bg-win-gray-200 hover:shadow-inner hover:shadow-win-gray-300"
+                          >
+                            <span className="text-sm font-semibold text-win-gray-800">{guide.title}</span>
+                            <span className="text-xs text-win-gray-500">{guide.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              // Persona selection modal content
+              <>
+                <div className="relative">
+                  <input
+                    value={personaSearchTerm}
+                    onChange={(event) => setPersonaSearchTerm(event.target.value)}
+                    placeholder="Search personas by name or description"
+                    className="w-full rounded border-2 border-win-gray-400 bg-win-gray-100 px-4 py-2 text-sm text-win-gray-800 shadow-inner shadow-win-gray-300 transition focus:border-win-gray-600 focus:outline-none"
+                  />
+                  {isLoadingPersonas && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-win-gray-500">Loading…</span>
+                  )}
+                </div>
+
+                <div className="grid max-h-[500px] gap-2 overflow-y-auto pr-2">
+                  {filteredPersonas.length === 0 && !isLoadingPersonas && (
+                    <div className="rounded-lg border-2 border-dashed border-win-gray-400 bg-win-gray-200 p-4 text-center text-sm text-win-gray-500">
+                      No personas match that description. Adjust your search and try again.
+                    </div>
+                  )}
+
+                  {filteredPersonas.map((persona) => {
+                    const isSelected =
+                      (modalType === 'agentA' && selectedPersonaA?.id === persona.id) ||
+                      (modalType === 'agentB' && selectedPersonaB?.id === persona.id);
+
+                    return (
+                      <button
+                        key={persona.id}
+                        type="button"
+                        onClick={() => selectPersona(persona)}
+                        className={`flex flex-col gap-1 rounded-lg border-2 px-4 py-2 text-left transition ${
+                          isSelected
+                            ? 'border-winamp-teal bg-winamp-teal/10 text-win-gray-800 shadow-inner shadow-win-gray-300'
+                            : 'border-win-gray-400 bg-win-gray-100 text-win-gray-600 hover:border-win-gray-600 hover:bg-win-gray-200 hover:shadow-inner hover:shadow-win-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <span className="text-sm font-semibold">{persona.name}</span>
+                          {isSelected && (
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-winamp-teal text-xs text-win-gray-800">
+                              ✓
+                            </span>
+                          )}
+                        </div>
+                        {persona.description && <span className="text-xs text-win-gray-500">{persona.description}</span>}
+                        {persona.system_preview && (
+                          <span className="text-xs text-win-gray-500 line-clamp-2">{persona.system_preview}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -840,4 +949,4 @@ const Windows95ChatBridge = () => {
   );
 };
 
-export default Windows95ChatBridge;
+export default RetroChatBridge;

@@ -23,3 +23,16 @@ export interface ProviderModels {
   provider: string;
   models: Model[];
 }
+
+export interface Guide {
+  id: string;
+  title: string;
+  category: string;
+  file: string;
+  description: string;
+}
+
+export interface GuideContent {
+  guide_id: string;
+  content: string;
+}

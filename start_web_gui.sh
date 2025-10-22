@@ -85,7 +85,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Main execution
-echo -e "${GREEN}🎨 Chat Bridge Web GUI - Windows 95 Edition${NC}"
+echo -e "${GREEN}🎨 Chat Bridge Web GUI - Retro Edition${NC}"
 echo -e "${GREEN}⚡ Real-time AI conversation bridging${NC}"
 echo ""
 

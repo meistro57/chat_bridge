@@ -150,28 +150,103 @@ def print_info(message: str):
 
 # ───────────────────────── MCP Memory Integration ─────────────────────────
 
-# Load MCP base URL from environment (default to localhost:8000)
+# MCP Mode Configuration
+# MCP_MODE can be "http" (FastAPI server) or "stdio" (FastMCP stdio server)
+MCP_MODE = os.getenv("MCP_MODE", "http").lower()
 MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8000")
 
-async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic using HTTP client."""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"{MCP_BASE_URL}/api/mcp/contextual-memory",
-                params={"topic": topic, "limit": limit}
-            )
-            response.raise_for_status()
-            data = response.json()
+# Global MCP client for stdio mode
+_mcp_process = None
 
-            if data.get("success"):
-                return data.get("context", "")
-            else:
-                logging.debug(f"MCP memory query failed: {data.get('error', 'Unknown error')}")
-                return ""
+def _init_stdio_mcp():
+    """Initialize stdio MCP server process."""
+    global _mcp_process
+    if _mcp_process is None:
+        import subprocess
+        try:
+            # Start mcp_server.py as a subprocess with stdio transport
+            _mcp_process = subprocess.Popen(
+                [sys.executable, "mcp_server.py"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1
+            )
+            logging.debug("MCP stdio server process started")
+        except Exception as e:
+            logging.error(f"Failed to start MCP stdio server: {e}")
+    return _mcp_process
+
+def _query_stdio_mcp(tool_name: str, **kwargs) -> dict:
+    """Query MCP stdio server with a tool call."""
+    proc = _init_stdio_mcp()
+    if proc is None:
+        return {"success": False, "error": "MCP process not initialized"}
+
+    try:
+        # Format JSON-RPC request for MCP tool call
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": kwargs
+            }
+        }
+
+        # Send request
+        proc.stdin.write(json.dumps(request) + "\n")
+        proc.stdin.flush()
+
+        # Read response
+        response_line = proc.stdout.readline()
+        if response_line:
+            response = json.loads(response_line)
+            if "result" in response:
+                return {"success": True, "data": response["result"]}
+            elif "error" in response:
+                return {"success": False, "error": response["error"]}
+
+        return {"success": False, "error": "No response from MCP server"}
     except Exception as e:
-        logging.debug(f"MCP memory query failed: {e}")
-        return ""
+        logging.debug(f"MCP stdio query failed: {e}")
+        return {"success": False, "error": str(e)}
+
+async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
+    """Query MCP server for contextual memory about a topic."""
+    if MCP_MODE == "stdio":
+        # Use stdio mode with mcp_server.py
+        try:
+            result = _query_stdio_mcp("get_contextual_memory", topic=topic, limit=limit)
+            if result.get("success"):
+                return result.get("data", "")
+            else:
+                logging.debug(f"MCP memory query failed: {result.get('error', 'Unknown error')}")
+                return ""
+        except Exception as e:
+            logging.debug(f"MCP memory query failed: {e}")
+            return ""
+    else:
+        # Use HTTP mode with FastAPI server (default)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{MCP_BASE_URL}/api/mcp/contextual-memory",
+                    params={"topic": topic, "limit": limit}
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                if data.get("success"):
+                    return data.get("context", "")
+                else:
+                    logging.debug(f"MCP memory query failed: {data.get('error', 'Unknown error')}")
+                    return ""
+        except Exception as e:
+            logging.debug(f"MCP memory query failed: {e}")
+            return ""
 
 def query_mcp_memory(topic: str, limit: int = 3) -> str:
     """Query MCP server for contextual memory about a topic (sync wrapper)."""
@@ -182,24 +257,38 @@ def query_mcp_memory(topic: str, limit: int = 3) -> str:
         return ""
 
 async def get_recent_conversations_async(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server using HTTP client."""
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                f"{MCP_BASE_URL}/api/mcp/recent-chats",
-                params={"limit": limit}
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            if data.get("success"):
-                return data.get("data", [])
+    """Get recent conversations from MCP server."""
+    if MCP_MODE == "stdio":
+        # Use stdio mode with mcp_server.py
+        try:
+            result = _query_stdio_mcp("get_recent_chats", limit=limit)
+            if result.get("success"):
+                return result.get("data", [])
             else:
-                logging.debug(f"MCP recent conversations query failed: {data.get('error', 'Unknown error')}")
+                logging.debug(f"MCP recent conversations query failed: {result.get('error', 'Unknown error')}")
                 return []
-    except Exception as e:
-        logging.debug(f"MCP recent conversations query failed: {e}")
-        return []
+        except Exception as e:
+            logging.debug(f"MCP recent conversations query failed: {e}")
+            return []
+    else:
+        # Use HTTP mode with FastAPI server (default)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.get(
+                    f"{MCP_BASE_URL}/api/mcp/recent-chats",
+                    params={"limit": limit}
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                if data.get("success"):
+                    return data.get("data", [])
+                else:
+                    logging.debug(f"MCP recent conversations query failed: {data.get('error', 'Unknown error')}")
+                    return []
+        except Exception as e:
+            logging.debug(f"MCP recent conversations query failed: {e}")
+            return []
 
 def get_recent_conversations(limit: int = 3) -> List[Dict]:
     """Get recent conversations from MCP server (sync wrapper)."""
@@ -210,16 +299,26 @@ def get_recent_conversations(limit: int = 3) -> List[Dict]:
         return []
 
 async def check_mcp_server_async() -> bool:
-    """Check if MCP server is available using HTTP client."""
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{MCP_BASE_URL}/api/mcp/health")
-            response.raise_for_status()
-            data = response.json()
-            return data.get("success", False) and data.get("status") == "healthy"
-    except Exception as e:
-        logging.debug(f"MCP server check failed: {e}")
-        return False
+    """Check if MCP server is available."""
+    if MCP_MODE == "stdio":
+        # Use stdio mode - check if process can be initialized
+        try:
+            proc = _init_stdio_mcp()
+            return proc is not None and proc.poll() is None
+        except Exception as e:
+            logging.debug(f"MCP stdio server check failed: {e}")
+            return False
+    else:
+        # Use HTTP mode with FastAPI server (default)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{MCP_BASE_URL}/api/mcp/health")
+                response.raise_for_status()
+                data = response.json()
+                return data.get("success", False) and data.get("status") == "healthy"
+        except Exception as e:
+            logging.debug(f"MCP server check failed: {e}")
+            return False
 
 def check_mcp_server() -> bool:
     """Check if MCP server is available (sync wrapper)."""

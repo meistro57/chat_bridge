@@ -4,11 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription. The project now includes both **Windows 95-style retro web GUI** and traditional CLI interfaces.
+Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription. The project now includes both **retro web GUI** and traditional CLI interfaces.
 
-**Current Version**: 1.4.1
+**Current Version**: 1.4.2
 
-## New In v1.4.1: Bug Fixes & Improvements 🔧
+## New In v1.4.2: Web GUI Asset Fix 🎨
+
+- **Fixed Missing Favicon**: Added `vite.svg` favicon to resolve 404 errors in web GUI
+- **Created Public Directory**: Established proper static asset structure in `web_gui/frontend/public/`
+
+## Previous In v1.4.1: Bug Fixes & Improvements 🔧
 
 - **Fixed Web GUI Provider Status**: Added missing `/api/provider-status` endpoint that was causing 404 errors
 - **Improved Provider Validation**: Provider status now accurately reflects configured credentials
@@ -16,11 +21,11 @@ Chat Bridge is an AI conversation bridge that enables two AI assistants from dif
   - Local providers (Ollama, LM Studio) accurately show as unverifiable without testing
   - Better error messages for missing or invalid API keys
 
-## Previous In v1.4.0: Windows 95-Style Retro Web GUI 🎨⚡🤖
+## Previous In v1.4.0: Retro Web GUI 🎨⚡🤖
 
-Experience AI conversations like never before with the immersive Windows 95-style retro web interface featuring:
+Experience AI conversations like never before with the immersive retro web interface featuring:
 
-- **🌈 Nostalgic Windows Aesthetic** - Classic 95/98-style interface with beveled buttons, gray backgrounds, and retro styling
+- **🌈 Nostalgic Retro Aesthetic** - Classic retro interface with beveled buttons, gray backgrounds, and vintage styling
 - **⚡ Real-Time Streaming** - Watch AI responses appear live with ultra-low latency WebSocket connections  
 - **🎭 Advanced Persona System** - Choose from 32+ pre-built personas (Scientist, Philosopher, Comedian, etc.)
 - **🔄 Universal Provider Support** - All AI providers accessible through unified interface
@@ -154,16 +159,21 @@ python check_mcp_status.py  # Verify status and functionality
 - `GET /api/mcp/conversation/{id}` - Get full conversation details by ID
 
 **MCP Integration in chat_bridge.py:**
-- Uses `httpx` HTTP client for async communication with FastAPI server
+- Supports two modes via `MCP_MODE` environment variable:
+  - **http** (default): RESTful HTTP API via FastAPI server - scalable, recommended
+  - **stdio**: FastMCP stdio transport for MCP client compatibility
+- Uses `httpx` HTTP client for async communication with FastAPI server (http mode)
+- Uses subprocess with JSON-RPC for stdio mode communication
 - Configurable via `MCP_BASE_URL` environment variable (default: `http://localhost:8000`)
 - Async-first implementation with sync wrappers for compatibility
 - Functions: `query_mcp_memory()`, `get_recent_conversations()`, `check_mcp_server()`
 - Enhances agent prompts with relevant historical context when `--enable-mcp` flag is used
 - Continuous memory integration provides fresh context on every conversation turn
 
-**Legacy Files:**
-- **mcp_server.py** - Standalone FastMCP stdio server (deprecated, kept for reference)
-- **check_mcp_status.py** - Legacy status checker for stdio-based MCP (deprecated)
+**MCP Server Options:**
+- **main.py** - FastAPI HTTP server (recommended, use with `MCP_MODE=http`)
+- **mcp_server.py** - FastMCP stdio server (legacy, use with `MCP_MODE=stdio`)
+- **check_mcp_status.py** - Legacy status checker for stdio-based MCP
 
 **Migration History:**
 - **v1.0 (Early 2025)**: Flask REST API with basic memory endpoints
@@ -181,10 +191,10 @@ python check_mcp_status.py  # Verify status and functionality
 - `POST /api/conversations` - Create conversation session
 - `WS /ws/conversations/{id}` - WebSocket for streaming messages
 
-**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with **Windows 95-style aesthetic**:
-- **🎨 Retro Design System**: Classic Windows 95 button styling with outset/inset effects and gray color palette
+**web_gui/frontend/** - React + TypeScript + Tailwind CSS frontend with **retro aesthetic**:
+- **🎨 Retro Design System**: Classic retro button styling with outset/inset effects and gray color palette
 - **🪟 Window Interface**: Traditional window-like interface with title bars and system styling
-- **📜 Custom Scrollbars**: Classic gray Windows scrollbars throughout
+- **📜 Custom Scrollbars**: Classic gray scrollbars throughout
 - **💭 Message Bubbles**: Vintage computer chat bubble design
 - **🎭 4-Step Setup Flow**: Persona → Provider → Settings → Start conversation wizard
 - **⚡ Real-Time Streaming**: WebSocket-powered live AI response streaming
@@ -281,6 +291,7 @@ LMSTUDIO_BASE_URL=http://localhost:1234/v1
 DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 
 # Optional: MCP Memory System
+MCP_MODE=http  # "http" (FastAPI server, recommended) or "stdio" (FastMCP stdio server)
 MCP_BASE_URL=http://localhost:8000  # FastAPI server URL for MCP endpoints
 
 # Optional: Agent-specific overrides
@@ -387,19 +398,37 @@ Increase `--mem-rounds` sparingly as it increases context size. Adjust `MAX_TOKE
 
 ### Working with MCP Memory System
 
-The HTTP-based MCP memory system provides contextual memory to AI conversations via FastAPI server:
+The MCP memory system provides contextual memory to AI conversations. It supports two modes:
 
-**Starting the MCP server:**
+**Mode 1: HTTP (Recommended, Default)**
+
+Start the FastAPI server with MCP endpoints:
 
 ```bash
-# Start the FastAPI server with MCP endpoints
+# Set mode in .env
+MCP_MODE=http
+
+# Start the FastAPI server
 python main.py
 
 # Or use uvicorn for development with auto-reload
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Checking MCP status:**
+**Mode 2: stdio (Legacy, for MCP client compatibility)**
+
+Uses FastMCP stdio server for direct MCP protocol communication:
+
+```bash
+# Set mode in .env
+MCP_MODE=stdio
+
+# The stdio server process is started automatically by chat_bridge.py
+# Or start manually for testing:
+python mcp_server.py
+```
+
+**Checking MCP status (HTTP mode):**
 
 ```bash
 # Health check
@@ -410,6 +439,14 @@ curl http://localhost:8000/api/mcp/stats
 
 # Test recent chats
 curl "http://localhost:8000/api/mcp/recent-chats?limit=5"
+```
+
+**Checking MCP status (stdio mode):**
+
+```bash
+# Test stdio server manually
+python mcp_server.py
+# Then send JSON-RPC requests via stdin
 ```
 
 **Using MCP in conversations:**
@@ -425,31 +462,47 @@ python chat_bridge.py
 ```
 
 **Key features:**
-- **HTTP-based**: RESTful API endpoints accessible from anywhere
+- **Dual mode support**: Choose between HTTP (scalable) or stdio (MCP standard)
+- **HTTP mode**: RESTful API endpoints accessible from anywhere
+- **stdio mode**: FastMCP protocol-compliant for integration with MCP clients
 - **Unified database**: Single SQLAlchemy database for all conversation data
-- **No subprocess overhead**: Direct HTTP requests instead of process spawning
-- **Scalable**: FastAPI server handles multiple concurrent MCP requests
+- **Scalable**: FastAPI server handles multiple concurrent MCP requests (HTTP mode)
 - **Continuous memory**: Fresh context retrieved on every conversation turn
 - **Topic-based search**: Automatically finds relevant past conversations
 - **6 HTTP endpoints**: Health, stats, recent chats, search, contextual memory, conversation details
-- **Standards compliant**: RESTful HTTP API with JSON responses
 
 **Configuration:**
 
-Set the MCP server URL via environment variable (defaults to localhost:8000):
+Set the MCP mode and server URL via environment variables:
 
 ```bash
+# Choose mode: "http" (recommended) or "stdio"
+export MCP_MODE=http
+
+# Set server URL (HTTP mode only)
 export MCP_BASE_URL=http://localhost:8000
+
 # Or set in .env file
+echo "MCP_MODE=http" >> .env
 echo "MCP_BASE_URL=http://localhost:8000" >> .env
 ```
 
 **Troubleshooting MCP:**
+
+*HTTP mode:*
 - Ensure FastAPI server is running: `curl http://localhost:8000/health`
 - Check MCP endpoints are accessible: `curl http://localhost:8000/api/mcp/health`
 - Verify database exists with data: `curl http://localhost:8000/api/mcp/stats`
-- MCP integration gracefully degrades if server unavailable
 - Check server logs for errors if MCP queries fail
+
+*stdio mode:*
+- Check if mcp_server.py process is running
+- Review stderr output for errors
+- Verify database file `bridge.db` exists and is accessible
+
+*Both modes:*
+- MCP integration gracefully degrades if server unavailable
+- Conversations will continue without memory context if MCP fails
 
 ## File Locations
 
@@ -514,13 +567,13 @@ Messages sent from server to client:
 - `tailwind.config.js` - Tailwind CSS with custom cyberpunk color scheme and animations
 - `vite.config.ts` - Vite build configuration optimized for cyberpunk visual assets
 
-**💡 Windows 95-Style Design Features:**
+**💡 Retro Design Features:**
 - **3D Button Effects**: Classic outset/inset button styling for authentic retro feel
 - **Window-Like Interface**: Familiar window management and dialog boxes
 - **Vintage Color Palette**: Classic gray backgrounds, blue title bars, and system colors
 - **Old-School Fonts**: MS Sans Serif and VT323 nostalgic typography
-- **Bubble Messages**: Vintage computer chat bubble design with Win95 aesthetics
-- **Custom Scrollbars**: Classic gray Windows scrollbar styling
+- **Bubble Messages**: Vintage computer chat bubble design with retro aesthetics
+- **Custom Scrollbars**: Classic gray scrollbar styling
 - **Throwback Animations**: Pulse effects and smooth transitions from the 90s
 
 ## Known Issues and Limitations
@@ -530,7 +583,7 @@ Messages sent from server to client:
 - **LM Studio**: Requires manual server startup and model loading
 - **Long conversations**: Token limits vary by provider (OpenAI 128k, Anthropic 200k, Gemini 1M context)
 - **Stop words**: Case-sensitive matching; lowercase recommended
-- **Web GUI**: Fully functional Windows 95-style retro interface with all features implemented - real-time streaming, persona selection, provider flexibility, and nostalgic aesthetic
+- **Web GUI**: Fully functional retro interface with all features implemented - real-time streaming, persona selection, provider flexibility, and nostalgic aesthetic
 
 ## Code Style Notes
 

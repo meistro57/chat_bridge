@@ -1,6 +1,6 @@
-# Chat Bridge Web GUI - Windows 95-Style Retro Edition
+# Chat Bridge Web GUI - Retro Edition
 
-Nostalgic Windows 95-style web interface for the Chat Bridge AI conversation platform featuring classic beveled buttons, gray color schemes, and authentic retro computing aesthetic.
+Nostalgic retro web interface for the Chat Bridge AI conversation platform featuring classic beveled buttons, gray color schemes, and authentic retro computing aesthetic.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ Nostalgic Windows 95-style web interface for the Chat Bridge AI conversation pla
 - **Multi-Provider Support**: All 7 AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter)
 
 ### Frontend (React + TypeScript + Tailwind)
-- **Windows 95-Style Design**: Classic beveled buttons, gray backgrounds, window-like interface
+- **Retro Design**: Classic beveled buttons, gray backgrounds, window-like interface
 - **4-Step Setup Wizard**: Persona → Provider → Settings → Start conversation flow
 - **Chat Interface**: Real-time message display with WebSocket streaming and retro bubble styling
 - **Persona Selection**: Interactive modal with persona previews and descriptions
@@ -89,7 +89,7 @@ npm run build
 
 ## Features
 
-- ✅ **Windows 95-Style Retro Design** - Classic beveled buttons, gray color schemes, and nostalgic aesthetic
+- ✅ **Retro Design** - Classic beveled buttons, gray color schemes, and nostalgic aesthetic
 - ✅ Real-time AI conversation streaming via WebSocket
 - ✅ Dynamic persona selection from roles.json (32+ personas)
 - ✅ Multi-provider support (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, OpenRouter)
@@ -99,7 +99,7 @@ npm run build
 - ✅ Comprehensive error handling with user-friendly messages
 - ✅ MCP memory integration for contextual awareness
 - ✅ Real-time typing indicators and connection status
-- ✅ Custom scrollbars and Win95-style message bubbles
+- ✅ Custom scrollbars and retro-style message bubbles
 
 ## Tech Stack
 
