@@ -178,9 +178,95 @@ const RetroChatBridge = () => {
   const [modalType, setModalType] = useState<ModalType>(null);
   const [personaSearchTerm, setPersonaSearchTerm] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
   const [conversationStatus, setConversationStatus] = useState<ConversationStatus>('idle');
   const [banner, setBanner] = useState<BannerState | null>(null);
+
+  // Enhanced UX state variables
+  const [autoScroll, setAutoScroll] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [typingState, setTypingState] = useState<{
+    active: boolean;
+    stage: 'idle' | 'thinking' | 'composing' | 'sending';
+    agent: 'a' | 'b' | null;
+  }>({
+    active: false,
+    stage: 'idle',
+    agent: null
+  });
+
+  // Template for bookmarks (local storage)
+  const [bookmarks, setBookmarks] = useState<Array<{message: string, persona: string, timestamp: string}>>([]);
+
+  // Theme system constants
+  const THEMES = {
+    retro: {
+      name: 'Retro Windows',
+      bg: 'bg-win-gray-50',
+      bgSecondary: 'bg-win-gray-100',
+      accent: 'bg-winamp-blue',
+      text: 'text-win-gray-800',
+      border: 'border-win-gray-400',
+      button: 'bg-win-gray-100 border-win-gray-400 hover:bg-win-gray-200',
+    },
+    cyberpunk: {
+      name: 'Cyberpunk',
+      bg: 'bg-gray-900',
+      bgSecondary: 'bg-gray-800',
+      accent: 'bg-pink-500',
+      text: 'text-green-400',
+      border: 'border-pink-500',
+      button: 'bg-pink-500 border-pink-500 text-white hover:bg-pink-600',
+    },
+    vaporwave: {
+      name: 'Vaporwave',
+      bg: 'bg-purple-900',
+      bgSecondary: 'bg-purple-800',
+      accent: 'bg-cyan-400',
+      text: 'text-cyan-200',
+      border: 'border-cyan-400',
+      button: 'bg-cyan-400 border-cyan-400 text-white hover:bg-cyan-500',
+    }
+  };
+
+  // Theme system state
+  const [currentTheme, setCurrentTheme] = useState('retro');
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
+  // Conversation persistence state
+  const [savedConversations, setSavedConversations] = useState<Array<{
+    id: string;
+    name: string;
+    personaA: string;
+    personaB: string;
+    timestamp: Date;
+    messages: Message[];
+  }>>([]);
+  const [draftMessage, setDraftMessage] = useState('');
+  const [isSavingEnabled, setIsSavingEnabled] = useState(true);
+
+  // Sound system state
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+  const [soundVolume, setSoundVolume] = useState(0.3);
+
+  // Theme system state
+  const [currentTheme, setCurrentTheme] = useState('retro');
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
+  // Conversation persistence state
+  const [savedConversations, setSavedConversations] = useState<Array<{
+    id: string;
+    name: string;
+    personaA: string;
+    personaB: string;
+    timestamp: Date;
+    messages: Message[];
+  }>>([]);
+  const [draftMessage, setDraftMessage] = useState('');
+  const [isSavingEnabled, setIsSavingEnabled] = useState(true);
+
+  // Sound system state
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+  const [soundVolume, setSoundVolume] = useState(0.3);
 
   // Guides state
   const [guides, setGuides] = useState<Guide[]>([]);
@@ -308,24 +394,44 @@ const RetroChatBridge = () => {
         const data = JSON.parse(event.data);
         console.log('Received message:', data);
 
-        if (data.type === 'message' && data.data) {
-          setIsTyping(false);
-          setMessages((prev) => [
-            ...prev,
-            {
+        if (data.type === 'message_start') {
+          // Enhanced typing indicator start
+          const agent = data.sender === 'agent_a' ? 'a' : 'b';
+          startTypingSequence(agent as 'a' | 'b');
+          setConversationStatus('running');
+          setBanner(null);
+
+        } else if (data.type === 'message' && data.data) {
+          stopTyping(); // Stop typing indicator when message arrives
+          setMessages((prevMessages) => {
+            const newMessages = [...prevMessages, {
               content: data.data.content,
               sender: data.data.sender,
               timestamp: data.data.timestamp || new Date().toISOString(),
               persona: data.data.persona,
-            },
-          ]);
-          setIsTyping(true); // Show typing indicator for next message
+            }];
+
+            // Smart auto-scroll logic
+            if (autoScroll) {
+              setTimeout(() => scrollToBottom(), 100);
+            } else {
+              setUnreadCount(prev => prev + 1);
+            }
+
+            return newMessages;
+          });
+
+        } else if (data.type === 'message_end') {
+          stopTyping();
+          setConversationStatus('running');
+          startTypingSequence(data.sender === 'agent_a' ? 'b' : 'a'); // Start next agent
+
         } else if (data.type === 'complete') {
-          setIsTyping(false);
+          stopTyping();
           setConversationStatus('finished');
           setBanner({ type: 'success', message: 'Conversation completed successfully!' });
         } else if (data.type === 'error') {
-          setIsTyping(false);
+          stopTyping();
           setConversationStatus('error');
           setBanner({ type: 'error', message: data.message || 'An error occurred during the conversation.' });
         }

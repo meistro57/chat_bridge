@@ -3,6 +3,45 @@ https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with **retro Windows 95-style web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
 <img width="1132" height="1759" alt="image" src="https://github.com/user-attachments/assets/0c513cb4-8c29-43f8-bd93-57d3cacc0a80" />
 
+## ✨ What's New in Version 1.4.3 Luxury Gaming-Grade UX Overhaul 🎮🎨
+Experience the **most advanced AI conversation platform** with cutting-edge user experience that rivals commercial gaming and chat applications!
+
+### 🖱️ Multi-Phase Typing Indicators
+- **Thinking Phase:** Water droplet animation when AI starts processing
+- **Composing Phase:** Horizontal dot animation during response generation  
+- **Sending Phase:** Chevron animations as message delivers
+- **Agent-Specific:** Personalized feedback showing which AI is thinking
+
+### 📜 Smart Auto-Scroll System  
+- **Predictive Scrolling:** Automatically follows conversation flow
+- **Position Awareness:** Shows unread message count when scrolled up
+- **Manual Control:** Toggle auto-scroll on/off with blue unread counter button
+- **Smooth Animations:** Never-jarring, bounce-free scrolling experience
+
+### ⚡ Quick Actions Menu (Hover-Powered)
+- **Instant Copy:** One-click clipboard with retro button styling
+- **Bookmark System:** Save favorite exchanges to local storage
+- **Like Function:** Positive feedback with heart animation
+- **Context Menu:** Hover on any message for instant interactions
+
+### 🎨 Advanced Theming Engine (3 Professional Themes)
+- **Retro Windows:** Classic beige/sky blue Windows 95 aesthetic (default)
+- **Cyberpunk:** Neon pink/green matrix coding style
+- **Vaporwave:** Purple/cyan 2000s nostalgic gradient themes
+- **Dynamic Switching:** One-click theme changes via 🎨 palette button
+
+### 💾 Enterprise Conversation Persistence
+- **Auto-Save Every 60s:** Never lose conversations due to crashes
+- **Draft Recovery:** Message drafts preserved across browser sessions
+- **Crash Protection:** Automatic recovery of last active conversation
+- **Conversation Browser:** History with metadata, timestamps, personas
+
+### 🔊 Immersive Sound Design (Optional)
+- **Context-Aware Audio:** New message pings, typing sounds, action confirmations
+- **Volume Control:** Fine-tuned audio levels with persistent settings
+- **Retro Sound Effects:** Nostalgic 90s computing audio cues
+- **Toggle Controls:** Easy on/off with visual feedback
+
 ## ✨ What's New in Version 1.4.0 **Retro Edition** 🎨⚡🤖
 
 ### 🌈 **Retro Web GUI - Nostalgic AI Conversations**
@@ -38,7 +77,7 @@ A beautiful, interactive chat bridge that connects two AI assistants with **retr
 - **🔢 Round Markers** - Conversation turns now include visible round numbers in transcripts for easy tracking
 - **👤 Persona Names** - Speaker labels now display persona names (e.g., "Steel Worker") instead of generic "Agent A"/"Agent B" labels
 
-### 🔧 **Previous Version Highlights (1.2.1)**
+### 🔧 **Previous Version Highlights (1.4.0)**
 - **🎭 Enhanced Persona Library** - Added DeepSeek, ADHD Kid, and Complainer personas for diverse conversation dynamics
 - **⚙️ Improved Roles Management** - Updated roles_manager.py with better persona handling and configuration options
 - **🛠️ Additional Utilities** - Added check_port.py for database connectivity testing

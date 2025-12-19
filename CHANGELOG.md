@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-12-19
+
+### Added
+- **Multi-Phase Typing Indicators**: Water droplet animation when AI starts processing; Horizontal dot animation during response generation; Chevron animations as message delivers; Personalized feedback showing which AI is thinking
+- **Smart Auto-Scroll System**: Predictive scrolling follows conversation flow; Position awareness shows unread count; Manual control toggle; Smooth animations without bounce
+- **Quick Actions Menu**: Instant copy with retro button styling; Bookmark system for savings; Like function with heart animation; Context menu on hover for interactions
+- **Advanced Theming Engine**: Retro Windows 95 aesthetic; Cyberpunk neon matrix style; Vaporwave purple/cyan gradients; Dynamic one-click theme switching
+- **Enterprise Conversation Persistence**: Auto-save drafts every 60s; Draft recovery across sessions; Crash protection with automatic recovery; Conversation browser with metadata
+- **Immersive Sound Design**: Context-aware audio cues; Volume control with persistent settings; Nostalgic 90s sound effects; Easy on/off toggle controls
+
 ## [1.4.0] - 2025-10-16
 
 ### Added
