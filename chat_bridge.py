@@ -47,368 +47,50 @@ from bridge_agents import (
 )
 from version import __version__
 
-# MCP imports
-import urllib.request
-import urllib.parse
-import httpx
-
-# ───────────────────────── Colors & Styling ─────────────────────────
-
-class Colors:
-    """ANSI color codes for beautiful terminal output"""
-    RESET = '\033[0m'
-    BOLD = '\033[1m'
-    DIM = '\033[2m'
-
-    # Main colors
-    RED = '\033[91m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    BLUE = '\033[94m'
-    MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    WHITE = '\033[97m'
-
-    # Background colors
-    BG_RED = '\033[101m'
-    BG_GREEN = '\033[102m'
-    BG_YELLOW = '\033[103m'
-    BG_BLUE = '\033[104m'
-    BG_MAGENTA = '\033[105m'
-    BG_CYAN = '\033[106m'
-
-    # Special effects
-    RAINBOW = [RED, YELLOW, GREEN, CYAN, BLUE, MAGENTA]
-
-def colorize(text: str, color: str, bold: bool = False) -> str:
-    """Apply color and optional bold formatting to text"""
-    prefix = Colors.BOLD + color if bold else color
-    return f"{prefix}{text}{Colors.RESET}"
-
-def rainbow_text(text: str) -> str:
-    """Apply rainbow colors to each character"""
-    colored = ""
-    for i, char in enumerate(text):
-        if char.isspace():
-            colored += char
-        else:
-            color = Colors.RAINBOW[i % len(Colors.RAINBOW)]
-            colored += f"{color}{char}"
-    return colored + Colors.RESET
-
-def print_banner():
-    """Print a beautiful welcome banner"""
-    banner = """
-╔══════════════════════════════════════════════════════════════════╗
-║                          🌉 CHAT BRIDGE 🌉                        ║
-║                     Connect Two AI Assistants                     ║
-║                                                                    ║
-║                    🎭 Personas  ⚙️ Configurable                   ║
-╚══════════════════════════════════════════════════════════════════╝
-"""
-    print(colorize(banner, Colors.CYAN, bold=True))
-
-def print_section_header(title: str, icon: str = "🔧"):
-    """Print a styled section header"""
-    line = "─" * 60
-    print(f"\n{colorize(line, Colors.DIM)}")
-    print(f"{colorize(icon, Colors.YELLOW)} {colorize(title.upper(), Colors.WHITE, bold=True)}")
-    print(f"{colorize(line, Colors.DIM)}")
-
-def print_menu_option(number: str, title: str, description: str, color: str = Colors.WHITE):
-    """Print a styled menu option"""
-    num_colored = colorize(f"[{number}]", Colors.CYAN, bold=True)
-    title_colored = colorize(title, color, bold=True)
-    desc_colored = colorize(description, Colors.DIM)
-    print(f"  {num_colored} {title_colored}")
-    print(f"      {desc_colored}")
-
-def print_provider_option(number: str, provider: str, model: str, description: str):
-    """Print a styled provider option with model info"""
-    num_colored = colorize(f"[{number}]", Colors.CYAN, bold=True)
-    provider_colored = colorize(provider, Colors.GREEN, bold=True)
-    model_colored = colorize(model, Colors.YELLOW)
-    desc_colored = colorize(description, Colors.DIM)
-    print(f"  {num_colored} {provider_colored} - {model_colored}")
-    print(f"      {desc_colored}")
-
-def print_success(message: str):
-    """Print a success message"""
-    print(f"{colorize('✅', Colors.GREEN)} {colorize(message, Colors.GREEN)}")
-
-def print_error(message: str):
-    """Print an error message"""
-    print(f"{colorize('❌', Colors.RED)} {colorize(message, Colors.RED, bold=True)}")
-
-def print_warning(message: str):
-    """Print a warning message"""
-    print(f"{colorize('⚠️ ', Colors.YELLOW)} {colorize(message, Colors.YELLOW)}")
-
-def print_info(message: str):
-    """Print an info message"""
-    print(f"{colorize('ℹ️ ', Colors.BLUE)} {colorize(message, Colors.BLUE)}")
-
-# ───────────────────────── MCP Memory Integration ─────────────────────────
-
-# MCP Mode Configuration
-# MCP_MODE can be "http" (FastAPI server) or "stdio" (FastMCP stdio server)
-MCP_MODE = os.getenv("MCP_MODE", "http").lower()
-MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8000")
-
-# Global MCP client for stdio mode
-_mcp_process = None
-
-def _init_stdio_mcp():
-    """Initialize stdio MCP server process."""
-    global _mcp_process
-    if _mcp_process is None:
-        import subprocess
-        try:
-            # Start mcp_server.py as a subprocess with stdio transport
-            _mcp_process = subprocess.Popen(
-                [sys.executable, "mcp_server.py"],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1
-            )
-            logging.debug("MCP stdio server process started")
-        except Exception as e:
-            logging.error(f"Failed to start MCP stdio server: {e}")
-    return _mcp_process
-
-def _query_stdio_mcp(tool_name: str, **kwargs) -> dict:
-    """Query MCP stdio server with a tool call."""
-    proc = _init_stdio_mcp()
-    if proc is None:
-        return {"success": False, "error": "MCP process not initialized"}
-
-    try:
-        # Format JSON-RPC request for MCP tool call
-        request = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": tool_name,
-                "arguments": kwargs
-            }
-        }
-
-        # Send request
-        proc.stdin.write(json.dumps(request) + "\n")
-        proc.stdin.flush()
-
-        # Read response
-        response_line = proc.stdout.readline()
-        if response_line:
-            response = json.loads(response_line)
-            if "result" in response:
-                return {"success": True, "data": response["result"]}
-            elif "error" in response:
-                return {"success": False, "error": response["error"]}
-
-        return {"success": False, "error": "No response from MCP server"}
-    except Exception as e:
-        logging.debug(f"MCP stdio query failed: {e}")
-        return {"success": False, "error": str(e)}
-
-async def query_mcp_memory_async(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic."""
-    if MCP_MODE == "stdio":
-        # Use stdio mode with mcp_server.py
-        try:
-            result = _query_stdio_mcp("get_contextual_memory", topic=topic, limit=limit)
-            if result.get("success"):
-                return result.get("data", "")
-            else:
-                logging.debug(f"MCP memory query failed: {result.get('error', 'Unknown error')}")
-                return ""
-        except Exception as e:
-            logging.debug(f"MCP memory query failed: {e}")
-            return ""
-    else:
-        # Use HTTP mode with FastAPI server (default)
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(
-                    f"{MCP_BASE_URL}/api/mcp/contextual-memory",
-                    params={"topic": topic, "limit": limit}
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                if data.get("success"):
-                    return data.get("context", "")
-                else:
-                    logging.debug(f"MCP memory query failed: {data.get('error', 'Unknown error')}")
-                    return ""
-        except Exception as e:
-            logging.debug(f"MCP memory query failed: {e}")
-            return ""
-
-def query_mcp_memory(topic: str, limit: int = 3) -> str:
-    """Query MCP server for contextual memory about a topic (sync wrapper)."""
-    try:
-        return asyncio.run(query_mcp_memory_async(topic, limit))
-    except Exception as e:
-        logging.debug(f"MCP memory query failed: {e}")
-        return ""
-
-async def get_recent_conversations_async(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server."""
-    if MCP_MODE == "stdio":
-        # Use stdio mode with mcp_server.py
-        try:
-            result = _query_stdio_mcp("get_recent_chats", limit=limit)
-            if result.get("success"):
-                return result.get("data", [])
-            else:
-                logging.debug(f"MCP recent conversations query failed: {result.get('error', 'Unknown error')}")
-                return []
-        except Exception as e:
-            logging.debug(f"MCP recent conversations query failed: {e}")
-            return []
-    else:
-        # Use HTTP mode with FastAPI server (default)
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(
-                    f"{MCP_BASE_URL}/api/mcp/recent-chats",
-                    params={"limit": limit}
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                if data.get("success"):
-                    return data.get("data", [])
-                else:
-                    logging.debug(f"MCP recent conversations query failed: {data.get('error', 'Unknown error')}")
-                    return []
-        except Exception as e:
-            logging.debug(f"MCP recent conversations query failed: {e}")
-            return []
-
-def get_recent_conversations(limit: int = 3) -> List[Dict]:
-    """Get recent conversations from MCP server (sync wrapper)."""
-    try:
-        return asyncio.run(get_recent_conversations_async(limit))
-    except Exception as e:
-        logging.debug(f"MCP recent conversations query failed: {e}")
-        return []
-
-async def check_mcp_server_async() -> bool:
-    """Check if MCP server is available."""
-    if MCP_MODE == "stdio":
-        # Use stdio mode - check if process can be initialized
-        try:
-            proc = _init_stdio_mcp()
-            return proc is not None and proc.poll() is None
-        except Exception as e:
-            logging.debug(f"MCP stdio server check failed: {e}")
-            return False
-    else:
-        # Use HTTP mode with FastAPI server (default)
-        try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{MCP_BASE_URL}/api/mcp/health")
-                response.raise_for_status()
-                data = response.json()
-                return data.get("success", False) and data.get("status") == "healthy"
-        except Exception as e:
-            logging.debug(f"MCP server check failed: {e}")
-            return False
-
-def check_mcp_server() -> bool:
-    """Check if MCP server is available (sync wrapper)."""
-    try:
-        return asyncio.run(check_mcp_server_async())
-    except:
-        return False
-
-def enhance_prompt_with_memory(original_prompt: str, enable_mcp: bool) -> str:
-    """Enhance a prompt with relevant memory context if MCP is enabled."""
-    if not enable_mcp or not check_mcp_server():
-        return original_prompt
-
-    # Extract key topics from the prompt for memory search
-    key_terms = []
-    words = original_prompt.lower().split()
-    # Look for important words (skip common words)
-    skip_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
-
-    for word in words:
-        clean_word = re.sub(r'[^\w]', '', word)
-        if len(clean_word) > 3 and clean_word not in skip_words:
-            key_terms.append(clean_word)
-
-    # Get memory for key terms
-    memory_context = ""
-    for term in key_terms[:3]:  # Limit to top 3 terms
-        context = query_mcp_memory(term, limit=2)
-        if context:
-            memory_context += f"\n[Memory about {term}]: {context}"
-
-    if memory_context:
-        return f"{original_prompt}{memory_context}\n\n[Note: The above memory context is from previous conversations - use it if relevant, ignore if not.]"
-
-    return original_prompt
-
-
-def get_turn_memory_context(agent_id: str, turns: List[Turn], enable_mcp: bool, max_terms: int = 2) -> str:
-    """Get contextual memory for a specific agent's turn.
-
-    Args:
-        agent_id: Identifier of the agent ('a' or 'b')
-        turns: Recent conversation turns for context
-        enable_mcp: Whether MCP is enabled
-        max_terms: Maximum number of key terms to query
-
-    Returns:
-        Memory context string for the turn, or empty string if MCP unavailable/disabled
-    """
-    if not enable_mcp or not check_mcp_server():
-        return ""
-
-    try:
-        # Extract recent messages for context
-        recent_messages = [turn.text for turn in turns[-3:]]  # Last 3 turns
-
-        # Combine recent messages to find key topics
-        combined_text = " ".join(recent_messages)
-        words = combined_text.lower().split()
-
-        # Find important keywords
-        skip_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they'}
-        key_terms = []
-
-        for word in words:
-            clean_word = re.sub(r'[^\w]', '', word)
-            if len(clean_word) > 2 and clean_word not in skip_words:
-                key_terms.append(clean_word)
-
-        # Get unique terms, limit to max_terms
-        unique_terms = list(set(key_terms))[:max_terms]
-
-        # Query MCP for each term
-        memory_contexts = []
-        for term in unique_terms:
-            context = query_mcp_memory(term, limit=1)  # Single result per term for speed
-            if context:
-                memory_contexts.append(f"[{term.upper()}: {context}]")
-
-        if memory_contexts:
-            context_block = "\n".join(memory_contexts)
-            bridge_logger.debug(f"MCP context for agent {agent_id}: {len(memory_contexts)} terms found")
-            return f"\n[Recent Memory Context]\n{context_block}\n[Use this context if relevant to the current conversation]\n"
-
-        bridge_logger.debug(f"No MCP context found for agent {agent_id}")
-        return ""
-
-    except Exception as e:
-        bridge_logger.debug(f"Error getting MCP context for agent {agent_id}: {e}")
-        return ""
+# New modular imports
+from ui.terminal import (
+    Colors,
+    colorize,
+    rainbow_text,
+    print_banner,
+    print_section_header,
+    print_menu_option,
+    print_provider_option,
+    print_success,
+    print_error,
+    print_warning,
+    print_info,
+)
+from mcp.client import (
+    check_mcp_server,
+    query_mcp_memory,
+    get_recent_conversations,
+    enhance_prompt_with_memory,
+    get_turn_memory_context,
+    MCP_MODE,
+    MCP_BASE_URL,
+)
+from database.operations import (
+    setup_database,
+    log_conversation_start,
+    log_message_sql,
+)
+from storage.transcript import (
+    Transcript,
+    ConversationHistory,
+    setup_logging,
+    create_session_paths,
+    setup_session_logger,
+    GLOBAL_LOG,
+)
+from validators import (
+    contains_stop_word,
+    lessen_stop_word_weight,
+    is_repetitive,
+    STOP_WORDS_DEFAULT,
+    REPEAT_WINDOW,
+    REPEAT_THRESHOLD,
+)
 
 # ───────────────────────── Config / Env ─────────────────────────
 
@@ -416,11 +98,6 @@ load_dotenv()
 
 DEFAULT_PROVIDER_A = os.getenv("BRIDGE_PROVIDER_A", "openai")
 DEFAULT_PROVIDER_B = os.getenv("BRIDGE_PROVIDER_B", "anthropic")
-
-STOP_WORDS_DEFAULT = {"goodbye", "end chat", "terminate", "stop", "that is all"}
-REPEAT_WINDOW = 6
-REPEAT_THRESHOLD = 0.8
-GLOBAL_LOG = "chat_bridge.log"
 
 # ───────────────────────── Menus & Interaction ─────────────────────────
 
@@ -1155,233 +832,7 @@ def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_
         # In non-interactive mode, just continue
         print(colorize("Starting conversation...", Colors.GREEN))
 
-# ───────────────────────── Core Logic (from existing scripts) ─────────────────────────
-
-@dataclass
-class Transcript:
-    turns: List[Dict] = field(default_factory=list)
-    session_config: Optional[Dict] = field(default_factory=dict)
-
-    def add(self, agent: str, role: str, timestamp: str, content: str, round_num: Optional[int] = None):
-        self.turns.append({"agent": agent, "role": role, "timestamp": timestamp, "content": content, "round_num": round_num})
-
-    def set_session_config(self, config: Dict):
-        """Set the session configuration for the transcript"""
-        self.session_config = config
-
-    def dump(self, path: str):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("# Chat Bridge Transcript\n\n")
-
-            # Write session configuration
-            if self.session_config:
-                f.write("## Session Configuration\n\n")
-                f.write(f"**Session ID:** {self.session_config.get('session_id', 'N/A')}\n")
-                f.write(f"**Started:** {self.session_config.get('session_start', 'N/A')}\n")
-                f.write(f"**Conversation Starter:** {self.session_config.get('starter', 'N/A')}\n\n")
-
-                # Agent configurations
-                f.write("### Agent Configuration\n\n")
-                f.write(f"**Agent A Provider:** {self.session_config.get('provider_a', 'N/A')}\n")
-                f.write(f"**Agent A Model:** {self.session_config.get('model_a', 'N/A')}\n")
-                f.write(f"**Agent A Temperature:** {self.session_config.get('temp_a', 'N/A')}\n")
-                if self.session_config.get('persona_a'):
-                    f.write(f"**Agent A Persona:** {self.session_config.get('persona_a')}\n")
-                if self.session_config.get('system_prompt_a'):
-                    f.write(f"**Agent A System Prompt:** {self.session_config.get('system_prompt_a')}\n")
-
-                f.write(f"\n**Agent B Provider:** {self.session_config.get('provider_b', 'N/A')}\n")
-                f.write(f"**Agent B Model:** {self.session_config.get('model_b', 'N/A')}\n")
-                f.write(f"**Agent B Temperature:** {self.session_config.get('temp_b', 'N/A')}\n")
-                if self.session_config.get('persona_b'):
-                    f.write(f"**Agent B Persona:** {self.session_config.get('persona_b')}\n")
-                if self.session_config.get('system_prompt_b'):
-                    f.write(f"**Agent B System Prompt:** {self.session_config.get('system_prompt_b')}\n")
-
-                # Session settings
-                f.write("\n### Session Settings\n\n")
-                f.write(f"**Max Rounds:** {self.session_config.get('max_rounds', 'N/A')}\n")
-                f.write(f"**Memory Rounds:** {self.session_config.get('mem_rounds', 'N/A')}\n")
-                f.write(f"**Stop Word Detection:** {'Enabled' if self.session_config.get('stop_word_detection_enabled', True) else 'Disabled'}\n")
-
-                if self.session_config.get('stop_words'):
-                    stop_words_str = ', '.join(self.session_config.get('stop_words', []))
-                    f.write(f"**Stop Words:** {stop_words_str}\n")
-
-                f.write("\n---\n\n")
-
-            # Write conversation turns
-            f.write("## Conversation\n\n")
-            for turn in self.turns:
-                # Add round marker if available
-                if turn.get('round_num'):
-                    f.write(f"**Round {turn['round_num']}**\n\n")
-                f.write(f"### {turn['agent']} ({turn['timestamp']})\n\n")
-                f.write(f"{turn['content']}\n\n")
-
-@dataclass
-class ConversationHistory:
-    turns: List[Turn] = field(default_factory=list)
-
-    def add_turn(self, author: str, text: str):
-        self.turns.append(Turn(author=author, text=text))
-
-    @property
-    def flat_texts(self) -> List[str]:
-        return [turn.text for turn in self.turns]
-
-    def recent_turns(self, limit: int) -> List[Turn]:
-        return self.turns[-limit:]
-
-def setup_logging() -> Tuple[logging.Logger, logging.Logger]:
-    """Set up comprehensive logging with error tracking"""
-    bridge_logger = logging.getLogger("bridge")
-    bridge_logger.setLevel(logging.DEBUG)  # More detailed logging
-
-    if not bridge_logger.handlers:
-        # Main log file with detailed format
-        handler = logging.FileHandler(GLOBAL_LOG)
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s"
-        )
-        handler.setFormatter(formatter)
-        bridge_logger.addHandler(handler)
-
-        # Error-only log file for quick debugging
-        error_handler = logging.FileHandler("chat_bridge_errors.log")
-        error_handler.setLevel(logging.ERROR)
-        error_formatter = logging.Formatter(
-            "%(asctime)s [ERROR] %(name)s:%(funcName)s:%(lineno)d\n%(message)s\n%(exc_info)s\n" + "-"*80
-        )
-        error_handler.setFormatter(error_formatter)
-        bridge_logger.addHandler(error_handler)
-
-        # Console handler for immediate feedback
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.WARNING)
-        console_formatter = logging.Formatter("[%(levelname)s] %(message)s")
-        console_handler.setFormatter(console_formatter)
-        bridge_logger.addHandler(console_handler)
-
-    session_logger = logging.getLogger("session")
-    return bridge_logger, session_logger
-
-def setup_database():
-    """Initialize SQLite database"""
-    conn = sqlite3.connect("bridge.db")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS conversations (
-            id TEXT PRIMARY KEY,
-            timestamp TEXT,
-            starter TEXT,
-            agent_a_provider TEXT,
-            agent_b_provider TEXT,
-            status TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            conversation_id TEXT,
-            agent_provider TEXT,
-            role TEXT,
-            content TEXT,
-            timestamp TEXT,
-            FOREIGN KEY (conversation_id) REFERENCES conversations(id)
-        )
-    """)
-    conn.commit()
-    return conn
-
-def log_conversation_start(conn: sqlite3.Connection, cid: str, starter: str,
-                          provider_a: str, provider_b: str):
-    """Log conversation start to database"""
-    timestamp = datetime.now().isoformat()
-    conn.execute(
-        "INSERT INTO conversations VALUES (?, ?, ?, ?, ?, ?)",
-        (cid, timestamp, starter, provider_a, provider_b, "active")
-    )
-    conn.commit()
-
-def log_message_sql(cid: str, provider: str, role: str, content: str):
-    """Log message to SQLite database"""
-    conn = sqlite3.connect("bridge.db")
-    timestamp = datetime.now().isoformat()
-    conn.execute(
-        "INSERT INTO messages (conversation_id, agent_provider, role, content, timestamp) VALUES (?, ?, ?, ?, ?)",
-        (cid, provider, role, content[:10000], timestamp)  # Truncate very long messages
-    )
-    conn.commit()
-    conn.close()
-
-def contains_stop_word(text: str, stop_words: set) -> bool:
-    """Check if text contains any stop words"""
-    lower_text = text.lower()
-    return any(word in lower_text for word in stop_words)
-
-def lessen_stop_word_weight(text: str, stop_words: set, weight_factor: float = 0.5) -> bool:
-    """Check if text contains stop words with lessened weight/influence"""
-    lower_text = text.lower()
-    stop_word_matches = [word for word in stop_words if word in lower_text]
-    
-    if not stop_word_matches:
-        return False
-    
-    # Calculate weight based on stop word density and context
-    text_length = len(text.split())
-    stop_word_density = len(stop_word_matches) / max(text_length, 1)
-    
-    # Apply weight factor - higher density or multiple matches increase likelihood
-    weighted_threshold = weight_factor * (1 + stop_word_density)
-    
-    return stop_word_density >= weighted_threshold
-
-def is_repetitive(texts: List[str], window: int = REPEAT_WINDOW, threshold: float = REPEAT_THRESHOLD) -> bool:
-    """Detect if recent messages are too repetitive"""
-    if len(texts) < window:
-        return False
-
-    recent = texts[-window:]
-    similarities = []
-
-    for i in range(len(recent)):
-        for j in range(i + 1, len(recent)):
-            similarity = SequenceMatcher(None, recent[i], recent[j]).ratio()
-            similarities.append(similarity)
-
-    if similarities:
-        avg_similarity = sum(similarities) / len(similarities)
-        return avg_similarity > threshold
-
-    return False
-
-def create_session_paths(starter: str) -> Tuple[str, str]:
-    """Create paths for session files"""
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    slug = re.sub(r"[^\w\s-]", "", starter.lower())[:50]
-    slug = re.sub(r"[\s_-]+", "-", slug).strip("-")
-
-    base_name = f"{timestamp}__{slug}"
-    md_path = f"transcripts/{base_name}.md"
-    log_path = f"logs/{base_name}.log"
-
-    return md_path, log_path
-
-def setup_session_logger(log_path: str) -> logging.Logger:
-    """Set up session-specific logger"""
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
-
-    session_logger = logging.getLogger(f"session_{datetime.now().timestamp()}")
-    session_logger.setLevel(logging.INFO)
-    session_logger.handlers.clear()
-
-    handler = logging.FileHandler(log_path)
-    formatter = logging.Formatter("%(asctime)s - %(message)s")
-    handler.setFormatter(formatter)
-    session_logger.addHandler(handler)
-
-    return session_logger
+# ───────────────────────── Role Management ─────────────────────────
 
 def load_roles_file(roles_path: Optional[str]) -> Optional[Dict]:
     """Load roles configuration with robust error handling and absolute path resolution"""
