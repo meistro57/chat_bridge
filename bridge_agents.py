@@ -1,7 +1,7 @@
+# bridge_agents.py
 """Shared provider adapters and agent helpers for Chat Bridge scripts."""
 
 from __future__ import annotations
-
 import contextlib
 import json
 import logging
@@ -799,9 +799,18 @@ def ensure_credentials(provider_key: str) -> Optional[str]:
 
 def select_turns(turns: Iterable[Turn], mem_rounds: int) -> List[Turn]:
     items = list(turns)
-    if mem_rounds <= 0 or mem_rounds >= len(items):
-        return items
-    return items[-mem_rounds:]
+    if not items:
+        return []
+
+    context_turns = [turn for turn in items if turn.author == "context"]
+    conversation_turns = [turn for turn in items if turn.author != "context"]
+
+    if mem_rounds <= 0 or mem_rounds >= len(conversation_turns):
+        selected = conversation_turns
+    else:
+        selected = conversation_turns[-mem_rounds:]
+
+    return context_turns + selected
 
 
 def build_chatml(turns: List[Turn], agent_id: str, system_prompt: str) -> List[Dict[str, str]]:
