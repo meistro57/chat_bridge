@@ -1,3 +1,4 @@
+# docker-compose.yml
 version: '3.9'
 
 services:
@@ -5,18 +6,17 @@ services:
     build:
       context: .
       dockerfile: web_gui/backend/Dockerfile
+    env_file:
+      - .env
     environment:
-      # Add your API keys here or mount a .env file
-      # OPENAI_API_KEY: sk-...
-      # ANTHROPIC_API_KEY: ak-...
-      # GEMINI_API_KEY: gm-...
-      # ... other API keys
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"
     volumes:
-      - ./roles.json:/app/backend/roles.json:ro  # Mount roles.json for persona management
-      - ./chat_bridge.py:/app/backend/chat_bridge.py:ro # Mount core logic
-      - ./bridge_agents.py:/app/backend/bridge_agents.py:ro # Mount agent logic
+      - ./roles.json:/app/roles.json:ro
+      - ./chat_bridge.py:/app/chat_bridge.py:ro
+      - ./bridge_agents.py:/app/bridge_agents.py:ro
     networks:
       - chat_bridge_network
 
@@ -25,7 +25,7 @@ services:
       context: .
       dockerfile: web_gui/frontend/Dockerfile
     ports:
-      - "5173:80" # Map container port 80 (Nginx) to host port 5173 for React app
+      - "5173:80"
     networks:
       - chat_bridge_network
     depends_on:

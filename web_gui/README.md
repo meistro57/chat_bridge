@@ -29,6 +29,18 @@ Nostalgic retro web interface for the Chat Bridge AI conversation platform featu
 
 This starts both backend (port 8000) and frontend (port 5173) automatically with dependency installation.
 
+### Docker Compose
+
+Build and run the full stack with Docker for a clean, reproducible setup:
+
+```bash
+# From project root
+docker-compose up --build
+```
+
+- Backend available at `http://localhost:8000`
+- Frontend available at `http://localhost:5173`
+
 ### Backend Setup
 
 ```bash
