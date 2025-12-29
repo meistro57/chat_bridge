@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# chat_bridge.py
 """
 🌉 Chat Bridge - Unified Edition
 
@@ -91,6 +92,7 @@ from validators import (
     REPEAT_WINDOW,
     REPEAT_THRESHOLD,
 )
+from rag.context import RAGContextManager
 
 # ───────────────────────── Config / Env ─────────────────────────
 
@@ -2286,6 +2288,15 @@ async def run_bridge(args):
     # Initialize conversation
     history = ConversationHistory()
     transcript = Transcript()
+    rag_manager = None
+
+    if not getattr(args, 'disable_rag', False):
+        rag_manager = RAGContextManager(
+            max_chars=args.rag_max_chars,
+            top_k=args.rag_top_k,
+        )
+        if args.debug:
+            print_info(f"🔍 DEBUG: RAG corpus loaded with {rag_manager.corpus_size} snippets")
 
     # Set session configuration for the transcript
     session_config = {
@@ -2298,6 +2309,9 @@ async def run_bridge(args):
         'model_b': model_b,
         'temp_a': temp_a,
         'temp_b': temp_b,
+        'rag_enabled': rag_manager is not None,
+        'rag_top_k': getattr(args, 'rag_top_k', 0),
+        'rag_max_chars': getattr(args, 'rag_max_chars', 0),
         'max_rounds': args.max_rounds,
         'mem_rounds': args.mem_rounds,
         'stop_word_detection_enabled': roles_data.get('stop_word_detection_enabled', True) if roles_data else True,
@@ -2345,6 +2359,12 @@ async def run_bridge(args):
         else:
             print_warning("🧠 MCP Memory System: OFFLINE (conversations will continue without memory)")
 
+    if rag_manager:
+        print_info(
+            f"Shared RAG context enabled (top {args.rag_top_k}, "
+            f"{args.rag_max_chars} chars each)"
+        )
+
     print()
 
     agents = {"a": agent_a, "b": agent_b}
@@ -2368,15 +2388,26 @@ async def run_bridge(args):
             bridge_logger.info(f"Round {round_num}: {label} ({agent.provider_key}) starting turn")
             print(f"{colorize(f'Round {round_num}', Colors.CYAN)} - {colorize(label, Colors.GREEN, bold=True)} ({colorize(agent.provider_key, Colors.YELLOW)}) is thinking...")
 
-            # Get recent context
-            recent_context = history.recent_turns(args.mem_rounds * 2)
-            bridge_logger.debug(f"Context size for {label}: {len(recent_context)} turns")
+            shared_context_turns: List[Turn] = []
+            if rag_manager:
+                shared_context_turns = rag_manager.build_shared_turns(starter, history.flat_texts)
+                if args.debug and shared_context_turns:
+                    print_info(f"🔍 DEBUG: Injecting {len(shared_context_turns)} shared RAG snippets for both agents")
+
+            recent_context = shared_context_turns + history.recent_turns(args.mem_rounds * 2)
+            context_window = max(args.mem_rounds * 2, len(recent_context))
+            bridge_logger.debug(
+                "Context size for %s: %s turns (shared=%s)",
+                label,
+                len(recent_context),
+                len(shared_context_turns),
+            )
 
             # Stream response with error handling
             full_reply = ""
             try:
                 chunk_count = 0
-                async for chunk in agent.stream_reply(recent_context, args.mem_rounds):
+                async for chunk in agent.stream_reply(recent_context, context_window):
                     if chunk:
                         print(chunk, end="", flush=True)
                         full_reply += chunk
@@ -2500,6 +2531,11 @@ Examples:
     parser.add_argument("--roles", default="roles.json", help="Path to roles.json file for personas")
     parser.add_argument("--starter", help="Conversation starter (skips interactive mode)")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument("--rag-top-k", type=int, default=3, help="Number of shared RAG snippets to inject")
+    parser.add_argument(
+        "--rag-max-chars", type=int, default=600, help="Maximum characters per shared RAG snippet"
+    )
+    parser.add_argument("--disable-rag", action="store_true", help="Disable shared RAG context")
     parser.add_argument("--enable-mcp", action="store_true", help="Enable MCP memory integration")
     parser.add_argument("--version", action="version", version=f"Chat Bridge {__version__}")
 
