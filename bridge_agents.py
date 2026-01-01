@@ -157,19 +157,19 @@ class OpenAIChat:
             "max_tokens": max_tokens,
         }
 
-        logger.debug(f"OpenAI request: model={self.model}, messages={len(messages)}, temp={temperature}")
+        logger.debug("OpenAI request: model=%s, messages=%d, temp=%s", self.model, len(messages), temperature)
 
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
                 async with client.stream("POST", self.url, headers=self.headers, json=payload) as r:
-                    logger.debug(f"OpenAI response status: {r.status_code}")
+                    logger.debug("OpenAI response status: %d", r.status_code)
 
                     if r.status_code != 200:
                         error_text = await r.aread() if hasattr(r, 'aread') else b"Unknown error"
                         error_str = error_text.decode('utf-8') if isinstance(error_text, bytes) else str(error_text)
-                        logger.error(f"OpenAI API error {r.status_code}: {error_str}")
-                        logger.error(f"Request URL: {self.url}")
-                        logger.error(f"Request payload: {json.dumps(payload, indent=2)}")
+                        logger.error("OpenAI API error %d: %s", r.status_code, error_str)
+                        logger.error("Request URL: %s", self.url)
+                        logger.error("Request payload: %s", json.dumps(payload, indent=2))
 
                         # Check for OpenRouter-specific errors
                         if "openrouter.ai" in self.url and r.status_code == 404:
@@ -178,7 +178,7 @@ class OpenAIChat:
                                 error_msg = error_data.get("error", {}).get("message", "")
                                 if "providers have been ignored" in error_msg.lower():
                                     logger.error("OpenRouter provider filtering detected")
-                                    logger.error(f"Model attempted: {self.model}")
+                                    logger.error("Model attempted: %s", self.model)
                                     logger.error("This model's provider is blocked in your OpenRouter settings")
                                     logger.error("Fix: Visit https://openrouter.ai/settings/preferences to adjust provider filters")
                             except json.JSONDecodeError:
@@ -196,7 +196,7 @@ class OpenAIChat:
                         if line.startswith("data: "):
                             data = line[6:].strip()
                             if data == "[DONE]":
-                                logger.debug(f"OpenAI stream completed, processed {chunk_count} chunks")
+                                logger.debug("OpenAI stream completed, processed %d chunks", chunk_count)
                                 break
                             try:
                                 obj = json.loads(data)
@@ -205,14 +205,14 @@ class OpenAIChat:
                                     chunk_count += 1
                                     yield delta
                             except (json.JSONDecodeError, KeyError, IndexError) as parse_error:
-                                logger.error(f"Failed to parse OpenAI chunk: {parse_error}")
-                                logger.error(f"Raw chunk data: {data}")
+                                logger.error("Failed to parse OpenAI chunk: %s", parse_error)
+                                logger.error("Raw chunk data: %s", data)
                                 continue
 
         except httpx.RemoteProtocolError as remote_error:
-            logger.error(f"Connection lost during OpenAI streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
-            logger.error(f"Model: {self.model}, URL: {self.url}")
-            logger.error(f"Context: {len(messages)} messages, Temperature: {temperature}")
+            logger.error("Connection lost during OpenAI streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
+            logger.error("Model: %s, URL: %s", self.model, self.url)
+            logger.error("Context: %d messages, Temperature: %s", len(messages), temperature)
             import asyncio
             await asyncio.sleep(0.1)  # Make this async
             raise RuntimeError(
@@ -220,9 +220,9 @@ class OpenAIChat:
                 f"This is usually a temporary network issue - try again in a few moments."
             ) from remote_error
         except httpx.HTTPStatusError as http_error:
-            logger.error(f"OpenAI HTTP error: {http_error}")
-            logger.error(f"Response status: {http_error.response.status_code}")
-            logger.error(f"Response text: {http_error.response.text}")
+            logger.error("OpenAI HTTP error: %s", http_error)
+            logger.error("Response status: %d", http_error.response.status_code)
+            logger.error("Response text: %s", http_error.response.text)
 
             # Provide user-friendly error message for OpenRouter provider filtering
             if "openrouter.ai" in self.url and http_error.response.status_code == 404:
@@ -242,8 +242,8 @@ class OpenAIChat:
 
             raise
         except Exception as unexpected_error:
-            logger.error(f"Unexpected OpenAI error: {unexpected_error}", exc_info=True)
-            logger.error(f"Model: {self.model}, URL: {self.url}")
+            logger.error("Unexpected OpenAI error: %s", unexpected_error, exc_info=True)
+            logger.error("Model: %s, URL: %s", self.model, self.url)
             raise
 
 
@@ -355,10 +355,10 @@ class AnthropicChat:
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
         logger = logging.getLogger("bridge")
-        logger.debug(f"Anthropic request: model={self.model}, messages={len(messages_for_claude)}, temp={temperature}")
+        logger.debug("Anthropic request: model=%s, messages=%d, temp=%s", self.model, len(messages_for_claude), temperature)
         if system_prompt:
-            logger.debug(f"Anthropic system_prompt length: {len(system_prompt)} chars")
-            logger.debug(f"Anthropic system_prompt preview: {system_prompt[:100]}...")
+            logger.debug("Anthropic system_prompt length: %d chars", len(system_prompt))
+            logger.debug("Anthropic system_prompt preview: %s...", system_prompt[:100])
         else:
             logger.warning("No system_prompt provided to Anthropic")
 
@@ -368,14 +368,14 @@ class AnthropicChat:
             logger.debug("Anthropic messages API completed successfully")
             return
         except httpx.HTTPStatusError as exc:
-            logger.warning(f"Anthropic messages API failed with {exc.response.status_code}, falling back to completions")
+            logger.warning("Anthropic messages API failed with %d, falling back to completions", exc.response.status_code)
             if exc.response is None or exc.response.status_code not in (404, 405):
-                logger.error(f"Anthropic HTTP error: {exc}", exc_info=True)
+                logger.error("Anthropic HTTP error: %s", exc, exc_info=True)
                 raise
         except httpx.RequestError as req_error:
-            logger.warning(f"Anthropic messages API request error, falling back to completions: {req_error}")
+            logger.warning("Anthropic messages API request error, falling back to completions: %s", req_error)
         except Exception as unexpected_error:
-            logger.error(f"Unexpected error in Anthropic messages API: {unexpected_error}", exc_info=True)
+            logger.error("Unexpected error in Anthropic messages API: %s", unexpected_error, exc_info=True)
             raise
 
         # Fallback to completions API
@@ -398,12 +398,12 @@ class AnthropicChat:
             prompt_lines.append("\n[Assistant]:")
             prompt = "\n".join(prompt_lines)
 
-            logger.debug(f"Fallback prompt length: {len(prompt)} characters")
+            logger.debug("Fallback prompt length: %d characters", len(prompt))
             async for piece in self._stream_complete(prompt, temperature, max_tokens):
                 yield piece
             logger.debug("Anthropic completions API completed successfully")
         except Exception as fallback_error:
-            logger.error(f"Anthropic completions API also failed: {fallback_error}", exc_info=True)
+            logger.error("Anthropic completions API also failed: %s", fallback_error, exc_info=True)
             raise
 
 
@@ -425,12 +425,12 @@ class GeminiChat:
         max_tokens: int = MAX_TOKENS,
     ) -> AsyncGenerator[str, None]:
         logger = logging.getLogger("bridge")
-        logger.debug(f"Gemini request: model={self.model}, contents={len(contents)}, temp={temperature}")
+        logger.debug("Gemini request: model=%s, contents=%d, temp=%s", self.model, len(contents), temperature)
 
         # Log system instruction for debugging
         if system_instruction:
-            logger.debug(f"Gemini system_instruction length: {len(system_instruction)} chars")
-            logger.debug(f"Gemini system_instruction preview: {system_instruction[:100]}...")
+            logger.debug("Gemini system_instruction length: %d chars", len(system_instruction))
+            logger.debug("Gemini system_instruction preview: %s...", system_instruction[:100])
         else:
             logger.warning("No system_instruction provided to Gemini")
 
@@ -440,7 +440,7 @@ class GeminiChat:
                 model_name=self.model,
                 system_instruction=system_instruction if system_instruction else None
             )
-            logger.debug(f"Created Gemini model with system_instruction")
+            logger.debug("Created Gemini model with system_instruction")
 
             # Convert contents to Gemini format
             history = []
@@ -459,7 +459,7 @@ class GeminiChat:
                         elif role == "model":
                             history.append({"role": "model", "parts": [{"text": text}]})
 
-            logger.debug(f"Processed Gemini history: {len(history)} messages")
+            logger.debug("Processed Gemini history: %d messages", len(history))
 
             # Get the last user message as the current prompt
             if history and history[-1]["role"] == "user":
@@ -469,15 +469,15 @@ class GeminiChat:
                 current_message = "Hello"
                 logger.warning("No user message found in history, using default")
 
-            logger.debug(f"Current message: {current_message[:100]}...")
+            logger.debug("Current message: %s...", current_message[:100])
 
             # Create chat session
             try:
                 chat = model_with_system.start_chat(history=history)
                 logger.debug("Gemini chat session created successfully with system_instruction")
             except Exception as chat_error:
-                logger.error(f"Failed to create Gemini chat session: {chat_error}")
-                logger.error(f"History length: {len(history)}")
+                logger.error("Failed to create Gemini chat session: %s", chat_error)
+                logger.error("History length: %d", len(history))
                 raise
 
             # Generate config
@@ -502,37 +502,37 @@ class GeminiChat:
                     if hasattr(candidate, 'finish_reason') and candidate.finish_reason not in [1, 2]:
                         finish_reason_map = {3: "SAFETY", 4: "RECITATION", 5: "OTHER"}
                         reason = finish_reason_map.get(candidate.finish_reason, f"UNKNOWN({candidate.finish_reason})")
-                        logger.warning(f"Gemini blocked response due to: {reason}")
+                        logger.warning("Gemini blocked response due to: %s", reason)
                         yield f"[Response blocked by Gemini: {reason}]"
                         return
 
                 try:
                     if response.text:
-                        logger.debug(f"Gemini response length: {len(response.text)} characters")
+                        logger.debug("Gemini response length: %d characters", len(response.text))
                         yield response.text
                     else:
                         logger.warning("Gemini returned empty response")
                         yield "[Gemini returned empty response]"
                 except ValueError as ve:
                     # Handle case where response.text accessor fails
-                    logger.warning(f"Could not access response.text: {ve}")
+                    logger.warning("Could not access response.text: %s", ve)
                     if hasattr(response, 'candidates') and response.candidates:
                         candidate = response.candidates[0]
                         finish_reason = getattr(candidate, 'finish_reason', 'unknown')
-                        logger.warning(f"Response finish_reason: {finish_reason}")
+                        logger.warning("Response finish_reason: %s", finish_reason)
                         yield f"[Gemini response unavailable, finish_reason={finish_reason}]"
                     else:
                         yield "[Gemini response unavailable]"
 
             except Exception as send_error:
-                logger.error(f"Failed to send message to Gemini: {send_error}")
-                logger.error(f"Message: {current_message[:200]}...")
-                logger.error(f"Generation config: temp={temperature}, max_tokens={max_tokens}")
+                logger.error("Failed to send message to Gemini: %s", send_error)
+                logger.error("Message: %s...", current_message[:200])
+                logger.error("Generation config: temp=%s, max_tokens=%d", temperature, max_tokens)
                 raise
 
         except Exception as e:
-            logger.error(f"Gemini API error: {e}", exc_info=True)
-            logger.error(f"Model: {self.model}, API Key set: {bool(self.api_key)}")
+            logger.error("Gemini API error: %s", e, exc_info=True)
+            logger.error("Model: %s, API Key set: %s", self.model, bool(self.api_key))
             import asyncio
             await asyncio.sleep(0)  # Make it properly async
             raise RuntimeError(f"Gemini API error: {str(e)}")
@@ -565,24 +565,24 @@ class OllamaChat:
         }
         if system_prompt:
             payload["system"] = system_prompt
-            logger.debug(f"Ollama system_prompt length: {len(system_prompt)} chars")
-            logger.debug(f"Ollama system_prompt preview: {system_prompt[:100]}...")
+            logger.debug("Ollama system_prompt length: %d chars", len(system_prompt))
+            logger.debug("Ollama system_prompt preview: %s...", system_prompt[:100])
         else:
             logger.warning("No system_prompt provided to Ollama")
 
         url = f"{self.base}/api/chat"
-        logger.debug(f"Ollama request: {url}, model={self.model}, messages={len(messages)}")
+        logger.debug("Ollama request: %s, model=%s, messages=%d", url, self.model, len(messages))
 
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(STALL_TIMEOUT_SEC)) as client:
                 async with client.stream("POST", url, json=payload) as r:
-                    logger.debug(f"Ollama response status: {r.status_code}")
+                    logger.debug("Ollama response status: %d", r.status_code)
 
                     if r.status_code != 200:
                         error_text = await r.aread() if hasattr(r, 'aread') else "Unknown error"
-                        logger.error(f"Ollama API error {r.status_code}: {error_text}")
-                        logger.error(f"URL: {url}")
-                        logger.error(f"Model: {self.model}")
+                        logger.error("Ollama API error %d: %s", r.status_code, error_text)
+                        logger.error("URL: %s", url)
+                        logger.error("Model: %s", self.model)
 
                     r.raise_for_status()
 
@@ -593,7 +593,7 @@ class OllamaChat:
                         try:
                             data = json.loads(line)
                             if data.get("done"):
-                                logger.debug(f"Ollama stream completed, processed {chunk_count} chunks")
+                                logger.debug("Ollama stream completed, processed %d chunks", chunk_count)
                                 break
                             if "message" in data:
                                 content = data["message"].get("content")
@@ -606,17 +606,17 @@ class OllamaChat:
                                     chunk_count += 1
                                     yield resp
                         except json.JSONDecodeError as parse_error:
-                            logger.error(f"Failed to parse Ollama response: {parse_error}")
-                            logger.error(f"Raw line: {line}")
+                            logger.error("Failed to parse Ollama response: %s", parse_error)
+                            logger.error("Raw line: %s", line)
                             continue
 
         except httpx.ConnectError as connect_error:
-            logger.error(f"Cannot connect to Ollama server at {self.base}: {connect_error}")
+            logger.error("Cannot connect to Ollama server at %s: %s", self.base, connect_error)
             raise RuntimeError(f"Ollama server unreachable at {self.base}. Is Ollama running?")
         except httpx.RemoteProtocolError as remote_error:
-            logger.error(f"Connection lost during Ollama streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
-            logger.error(f"Model: {self.model}, URL: {url}")
-            logger.error(f"Context: {len(messages)} messages, Temperature: {temperature}")
+            logger.error("Connection lost during Ollama streaming (incomplete chunked read). This usually indicates a network issue or the server closed the connection before completing the response.")
+            logger.error("Model: %s, URL: %s", self.model, url)
+            logger.error("Context: %d messages, Temperature: %s", len(messages), temperature)
             import asyncio
             await asyncio.sleep(0.1)  # Make this async
             raise RuntimeError(
@@ -624,8 +624,8 @@ class OllamaChat:
                 f"Make sure Ollama server is running and accessible at {self.base}."
             ) from remote_error
         except Exception as unexpected_error:
-            logger.error(f"Unexpected Ollama error: {unexpected_error}", exc_info=True)
-            logger.error(f"Model: {self.model}, URL: {url}")
+            logger.error("Unexpected Ollama error: %s", unexpected_error, exc_info=True)
+            logger.error("Model: %s, URL: %s", self.model, url)
             raise
 
 
@@ -669,16 +669,16 @@ async def fetch_openrouter_models(api_key: str) -> List[Dict]:
             if response.status_code == 200:
                 data = response.json()
                 if "data" in data:
-                    logger.info(f"Fetched {len(data['data'])} models from OpenRouter")
+                    logger.info("Fetched %d models from OpenRouter", len(data['data']))
                     return data["data"]
                 else:
                     logger.warning("Unexpected response format from OpenRouter models API")
                     return []
             else:
-                logger.error(f"Failed to fetch OpenRouter models: {response.status_code}")
+                logger.error("Failed to fetch OpenRouter models: %d", response.status_code)
                 return []
     except Exception as e:
-        logger.error(f"Error fetching OpenRouter models: {e}")
+        logger.error("Error fetching OpenRouter models: %s", e)
         return []
 
 
@@ -765,11 +765,11 @@ async def fetch_available_models(provider_key: str) -> List[str]:
             return ["openai/gpt-4o-mini", "anthropic/claude-3-5-sonnet"]
 
         else:
-            logger.warning(f"Unknown provider: {provider_key}")
+            logger.warning("Unknown provider: %s", provider_key)
             return []
 
     except Exception as e:
-        logger.error(f"Error fetching models for {provider_key}: {e}")
+        logger.error("Error fetching models for %s: %s", provider_key, e)
         # Return default model for the provider
         spec = get_spec(provider_key)
         return [spec.default_model] if spec else []
@@ -780,20 +780,20 @@ def ensure_credentials(provider_key: str) -> Optional[str]:
     spec = get_spec(provider_key)
 
     if not spec.needs_key:
-        logger.debug(f"Provider {provider_key} does not require API key")
+        logger.debug("Provider %s does not require API key", provider_key)
         return None
 
     key = _env(spec.key_env)
     if not key:
-        logger.error(f"Missing API key for {spec.label} (env var: {spec.key_env})")
-        logger.error(f"Available env vars: {', '.join(k for k in os.environ.keys() if 'API' in k or 'KEY' in k)}")
+        logger.error("Missing API key for %s (env var: %s)", spec.label, spec.key_env)
+        logger.error("Available env vars: %s", ', '.join(k for k in os.environ.keys() if 'API' in k or 'KEY' in k))
         raise RuntimeError(
             f"Missing API key for {spec.label}. Set {spec.key_env} in your environment or .env file."
         )
 
     # Log masked key for debugging
     masked_key = key[:4] + "*" * (len(key) - 8) + key[-4:] if len(key) > 8 else "***"
-    logger.debug(f"Found API key for {spec.label}: {masked_key}")
+    logger.debug("Found API key for %s: %s", spec.label, masked_key)
     return key
 
 
@@ -818,9 +818,9 @@ def build_chatml(turns: List[Turn], agent_id: str, system_prompt: str) -> List[D
     messages: List[Dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
-        logger.debug(f"ChatML: Added system prompt ({len(system_prompt)} chars) for agent {agent_id}")
+        logger.debug("ChatML: Added system prompt (%d chars) for agent %s", len(system_prompt), agent_id)
     else:
-        logger.warning(f"ChatML: No system prompt provided for agent {agent_id}")
+        logger.warning("ChatML: No system prompt provided for agent %s", agent_id)
     for turn in turns:
         role = "assistant" if turn.author == agent_id else "user"
         messages.append({"role": role, "content": turn.text})
@@ -916,40 +916,40 @@ class AgentRuntime:
 
 def create_agent(agent_id: str, provider_key: str, model: str, temperature: float, system_prompt: str) -> AgentRuntime:
     logger = logging.getLogger("bridge")
-    logger.info(f"Creating agent {agent_id}: provider={provider_key}, model={model}, temp={temperature}")
+    logger.info("Creating agent %s: provider=%s, model=%s, temp=%s", agent_id, provider_key, model, temperature)
 
     try:
         if provider_key == "openai":
             api_key = ensure_credentials(provider_key)
             client = OpenAIChat(model=model, api_key=api_key)
-            logger.debug(f"OpenAI client created for agent {agent_id}")
+            logger.debug("OpenAI client created for agent %s", agent_id)
         elif provider_key == "anthropic":
             api_key = ensure_credentials(provider_key)
             client = AnthropicChat(api_key=api_key, model=model)
-            logger.debug(f"Anthropic client created for agent {agent_id}")
+            logger.debug("Anthropic client created for agent %s", agent_id)
         elif provider_key == "gemini":
             api_key = ensure_credentials(provider_key)
             client = GeminiChat(api_key=api_key, model=model)
-            logger.debug(f"Gemini client created for agent {agent_id}")
+            logger.debug("Gemini client created for agent %s", agent_id)
         elif provider_key == "ollama":
             client = OllamaChat(model=model)
-            logger.debug(f"Ollama client created for agent {agent_id}")
+            logger.debug("Ollama client created for agent %s", agent_id)
         elif provider_key == "lmstudio":
             base = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234/v1")
             client = OpenAIChat(model=model, api_key=None, base_url=base)
-            logger.debug(f"LM Studio client created for agent {agent_id} at {base}")
+            logger.debug("LM Studio client created for agent %s at %s", agent_id, base)
         elif provider_key == "deepseek":
             api_key = ensure_credentials(provider_key)
             base = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
             client = OpenAIChat(model=model, api_key=api_key, base_url=base)
-            logger.debug(f"DeepSeek client created for agent {agent_id}")
+            logger.debug("DeepSeek client created for agent %s", agent_id)
         elif provider_key == "openrouter":
             api_key = ensure_credentials(provider_key)
             base = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
             client = OpenAIChat(model=model, api_key=api_key, base_url=base)
-            logger.debug(f"OpenRouter client created for agent {agent_id}")
+            logger.debug("OpenRouter client created for agent %s", agent_id)
         else:
-            logger.error(f"Unsupported provider requested: {provider_key}")
+            logger.error("Unsupported provider requested: %s", provider_key)
             raise RuntimeError(f"Unsupported provider: {provider_key}")
 
         agent = AgentRuntime(
@@ -960,12 +960,12 @@ def create_agent(agent_id: str, provider_key: str, model: str, temperature: floa
             system_prompt=system_prompt,
             client=client,
         )
-        logger.info(f"Agent {agent_id} created successfully")
+        logger.info("Agent %s created successfully", agent_id)
         return agent
 
     except Exception as e:
-        logger.error(f"Failed to create agent {agent_id}: {e}", exc_info=True)
-        logger.error(f"Provider: {provider_key}, Model: {model}")
+        logger.error("Failed to create agent %s: %s", agent_id, e, exc_info=True)
+        logger.error("Provider: %s, Model: %s", provider_key, model)
         raise
 
 

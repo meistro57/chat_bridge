@@ -41,9 +41,12 @@ app = FastAPI(
 # Add CORS middleware for web frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:8000",  # Backend (for same-origin requests)
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -74,6 +77,48 @@ class Message(BaseModel):
     sender: str  # 'user', 'agent_a', 'agent_b'
     timestamp: datetime
     persona: Optional[str] = None
+
+# Response models for OpenAPI documentation
+class HealthResponse(BaseModel):
+    message: str
+    version: str
+
+class ProviderInfo(BaseModel):
+    key: str
+    label: str
+    description: str
+
+class ProvidersResponse(BaseModel):
+    providers: List[ProviderInfo]
+
+class ProviderStatusInfo(BaseModel):
+    label: str
+    connected: bool
+    error: Optional[str] = None
+
+class ProviderStatusResponse(BaseModel):
+    providers: dict[str, ProviderStatusInfo]
+
+class PersonaResponse(BaseModel):
+    personas: List[dict]
+
+class ConversationCreateResponse(BaseModel):
+    conversation_id: str
+    status: str
+    starter_message: str
+
+class TranscriptResponse(BaseModel):
+    transcript: str
+    filename: str
+    conversation_id: str
+    message_count: int
+
+class ModelInfo(BaseModel):
+    id: str
+    name: str
+
+class ModelsResponse(BaseModel):
+    models: List[ModelInfo]
 
 class Conversation:
     def __init__(self, request: ConversationRequest, conversation_id: str):
@@ -282,12 +327,12 @@ async def startup_event():
     """Load persona configurations on startup"""
     persona_manager.persona_library = persona_manager.load_personas_from_config()
 
-@app.get("/")
+@app.get("/", response_model=HealthResponse)
 async def root():
     """Health check endpoint"""
     return {"message": "Chat Bridge Web API is running", "version": "1.4.1"}
 
-@app.get("/api/providers")
+@app.get("/api/providers", response_model=ProvidersResponse)
 async def get_providers():
     """Get available AI providers"""
     providers = provider_choices()
@@ -301,7 +346,7 @@ async def get_providers():
         ]
     }
 
-@app.get("/api/provider-status")
+@app.get("/api/provider-status", response_model=ProviderStatusResponse)
 async def get_provider_status():
     """Check provider connectivity status based on available credentials
 
@@ -350,7 +395,7 @@ async def get_provider_status():
 
     return {"providers": provider_status}
 
-@app.get("/api/personas")
+@app.get("/api/personas", response_model=PersonaResponse)
 async def get_personas():
     """Get available persona configurations"""
     # Ensure personas are loaded if not already
@@ -358,7 +403,7 @@ async def get_personas():
         persona_manager.persona_library = persona_manager.load_personas_from_config()
     return {"personas": list(persona_manager.get_available_personas().values())}
 
-@app.post("/api/conversations", response_model=dict)
+@app.post("/api/conversations", response_model=ConversationCreateResponse)
 async def create_conversation(request: ConversationRequest):
     """Create a new conversation session"""
     try:
@@ -394,7 +439,7 @@ async def create_conversation(request: ConversationRequest):
         logger.error("Failed to create conversation: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
-@app.get("/api/conversations/{conversation_id}/transcript")
+@app.get("/api/conversations/{conversation_id}/transcript", response_model=TranscriptResponse)
 async def get_conversation_transcript(conversation_id: str):
     """Generate and return a markdown transcript of the conversation"""
     if conversation_id not in conversations:
@@ -416,7 +461,7 @@ async def get_conversation_transcript(conversation_id: str):
         "message_count": len(conversation.messages)
     }
 
-@app.get("/api/models")
+@app.get("/api/models", response_model=ModelsResponse)
 async def get_models(provider: str):
     """Get available models for a provider"""
     try:
