@@ -27,12 +27,15 @@ app = FastAPI(title="Chat Bridge API", version="2.0.0")
 # Initialize database
 init_db()
 
-# CORS middleware
+# CORS middleware - restrict to frontend origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:8000",  # Backend (for same-origin requests)
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
