@@ -17,12 +17,14 @@ use function Laravel\Prompts\text;
 use function Laravel\Prompts\info;
 use function Laravel\Prompts\spin;
 
+use App\Services\AI\EmbeddingService;
+
 class BridgeChatCommand extends Command
 {
     protected $signature = 'bridge:chat {--max-rounds=10}';
     protected $description = 'Start an AI vs AI conversation bridge';
 
-    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts)
+    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts, EmbeddingService $embeddings)
     {
         info('🌉 Welcome to Chat Bridge (Laravel Edition)');
 
@@ -104,6 +106,14 @@ class BridgeChatCommand extends Command
                 'role' => 'assistant',
                 'content' => $fullResponse,
             ]);
+
+            // Async/Background task would be better, but implementing inline for now
+            try {
+                $vector = $embeddings->getEmbedding($fullResponse);
+                $message->update(['embedding' => $vector]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("Embedding generation failed: " . $e->getMessage());
+            }
 
             broadcast(new MessageCompleted($message));
 

@@ -6,6 +6,25 @@
 @source '../**/*.js';
 
 @theme {
+    /* Retro Theme */
+    --color-retro-bg: #c0c0c0;
+    --color-retro-window-title: #000080;
+    --color-retro-border-light: #ffffff;
+    --color-retro-border-dark: #808080;
+    --color-retro-text: #000000;
+
+    /* Terminal/Matrix Theme */
+    --color-matrix-bg: #050505;
+    --color-matrix-text: #22c55e;
+    --color-matrix-border: #14532d;
+    --color-matrix-accent: #eab308;
+
+    /* Cyberpunk Theme */
+    --color-cyber-bg: #0d0221;
+    --color-cyber-text: #00ffcc;
+    --color-cyber-border: #ff00ff;
+    --color-cyber-accent: #ffff00;
+
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }

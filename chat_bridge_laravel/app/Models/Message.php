@@ -16,6 +16,11 @@ class Message extends Model
         'role',
         'content',
         'tokens_used',
+        'embedding',
+    ];
+
+    protected $casts = [
+        'embedding' => 'array',
     ];
 
     public function conversation(): BelongsTo

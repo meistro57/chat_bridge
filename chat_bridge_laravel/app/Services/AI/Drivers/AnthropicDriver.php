@@ -46,6 +46,10 @@ class AnthropicDriver implements AIDriverInterface
         ])->withOptions(['stream' => true])
           ->post("{$this->baseUrl}/messages", $payload);
 
+        if ($response->failed()) {
+            throw new \Exception("Anthropic API Connection Failed: " . $response->body());
+        }
+
         $body = $response->toPsrResponse()->getBody();
 
         $event = '';
@@ -59,6 +63,11 @@ class AnthropicDriver implements AIDriverInterface
 
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
+                
+                if ($event === 'error') {
+                     throw new \Exception("Anthropic Stream Error: " . $data);
+                }
+
                 $json = json_decode($data, true);
 
                 if ($event === 'content_block_delta') {
