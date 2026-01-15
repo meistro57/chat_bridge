@@ -54,7 +54,12 @@ class GeminiDriver implements AIDriverInterface
 
     protected function preparePayload(Collection $messages, float $temperature): array
     {
-        $systemInstruction = $messages->where('role', 'system')->map(fn($m) => ['parts' => [['text' => $m->content]]])->first();
+        // Combine all system messages (system prompt + guidelines) into a single instruction
+        $systemMessages = $messages->where('role', 'system');
+        $systemInstruction = $systemMessages->isNotEmpty()
+            ? ['parts' => [['text' => $systemMessages->pluck('content')->implode("\n\n")]]]
+            : null;
+
         $contents = $messages->where('role', '!=', 'system')->map(fn($m) => [
             'role' => $m->role === 'assistant' ? 'model' : 'user',
             'parts' => [['text' => $m->content]]
