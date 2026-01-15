@@ -86,7 +86,12 @@ class AnthropicDriver implements AIDriverInterface
 
     protected function preparePayload(Collection $messages, float $temperature): array
     {
-        $system = $messages->where('role', 'system')->first()?->content;
+        // Combine all system messages (system prompt + guidelines) into a single string
+        $systemMessages = $messages->where('role', 'system');
+        $system = $systemMessages->isNotEmpty()
+            ? $systemMessages->pluck('content')->implode("\n\n")
+            : null;
+
         $filteredMessages = $messages->where('role', '!=', 'system')->values();
 
         return array_filter([
