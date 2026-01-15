@@ -387,9 +387,14 @@ class AnthropicChat:
             for item in messages_for_claude:
                 role = item.get("role", "user")
                 parts = []
-                for block in item.get("content", []):
-                    if block.get("type") == "text":
-                        parts.append(block.get("text", ""))
+                content = item.get("content", [])
+                if isinstance(content, str):
+                    parts.append(content)
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            parts.append(block.get("text", ""))
+                
                 text = "\n".join(parts).strip()
                 if not text:
                     continue

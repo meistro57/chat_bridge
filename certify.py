@@ -15,6 +15,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from bridge_agents import provider_choices, get_spec, ensure_credentials
 from chat_bridge import (
     ping_all_providers,
