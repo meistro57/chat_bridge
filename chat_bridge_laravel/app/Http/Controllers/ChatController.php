@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Conversation;
 use App\Models\Persona;
-use App\Jobs\ProcessConversationTurn;
+use App\Jobs\RunChatSession;
 use Illuminate\Http\Request;
 use App\Services\AI\TranscriptService;
 use Inertia\Inertia;
@@ -59,7 +59,7 @@ class ChatController extends Controller
             'content' => $validated['starter_message'],
         ]);
 
-        dispatch(new ProcessConversationTurn($conversation->id));
+        dispatch(new RunChatSession($conversation->id));
 
         return redirect()->route('chat.show', $conversation->id);
     }

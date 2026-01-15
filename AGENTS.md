@@ -3,6 +3,7 @@
 This document captures a high-level understanding of how the Chat Bridge project is organized and how its key components work together.
 
 ## 1. Primary Entry Points
+- **`run_Lav.sh`** – **(New in v2.0)** The unified startup script for the Laravel Reverb edition. Launches the Web GUI, Reverb, and Queue Worker.
 - **`chat_bridge.py`** – The core CLI experience. It loads environment defaults, draws colorful interactive menus, and supports quick-start, persona-first, and advanced setup flows. Once configuration is chosen (providers, models, personas, temperatures, stop-word policy, and a conversation starter), it instantiates two agents, spins up transcripts/logging, streams alternating replies, checks stop-word/loop guards, and persists every message to SQLite plus Markdown transcripts.
 - **`launch.py`** – Lightweight launcher that prints a preset menu of `chat_bridge.py` commands (interactive mode, fixed provider duels, persona mode, long-form sessions, etc.) and shells out to the chosen command.
 - **`roles_manager.py`** – Standalone persona manager. It maintains `roles.json`, offers defaults for agent baselines and persona library, backs up prior versions, and provides interactive flows for creating/editing personas, temperatures, stop-word lists, and import/export/reset utilities.

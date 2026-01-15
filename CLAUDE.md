@@ -4,11 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription. The project now includes both **retro web GUI** and traditional CLI interfaces.
+Chat Bridge is an AI conversation bridge that enables two AI assistants from different providers to converse with each other. The system supports multiple AI providers (OpenAI, Anthropic, Gemini, DeepSeek, Ollama, LM Studio, **OpenRouter**), custom persona management, real-time conversation streaming, **HTTP-based MCP memory system**, and comprehensive logging/transcription.
 
-**Current Version**: 1.4.3
+**Current Version**: 2.0.0 (Laravel Reverb Edition)
 
-## New In v1.4.3: Luxury Gaming-Grade UX Overhaul 🚀🎮🎨
+## New In v2.0.0: Laravel Reverb real-time Architecture 🚀
+
+We have transitioned to a **Laravel 12** backend with **Reverb** for robust WebSocket streaming.
+
+### 🏗️ Async Integration
+- **`ConversationService`**: Centralized logic utilizing Generators to yield token streams from LLMs.
+- **`RunChatSession` Job**: Handles the conversation loop asynchronously in the queue worker.
+- **Private Channels**: `Echo.private` used for secure streaming.
+
+### 📜 Startup
+Use the unified script:
+```bash
+./run_Lav.sh
+```
+
+## Previous In v1.4.3: Luxury Gaming-Grade UX Overhaul 🚀🎮🎨
 
 Experience the **most advanced AI conversation platform** with cutting-edge user experience that rivals commercial gaming and chat applications!
 

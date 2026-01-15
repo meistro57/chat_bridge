@@ -3,6 +3,27 @@ https://forum.quantummindsunited.com/t/the-chatbridge-project/66?u=meistro
 A beautiful, interactive chat bridge that connects two AI assistants with **retro Windows 95-style web GUI** and enhanced CLI experience! Watch AI assistants converse with **real-time streaming**, facial expressions, and comprehensive transcripts and SQLite storage.
 <img width="1132" height="1759" alt="image" src="https://github.com/user-attachments/assets/0c513cb4-8c29-43f8-bd93-57d3cacc0a80" />
 
+## 🚀 NEW: Laravel Reverb Real-Time Edition (v2.0)
+
+We have migrated to a robust **Laravel 12 + Reverb** architecture for true WebSocket real-time streaming and background job processing.
+
+### 🕹️ One-Click Startup
+We've included a unified script to launch the Application Server, Reverb (WebSockets), Queue Worker, and Vite (Frontend) all at once:
+
+```bash
+./run_Lav.sh
+```
+
+Then visit: **http://localhost:8000/chat**
+
+### 🏗️ Architecture Upgrade
+*   **Real-Time**: Powered by **Laravel Reverb** (WebSockets) via Private Channels.
+*   **Async Processing**: AI turns are handled by the `RunChatSession` job, freeing up the web server.
+*   **Frontend**: React (Inertia.js) with `Echo.private` for secure, low-latency streaming.
+*   **Service Layer**: `ConversationService` manages generator-based streaming from LLMs.
+
+---
+
 ## ✨ What's New in Version 1.4.3 Luxury Gaming-Grade UX Overhaul 🎮🎨
 Experience the **most advanced AI conversation platform** with cutting-edge user experience that rivals commercial gaming and chat applications!
 

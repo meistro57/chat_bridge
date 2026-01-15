@@ -47,7 +47,7 @@ export default function Show({ conversation }) {
     const t = getThemeClasses();
 
     useEffect(() => {
-        const channel = window.Echo.channel(`conversation.${conversation.id}`);
+        const channel = window.Echo.private(`conversation.${conversation.id}`);
         
         channel.listen('.message.chunk', (e) => {
             setStreamingSpeaker(e.personaName);
