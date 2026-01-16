@@ -77,5 +77,7 @@ class ConversationService
     {
         $conversation->update(['status' => 'completed']);
         $this->transcripts->generate($conversation);
+        
+        broadcast(new \App\Events\ConversationStatusUpdated($conversation));
     }
 }

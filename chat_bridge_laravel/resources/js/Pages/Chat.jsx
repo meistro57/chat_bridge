@@ -18,12 +18,26 @@ export default function Chat({ personas, conversations }) {
                 <div className="bg-[#c0c0c0] p-6 shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] border-t-0">
                     <div className="flex justify-between items-center mb-8">
                         <h1 className="text-4xl text-black">MAIN CONTROL PANEL</h1>
-                        <Link 
-                            href="/chat/create" 
-                            className="bg-[#c0c0c0] text-black px-6 py-2 text-2xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
-                        >
-                            INIT_NEW_BRIDGE
-                        </Link>
+                        <div className="flex gap-4">
+                            <Link 
+                                href="/chat/search" 
+                                className="bg-[#c0c0c0] text-black px-4 py-2 text-xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
+                            >
+                                SEARCH_ARCHIVES
+                            </Link>
+                            <Link 
+                                href="/personas" 
+                                className="bg-[#c0c0c0] text-black px-4 py-2 text-xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
+                            >
+                                MANAGE_PERSONAS
+                            </Link>
+                            <Link 
+                                href="/chat/create" 
+                                className="bg-[#000080] text-white px-6 py-2 text-2xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
+                            >
+                                INIT_NEW_BRIDGE
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -31,15 +45,26 @@ export default function Chat({ personas, conversations }) {
                             <h2 className="text-2xl mb-4 text-[#000080] border-b-2 border-[#000080]">RECENT_SESSIONS</h2>
                             <div className="space-y-4">
                                 {conversations.map((conv) => (
-                                    <div key={conv.id} className="bg-white p-3 border-2 border-[#808080] hover:bg-[#ffffcc]">
-                                        <Link href={`/chat/${conv.id}`} className="block">
-                                            <div className="flex justify-between text-xl font-bold">
-                                                <span>{conv.provider_a} vs {conv.provider_b}</span>
-                                                <span className="text-sm opacity-60 uppercase">{conv.status}</span>
+                                        <div key={conv.id} className="bg-white p-3 border-2 border-[#808080] hover:bg-[#ffffcc] group">
+                                            <div className="flex justify-between items-start">
+                                                <Link href={`/chat/${conv.id}`} className="flex-1">
+                                                    <div className="flex justify-between text-xl font-bold">
+                                                        <span>{conv.provider_a} vs {conv.provider_b}</span>
+                                                        <span className="text-sm opacity-60 uppercase">{conv.status}</span>
+                                                    </div>
+                                                    <p className="truncate text-lg opacity-80 mt-1">{conv.starter_message}</p>
+                                                </Link>
+                                                <Link 
+                                                    href={route('chat.destroy', conv.id)} 
+                                                    method="delete" 
+                                                    as="button"
+                                                    className="ml-2 text-red-600 opacity-0 group-hover:opacity-100 hover:font-bold"
+                                                    onClick={(e) => !confirm('Are you sure?') && e.preventDefault()}
+                                                >
+                                                    [X]
+                                                </Link>
                                             </div>
-                                            <p className="truncate text-lg opacity-80 mt-1">{conv.starter_message}</p>
-                                        </Link>
-                                    </div>
+                                        </div>
                                 ))}
                                 {conversations.length === 0 && <p className="text-xl opacity-60">NO_DATA_FOUND</p>}
                             </div>

@@ -45,43 +45,40 @@ class RunChatSession implements ShouldQueue
 
         $round = 0;
 
-        // Loop until max rounds or stopped
-        while ($round < $this->maxRounds) {
-            // 1. Check for manual stop signal
-            if (Cache::get("conversation.stop.{$this->conversationId}")) {
-                Log::info("Conversation {$this->conversationId} stopped by user signal.");
-                $service->completeConversation($conversation);
-                break;
-            }
+        try {
+            // Loop until max rounds or stopped
+            while ($round < $this->maxRounds) {
+                // 1. Check for manual stop signal
+                if (Cache::get("conversation.stop.{$this->conversationId}")) {
+                    Log::info("Conversation {$this->conversationId} stopped by user signal.");
+                    $service->completeConversation($conversation);
+                    break;
+                }
 
-            // 2. Identify Current Speaker
-            // We look at the last assistant message to determine who spoke last.
-            // If no assistant message, Persona A starts.
-            $lastMessage = $conversation->messages()
-                ->where('role', 'assistant')
-                ->latest()
-                ->first();
-                
-            $currentPersona = (!$lastMessage || $lastMessage->persona_id === $conversation->personaB->id) 
-                ? $conversation->personaA 
-                : $conversation->personaB;
+                // 2. Identify Current Speaker
+                $lastMessage = $conversation->messages()
+                    ->where('role', 'assistant')
+                    ->latest()
+                    ->first();
+                    
+                $currentPersona = (!$lastMessage || $lastMessage->persona_id === $conversation->personaB->id) 
+                    ? $conversation->personaA 
+                    : $conversation->personaB;
 
-            // 3. Prepare History
-            $history = $conversation->messages()
-                ->latest() // Get latest first
-                ->take(10) // Limit to 10
-                ->get()
-                ->sortBy('id') // Reorder chronologically
-                ->map(fn($m) => new MessageData($m->role, $m->content));
+                // 3. Prepare History
+                $history = $conversation->messages()
+                    ->latest()
+                    ->take(10)
+                    ->get()
+                    ->sortBy('id')
+                    ->map(fn($m) => new MessageData($m->role, $m->content));
 
-            // 4. Generate & Stream
-            $fullResponse = '';
-            try {
+                // 4. Generate & Stream
+                $fullResponse = '';
                 // Yield chunks from service
                 foreach ($service->generateTurn($currentPersona, $history) as $chunk) {
                     $fullResponse .= $chunk;
                     
-                    // Broadcast chunk immediately
                     broadcast(new MessageChunkSent(
                         conversationId: $conversation->id,
                         chunk: $chunk,
@@ -89,36 +86,46 @@ class RunChatSession implements ShouldQueue
                         personaName: $currentPersona->name
                     ));
                     
-                    // Check cache signal even during generation?
                     if (Cache::get("conversation.stop.{$this->conversationId}")) {
                         break; 
                     }
                 }
-            } catch (\Exception $e) {
-                Log::error("Error generating turn in conversation {$this->conversationId}: " . $e->getMessage());
-                // Optionally broadcast error
-                break;
+
+                // 5. Save & Finalize Turn
+                $message = $service->saveTurn($conversation, $currentPersona, $fullResponse);
+                broadcast(new MessageCompleted($message));
+
+                // 6. Check Stop Words
+                if ($stopWords->shouldStop($fullResponse)) {
+                    Log::info("Conversation {$this->conversationId} stopped by stop word.");
+                    $service->completeConversation($conversation);
+                    break;
+                }
+
+                $round++;
+                sleep(1);
             }
 
-            // 5. Save & Finalize Turn
-            $message = $service->saveTurn($conversation, $currentPersona, $fullResponse);
-            broadcast(new MessageCompleted($message));
-
-            // 6. Check Stop Words
-            if ($stopWords->shouldStop($fullResponse)) {
-                Log::info("Conversation {$this->conversationId} stopped by stop word.");
+            if ($round >= $this->maxRounds && $conversation->fresh()->status === 'active') {
                 $service->completeConversation($conversation);
-                break;
             }
-
-            $round++;
-            
-            // tiny sleep to let systems breathe
-            sleep(1);
+        } catch (\Throwable $e) {
+            Log::error("Job failed for conversation {$this->conversationId}: " . $e->getMessage());
+            $conversation->update(['status' => 'failed']);
+            broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+            throw $e;
         }
+    }
 
-        if ($round >= $this->maxRounds) {
-            $service->completeConversation($conversation);
+    /**
+     * Handle a job failure.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        $conversation = Conversation::find($this->conversationId);
+        if ($conversation) {
+            $conversation->update(['status' => 'failed']);
+            broadcast(new \App\Events\ConversationStatusUpdated($conversation));
         }
     }
 }

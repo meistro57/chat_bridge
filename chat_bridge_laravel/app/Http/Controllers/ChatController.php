@@ -7,6 +7,7 @@ use App\Models\Persona;
 use App\Jobs\RunChatSession;
 use Illuminate\Http\Request;
 use App\Services\AI\TranscriptService;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class ChatController extends Controller
@@ -15,7 +16,26 @@ class ChatController extends Controller
     {
         return Inertia::render('Chat', [
             'personas' => Persona::all(),
-            'conversations' => Conversation::latest()->limit(10)->get(),
+            'conversations' => Conversation::latest()->limit(50)->get(),
+        ]);
+    }
+
+    public function search(Request $request)
+    {
+        $query = $request->query('q');
+        $messages = [];
+
+        if ($query) {
+            $messages = \App\Models\Message::where('content', 'like', "%{$query}%")
+                ->with(['conversation', 'persona'])
+                ->latest()
+                ->limit(20)
+                ->get();
+        }
+
+        return Inertia::render('Chat/Search', [
+            'results' => $messages,
+            'query' => $query,
         ]);
     }
 
@@ -68,7 +88,22 @@ class ChatController extends Controller
     {
         return Inertia::render('Chat/Show', [
             'conversation' => $conversation->load('messages.persona'),
+            'stopSignal' => (bool) Cache::get("conversation.stop.{$conversation->id}"),
         ]);
+    }
+
+    public function stop(Conversation $conversation)
+    {
+        Cache::put("conversation.stop.{$conversation->id}", true, now()->addHour());
+        
+        return back()->with('success', 'Stop signal sent.');
+    }
+
+    public function destroy(Conversation $conversation)
+    {
+        $conversation->delete();
+        
+        return redirect()->route('chat.index')->with('success', 'Conversation deleted.');
     }
 
     public function transcript(Conversation $conversation, TranscriptService $transcripts)

@@ -20,7 +20,8 @@ class EmbeddingService
     public function getEmbedding(string $text): array
     {
         if (empty($this->apiKey)) {
-            throw new \Exception("OpenAI API Key is not configured.");
+            // Return dummy vector for demo/development if key is missing
+            return array_fill(0, 1536, 0.0);
         }
 
         $response = Http::withToken($this->apiKey)

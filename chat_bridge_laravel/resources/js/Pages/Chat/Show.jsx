@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 
-export default function Show({ conversation }) {
+export default function Show({ conversation, stopSignal }) {
     const [messages, setMessages] = useState(conversation.messages || []);
     const [streamingContent, setStreamingContent] = useState('');
     const [streamingSpeaker, setStreamingSpeaker] = useState(null);
     const [status, setStatus] = useState(conversation.status);
+    const [isStopping, setIsStopping] = useState(stopSignal);
     const [theme, setTheme] = useState('matrix'); // 'matrix', 'retro', 'cyber'
     const scrollRef = useRef(null);
 
@@ -58,10 +59,12 @@ export default function Show({ conversation }) {
             setMessages(prev => [...prev, e.message]);
             setStreamingContent('');
             setStreamingSpeaker(null);
-            
-            // Check if conversation completed in background
-            if (e.message.role === 'assistant' && status === 'active') {
-                // We'd ideally have a status update event, but we can infer or wait for refresh
+        });
+
+        channel.listen('.conversation.status.updated', (e) => {
+            setStatus(e.conversation.status);
+            if (e.conversation.status === 'completed') {
+                setIsStopping(false);
             }
         });
 
@@ -75,6 +78,14 @@ export default function Show({ conversation }) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages, streamingContent]);
+
+    const handleStop = () => {
+        if (confirm('Send interrupt signal to agents?')) {
+            router.post(`/chat/${conversation.id}/stop`, {}, {
+                onSuccess: () => setIsStopping(true)
+            });
+        }
+    };
 
     return (
         <div className={`min-h-screen p-4 md:p-8 ${t.container}`}>
@@ -90,6 +101,17 @@ export default function Show({ conversation }) {
                             <button onClick={() => setTheme('retro')} className={`px-2 text-xs ${theme === 'retro' ? 'bg-white/20' : ''}`}>95</button>
                             <button onClick={() => setTheme('cyber')} className={`px-2 text-xs ${theme === 'cyber' ? 'bg-white/20' : ''}`}>CYBR</button>
                         </div>
+                        {status === 'active' && !isStopping && (
+                            <button 
+                                onClick={handleStop}
+                                className="ml-4 bg-red-600 text-white px-3 py-0.5 text-xs font-bold animate-pulse hover:bg-red-700"
+                            >
+                                HALT_EXECUTION
+                            </button>
+                        )}
+                        {isStopping && (
+                            <span className="ml-4 text-red-500 text-xs font-bold font-mono">STOP_SIGNAL_PENDING...</span>
+                        )}
                     </div>
                     <div className="flex gap-4">
                         <Link href="/chat" className="hover:opacity-70 px-2">EXIT_TO_DASHBOARD</Link>
