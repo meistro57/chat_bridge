@@ -34,6 +34,7 @@ from bridge_agents import (
     AgentRuntime,
     Turn,
     STALL_TIMEOUT_SEC,
+    MAX_TOKENS,
     create_agent,
     get_spec,
     provider_choices,
@@ -403,10 +404,10 @@ async def select_provider_and_model(agent_name: str, default_provider: Optional[
 async def configure_agent_simple(agent_name: str, roles_data: Optional[Dict] = None) -> Dict:
     """Simplified turn-based configuration for a single agent.
 
-    Flow: Persona → Provider → Model → Temperature
+    Flow: Persona → Provider → Model → Temperature → Max Tokens
 
     Returns:
-        Dict with keys: persona, provider, model, temperature
+        Dict with keys: persona, provider, model, temperature, max_tokens
     """
     agent_color = Colors.BLUE if agent_name == "Agent A" else Colors.MAGENTA
     print()
@@ -568,6 +569,33 @@ async def configure_agent_simple(agent_name: str, roles_data: Optional[Dict] = N
         temperature = 0.6
         print_success("Using default temperature: 0.6")
 
+    # Step 5: Set Max Tokens
+    print_section_header(f"Step 5: Set Max Tokens for {agent_name}", "📏")
+
+    print_info("Max tokens controls the maximum length of responses:")
+    print_info(f"  • {MAX_TOKENS} = Default (balanced length)")
+    print_info("  • 2000 = Shorter responses")
+    print_info("  • 8000 = Longer, more detailed responses")
+    print_info("  • 16000 = Very long responses")
+    print()
+
+    max_tokens_input = get_user_input(f"Enter max tokens (100-16000) [default: {MAX_TOKENS}]: ").strip()
+
+    if max_tokens_input:
+        try:
+            max_tokens = int(max_tokens_input)
+            if max_tokens < 100 or max_tokens > 16000:
+                print_warning(f"Max tokens out of range, using default {MAX_TOKENS}")
+                max_tokens = MAX_TOKENS
+            else:
+                print_success(f"Max tokens set to: {max_tokens}")
+        except ValueError:
+            print_warning(f"Invalid input, using default max tokens {MAX_TOKENS}")
+            max_tokens = MAX_TOKENS
+    else:
+        max_tokens = MAX_TOKENS
+        print_success(f"Using default max tokens: {MAX_TOKENS}")
+
     print()
     print(colorize(f"✓ {agent_name} configuration complete!", Colors.GREEN, bold=True))
     print()
@@ -576,7 +604,8 @@ async def configure_agent_simple(agent_name: str, roles_data: Optional[Dict] = N
         'persona': persona,
         'provider': provider_key,
         'model': model,
-        'temperature': temperature
+        'temperature': temperature,
+        'max_tokens': max_tokens
     }
 
 
@@ -798,6 +827,41 @@ def get_conversation_starter() -> str:
     if starter:
         return starter
     return default_starter
+
+
+def configure_max_tokens() -> int:
+    """Interactive function to configure max tokens for responses.
+
+    Returns:
+        int: The configured max tokens value
+    """
+    print_section_header("Max Tokens Configuration", "📏")
+    print_info("Configure the maximum length of AI responses.")
+    print()
+    print_info("Max tokens controls response length:")
+    print_info(f"  • {MAX_TOKENS} = Default (balanced, recommended)")
+    print_info("  • 2000 = Shorter responses")
+    print_info("  • 8000 = Longer, more detailed responses")
+    print_info("  • 16000 = Very long, comprehensive responses")
+    print()
+
+    max_tokens_input = get_user_input(f"Enter max tokens (100-16000) [default: {MAX_TOKENS}]", str(MAX_TOKENS)).strip()
+
+    if max_tokens_input:
+        try:
+            max_tokens = int(max_tokens_input)
+            if max_tokens < 100 or max_tokens > 16000:
+                print_warning(f"Max tokens out of range, using default {MAX_TOKENS}")
+                return MAX_TOKENS
+            else:
+                print_success(f"✓ Max tokens set to: {max_tokens}")
+                return max_tokens
+        except ValueError:
+            print_warning(f"Invalid input, using default max tokens {MAX_TOKENS}")
+            return MAX_TOKENS
+    else:
+        print_success(f"✓ Using default max tokens: {MAX_TOKENS}")
+        return MAX_TOKENS
 
 def show_session_summary(provider_a: str, provider_b: str, max_rounds: int, mem_rounds: int, roles_data: Optional[Dict] = None, temp_a: Optional[float] = None, temp_b: Optional[float] = None):
     """Show a summary of the session configuration"""
@@ -2126,6 +2190,7 @@ async def run_bridge(args):
             provider_a = config_a['provider']
             args.model_a = config_a['model']
             args.temp_a = config_a['temperature']
+            max_tokens_a = config_a.get('max_tokens', args.max_tokens)
 
             # Configure Agent B
             config_b = await configure_agent_simple("Agent B", roles_data)
@@ -2133,6 +2198,7 @@ async def run_bridge(args):
             provider_b = config_b['provider']
             args.model_b = config_b['model']
             args.temp_b = config_b['temperature']
+            max_tokens_b = config_b.get('max_tokens', args.max_tokens)
 
             # Get conversation starter
             starter = get_conversation_starter()
@@ -2142,10 +2208,14 @@ async def run_bridge(args):
             provider_a, provider_b = DEFAULT_PROVIDER_A, DEFAULT_PROVIDER_B
             persona_a, persona_b = None, None
             starter = get_conversation_starter()
+            max_tokens_a = args.max_tokens
+            max_tokens_b = args.max_tokens
     else:
         provider_a, provider_b = args.provider_a, args.provider_b
         persona_a, persona_b = None, None
         starter = args.starter
+        max_tokens_a = args.max_tokens
+        max_tokens_b = args.max_tokens
 
     # Get temperature values from roles data if available
     temp_a = roles_data.get('temp_a', args.temp_a) if roles_data else args.temp_a
@@ -2207,13 +2277,13 @@ async def run_bridge(args):
 
         if args.debug:
             print_info(f"🔍 DEBUG: Creating Agent A with {provider_a}...")
-        agent_a = create_agent("a", provider_a, model_a, temp_a, get_spec(provider_a).default_system)
+        agent_a = create_agent("a", provider_a, model_a, temp_a, get_spec(provider_a).default_system, max_tokens_a)
         if args.debug:
             print_success(f"✅ Agent A created successfully")
 
         if args.debug:
             print_info(f"🔍 DEBUG: Creating Agent B with {provider_b}...")
-        agent_b = create_agent("b", provider_b, model_b, temp_b, get_spec(provider_b).default_system)
+        agent_b = create_agent("b", provider_b, model_b, temp_b, get_spec(provider_b).default_system, max_tokens_b)
         if args.debug:
             print_success(f"✅ Agent B created successfully")
 
@@ -2526,6 +2596,7 @@ Examples:
     parser.add_argument("--model-b", help="Model override for Agent B")
     parser.add_argument("--temp-a", type=float, default=0.7, help="Temperature for Agent A")
     parser.add_argument("--temp-b", type=float, default=0.7, help="Temperature for Agent B")
+    parser.add_argument("--max-tokens", type=int, default=MAX_TOKENS, help=f"Maximum tokens per response (default: {MAX_TOKENS})")
     parser.add_argument("--max-rounds", type=int, default=30, help="Maximum conversation rounds")
     parser.add_argument("--mem-rounds", type=int, default=8, help="Memory rounds for context")
     parser.add_argument("--roles", default="roles.json", help="Path to roles.json file for personas")
