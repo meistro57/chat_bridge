@@ -13,7 +13,7 @@ import httpx
 import google.generativeai as genai
 
 STALL_TIMEOUT_SEC = 90
-MAX_TOKENS = 800
+MAX_TOKENS = 4000  # Increased from 800 to prevent response cutoff
 
 
 @dataclass
@@ -870,6 +870,7 @@ class AgentRuntime:
     temperature: float
     system_prompt: str
     client: object
+    max_tokens: int = MAX_TOKENS
 
     @property
     def spec(self) -> ProviderSpec:
@@ -891,24 +892,24 @@ class AgentRuntime:
         # Build messages and stream based on provider type
         if self.spec.kind == "chatml":
             messages = build_chatml(recent_turns, self.agent_id, self.system_prompt)
-            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=self.max_tokens):
                 yield chunk
         elif self.spec.kind == "anthropic":
             messages = build_anthropic(recent_turns, self.agent_id)
-            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=self.max_tokens):
                 yield chunk
         elif self.spec.kind == "gemini":
             messages = build_gemini(recent_turns, self.agent_id)
-            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+            async for chunk in self.client.stream(self.system_prompt, messages, temperature=self.temperature, max_tokens=self.max_tokens):
                 yield chunk
         elif self.spec.kind == "ollama":
             messages = build_ollama(recent_turns, self.agent_id)
-            async for chunk in self.client.stream(messages, self.system_prompt, temperature=self.temperature, max_tokens=MAX_TOKENS):
+            async for chunk in self.client.stream(messages, self.system_prompt, temperature=self.temperature, max_tokens=self.max_tokens):
                 yield chunk
         else:
             # Default to chatml for unknown types
             messages = build_chatml(recent_turns, self.agent_id, self.system_prompt)
-            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=MAX_TOKENS):
+            async for chunk in self.client.stream(messages, temperature=self.temperature, max_tokens=self.max_tokens):
                 yield chunk
 
     async def generate_response(self, prompt_text: str, mem_rounds: int) -> str:
@@ -919,9 +920,9 @@ class AgentRuntime:
         return "".join(full_response)
 
 
-def create_agent(agent_id: str, provider_key: str, model: str, temperature: float, system_prompt: str) -> AgentRuntime:
+def create_agent(agent_id: str, provider_key: str, model: str, temperature: float, system_prompt: str, max_tokens: int = MAX_TOKENS) -> AgentRuntime:
     logger = logging.getLogger("bridge")
-    logger.info("Creating agent %s: provider=%s, model=%s, temp=%s", agent_id, provider_key, model, temperature)
+    logger.info("Creating agent %s: provider=%s, model=%s, temp=%s, max_tokens=%s", agent_id, provider_key, model, temperature, max_tokens)
 
     try:
         if provider_key == "openai":
@@ -964,6 +965,7 @@ def create_agent(agent_id: str, provider_key: str, model: str, temperature: floa
             temperature=temperature,
             system_prompt=system_prompt,
             client=client,
+            max_tokens=max_tokens,
         )
         logger.info("Agent %s created successfully", agent_id)
         return agent
