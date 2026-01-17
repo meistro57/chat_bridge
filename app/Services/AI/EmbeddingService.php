@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 
 class EmbeddingService
 {
-    protected string $apiKey;
+    protected ?string $apiKey;
     protected string $baseUrl = 'https://api.openai.com/v1';
 
     public function __construct()
