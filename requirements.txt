@@ -1,5 +1,0 @@
-httpx
-python-dotenv
-google-generativeai
-inquirer
-fastmcp
