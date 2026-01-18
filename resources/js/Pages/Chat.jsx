@@ -3,87 +3,141 @@ import { Head, Link } from '@inertiajs/react';
 
 export default function Chat({ personas, conversations }) {
     return (
-        <div className="min-h-screen p-8 font-['VT323']">
-            <Head title="Dashboard" />
+        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+            <Head title="Bridge Control" />
             
-            <div className="max-w-4xl mx-auto">
-                <div className="bg-[#000080] text-white p-2 flex justify-between items-center shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset]">
-                    <span className="font-bold uppercase tracking-wider text-xl">Bridge_Chat_Network.exe</span>
-                    <div className="flex gap-1">
-                        <button className="bg-[#c0c0c0] text-black px-2 py-0.5 text-xs shadow-[1px_1px_0px_0px_#ffffff_inset,-1px_-1px_0px_0px_#808080_inset]">_</button>
-                        <button className="bg-[#c0c0c0] text-black px-2 py-0.5 text-xs shadow-[1px_1px_0px_0px_#ffffff_inset,-1px_-1px_0px_0px_#808080_inset]">X</button>
+            <div className="max-w-7xl mx-auto space-y-12">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/5 pb-8 gap-6">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-xs font-mono text-zinc-400 tracking-[0.2em] uppercase">System Online</span>
+                        </div>
+                        <h1 className="text-5xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white via-zinc-200 to-zinc-500 tracking-tight">
+                            Bridge Network.
+                        </h1>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <Link 
+                            href="/personas" 
+                            className="px-6 py-3 rounded-xl font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-300"
+                        >
+                            Manage Personas
+                        </Link>
+                        <Link 
+                            href="/chat/create" 
+                            className="group relative px-8 py-3 bg-white text-black rounded-xl font-bold overflow-hidden transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                            <span className="relative flex items-center gap-2">
+                                Initialize New Bridge 
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                            </span>
+                        </Link>
                     </div>
                 </div>
 
-                <div className="bg-[#c0c0c0] p-6 shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] border-t-0">
-                    <div className="flex justify-between items-center mb-8">
-                        <h1 className="text-4xl text-black">MAIN CONTROL PANEL</h1>
-                        <div className="flex gap-4">
-                            <Link 
-                                href="/chat/search" 
-                                className="bg-[#c0c0c0] text-black px-4 py-2 text-xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
-                            >
-                                SEARCH_ARCHIVES
-                            </Link>
-                            <Link 
-                                href="/personas" 
-                                className="bg-[#c0c0c0] text-black px-4 py-2 text-xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
-                            >
-                                MANAGE_PERSONAS
-                            </Link>
-                            <Link 
-                                href="/chat/create" 
-                                className="bg-[#000080] text-white px-6 py-2 text-2xl shadow-[2px_2px_0px_0px_#ffffff_inset,-2px_-2px_0px_0px_#808080_inset] active:shadow-[-2px_-2px_0px_0px_#ffffff_inset,2px_2px_0px_0px_#808080_inset]"
-                            >
-                                INIT_NEW_BRIDGE
-                            </Link>
+                {/* Dashboard Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    {/* Left Column: Recent Sessions */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-2xl font-light tracking-wide text-zinc-400">Recent Activity</h2>
+                            <Link href="/chat/search" className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">Search Archives &rarr;</Link>
+                        </div>
+                        
+                        <div className="grid gap-4">
+                            {conversations.map((conv) => (
+                                <Link 
+                                    key={conv.id} 
+                                    href={`/chat/${conv.id}`}
+                                    className="group glass-panel rounded-2xl p-6 transition-all duration-300 hover:border-indigo-500/30 hover:shadow-[0_0_30px_rgba(99,102,241,0.1)] relative overflow-hidden"
+                                >
+                                    <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+                                    </div>
+
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex -space-x-2">
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-black">A</div>
+                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-[10px] font-bold ring-2 ring-black">B</div>
+                                            </div>
+                                            <span className="font-semibold text-lg group-hover:text-indigo-300 transition-colors">
+                                                {conv.provider_a} <span className="text-zinc-500 text-sm font-normal">vs</span> {conv.provider_b}
+                                            </span>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold ${
+                                                conv.status === 'completed' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                            }`}>
+                                                {conv.status}
+                                            </span>
+                                        </div>
+                                        
+                                        <p className="text-zinc-400 text-sm line-clamp-2 leading-relaxed pl-11 border-l border-white/5">
+                                            "{conv.starter_message}"
+                                        </p>
+
+                                        <div className="flex justify-between items-center pl-11 mt-2">
+                                            <span className="text-xs text-zinc-600 font-mono">ID: {conv.id.substring(0,8)}...</span>
+                                            <Link 
+                                                href={route('chat.destroy', conv.id)} 
+                                                method="delete"
+                                                as="button"
+                                                onClick={(e) => { e.stopPropagation(); if(!confirm('Delete this session?')) e.preventDefault(); }}
+                                                className="text-xs text-zinc-600 hover:text-red-400 transition-colors z-10 p-2"
+                                            >
+                                                Delete
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
+
+                            {conversations.length === 0 && (
+                                <div className="glass-panel p-12 text-center rounded-2xl border-dashed border-zinc-800">
+                                    <p className="text-zinc-500 mb-4">No active bridges found.</p>
+                                    <Link href="/chat/create" className="text-indigo-400 hover:text-indigo-300">Start a new session</Link>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div>
-                            <h2 className="text-2xl mb-4 text-[#000080] border-b-2 border-[#000080]">RECENT_SESSIONS</h2>
-                            <div className="space-y-4">
-                                {conversations.map((conv) => (
-                                        <div key={conv.id} className="bg-white p-3 border-2 border-[#808080] hover:bg-[#ffffcc] group">
-                                            <div className="flex justify-between items-start">
-                                                <Link href={`/chat/${conv.id}`} className="flex-1">
-                                                    <div className="flex justify-between text-xl font-bold">
-                                                        <span>{conv.provider_a} vs {conv.provider_b}</span>
-                                                        <span className="text-sm opacity-60 uppercase">{conv.status}</span>
-                                                    </div>
-                                                    <p className="truncate text-lg opacity-80 mt-1">{conv.starter_message}</p>
-                                                </Link>
-                                                <Link 
-                                                    href={route('chat.destroy', conv.id)} 
-                                                    method="delete" 
-                                                    as="button"
-                                                    className="ml-2 text-red-600 opacity-0 group-hover:opacity-100 hover:font-bold"
-                                                    onClick={(e) => !confirm('Are you sure?') && e.preventDefault()}
-                                                >
-                                                    [X]
-                                                </Link>
+                    {/* Right Column: Persona Library */}
+                    <div>
+                        <h2 className="text-2xl font-light tracking-wide text-zinc-400 mb-6">Persona Index</h2>
+                        <div className="glass-panel rounded-2xl p-1 h-[600px] overflow-hidden flex flex-col">
+                            <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
+                                {personas.map((persona) => (
+                                    <div key={persona.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                            </div>
+                                            <div>
+                                                <div className="text-zinc-200 font-medium">{persona.name}</div>
+                                                <div className="text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-indigo-400 transition-colors">{persona.provider}</div>
                                             </div>
                                         </div>
+                                    </div>
                                 ))}
-                                {conversations.length === 0 && <p className="text-xl opacity-60">NO_DATA_FOUND</p>}
+                                {personas.length === 0 && (
+                                    <div className="text-center py-8 text-zinc-600 text-sm">No personas instantiated.</div>
+                                )}
                             </div>
-                        </div>
-
-                        <div>
-                            <h2 className="text-2xl mb-4 text-[#000080] border-b-2 border-[#000080]">PERSONA_LIBRARY</h2>
-                            <div className="bg-white p-4 border-2 border-[#808080] h-[400px] overflow-y-auto">
-                                <ul className="space-y-2 text-xl">
-                                    {personas.map((persona) => (
-                                        <li key={persona.id} className="flex justify-between">
-                                            <span>{persona.name}</span>
-                                            <span className="text-sm uppercase opacity-60">[{persona.provider}]</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                            <div className="p-4 border-t border-white/5 bg-white/5 backdrop-blur-sm">
+                                <Link 
+                                    href="/personas" 
+                                    className="block w-full text-center py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors"
+                                >
+                                    Manage Registry
+                                </Link>
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>

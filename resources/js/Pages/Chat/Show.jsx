@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 
 export default function Show({ conversation, stopSignal }) {
     const [messages, setMessages] = useState(conversation.messages || []);
@@ -7,45 +7,7 @@ export default function Show({ conversation, stopSignal }) {
     const [streamingSpeaker, setStreamingSpeaker] = useState(null);
     const [status, setStatus] = useState(conversation.status);
     const [isStopping, setIsStopping] = useState(stopSignal);
-    const [theme, setTheme] = useState('matrix'); // 'matrix', 'retro', 'cyber'
     const scrollRef = useRef(null);
-
-    const getThemeClasses = () => {
-        switch (theme) {
-            case 'retro':
-                return {
-                    container: 'bg-retro-bg text-retro-text font-serif',
-                    window: 'border-2 border-retro-border-light shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]',
-                    titleBar: 'bg-retro-window-title text-white',
-                    content: 'bg-white border-2 border-retro-border-dark',
-                    bubble: 'border-l-4 border-retro-border-dark pl-4',
-                    userText: 'text-blue-800',
-                    aiText: 'text-black',
-                };
-            case 'cyber':
-                return {
-                    container: 'bg-cyber-bg text-cyber-text font-mono',
-                    window: 'border-2 border-cyber-border shadow-[0_0_15px_rgba(255,0,255,0.5)]',
-                    titleBar: 'bg-cyber-border text-black',
-                    content: 'bg-[#0a0a0a] border-y border-cyber-border',
-                    bubble: 'border-l-2 border-cyber-accent pl-4',
-                    userText: 'text-pink-400',
-                    aiText: 'text-cyber-text',
-                };
-            default: // matrix
-                return {
-                    container: 'bg-black text-matrix-text font-mono',
-                    window: 'border-2 border-matrix-border shadow-[0_0_20px_rgba(0,128,0,0.5)]',
-                    titleBar: 'bg-matrix-border text-black',
-                    content: 'bg-[#050505]',
-                    bubble: 'border-l-2 border-matrix-border pl-4',
-                    userText: 'text-blue-500',
-                    aiText: 'text-matrix-text',
-                };
-        }
-    };
-
-    const t = getThemeClasses();
 
     useEffect(() => {
         const channel = window.Echo.private(`conversation.${conversation.id}`);
@@ -80,7 +42,7 @@ export default function Show({ conversation, stopSignal }) {
     }, [messages, streamingContent]);
 
     const handleStop = () => {
-        if (confirm('Send interrupt signal to agents?')) {
+        if (confirm('Initiate emergency halt sequence?')) {
             router.post(`/chat/${conversation.id}/stop`, {}, {
                 onSuccess: () => setIsStopping(true)
             });
@@ -88,92 +50,107 @@ export default function Show({ conversation, stopSignal }) {
     };
 
     return (
-        <div className={`min-h-screen p-4 md:p-8 ${t.container}`}>
-            <Head title={`Conversation ${conversation.id}`} />
+        <div className="min-h-screen text-zinc-200 flex flex-col h-screen overflow-hidden">
+            <Head title={`Session ${conversation.id.substring(0,8)}`} />
             
-            <div className={`max-w-5xl mx-auto h-[90vh] flex flex-col ${t.window}`}>
-                {/* Theme Switcher and Title Bar */}
-                <div className={`${t.titleBar} p-2 flex justify-between items-center px-4`}>
+            {/* Glass Header */}
+            <div className="glass-panel border-b border-white/5 p-4 z-10 sticky top-0 bg-[#09090b]/80 backdrop-blur-xl">
+                <div className="max-w-5xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <span className="font-bold tracking-widest text-xl">SESSION_TRANSCRIPT::{conversation.id.substring(0,8)}</span>
-                        <div className="flex bg-black/20 p-1 rounded gap-1 ml-4">
-                            <button onClick={() => setTheme('matrix')} className={`px-2 text-xs ${theme === 'matrix' ? 'bg-white/20' : ''}`}>MTRX</button>
-                            <button onClick={() => setTheme('retro')} className={`px-2 text-xs ${theme === 'retro' ? 'bg-white/20' : ''}`}>95</button>
-                            <button onClick={() => setTheme('cyber')} className={`px-2 text-xs ${theme === 'cyber' ? 'bg-white/20' : ''}`}>CYBR</button>
+                        <Link href="/chat" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-zinc-400 hover:text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                        </Link>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h1 className="font-bold text-lg tracking-tight">Session Transcript</h1>
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-400 font-mono">{conversation.id.substring(0,8)}</span>
+                            </div>
+                            <div className="text-xs text-zinc-500 flex items-center gap-2">
+                                <span>{conversation.provider_a}</span>
+                                <span className="w-1 h-1 rounded-full bg-zinc-600"></span>
+                                <span>{conversation.provider_b}</span>
+                            </div>
                         </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${
+                            status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                        }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-500'}`}></div>
+                            {status.toUpperCase()}
+                        </div>
+
                         {status === 'active' && !isStopping && (
                             <button 
                                 onClick={handleStop}
-                                className="ml-4 bg-red-600 text-white px-3 py-0.5 text-xs font-bold animate-pulse hover:bg-red-700"
+                                className="bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 flex items-center gap-2"
                             >
-                                HALT_EXECUTION
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                                HALT
                             </button>
                         )}
                         {isStopping && (
-                            <span className="ml-4 text-red-500 text-xs font-bold font-mono">STOP_SIGNAL_PENDING...</span>
+                            <span className="text-red-400 text-xs font-mono animate-pulse">STOPPING...</span>
                         )}
-                    </div>
-                    <div className="flex gap-4">
-                        <Link href="/chat" className="hover:opacity-70 px-2">EXIT_TO_DASHBOARD</Link>
+                        <a 
+                            href={`/chat/${conversation.id}/transcript`} 
+                            className="text-zinc-400 hover:text-white p-2"
+                            title="Download Transcript"
+                            download
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        </a>
                     </div>
                 </div>
+            </div>
 
-                {/* Main Content */}
-                <div ref={scrollRef} className={`flex-1 overflow-y-auto p-6 space-y-6 ${t.content}`}>
+            {/* Chat Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6" ref={scrollRef}>
+                <div className="max-w-3xl mx-auto space-y-8 pb-12">
+                    
                     {/* Starter Message */}
-                    <div className="border-b border-white/10 pb-4">
-                        <span className={`${theme === 'retro' ? 'bg-retro-window-title text-white' : 'bg-matrix-border text-black'} px-2 py-0.5 mr-2`}>ORIGIN_INPUT</span>
-                        <span className="text-xl opacity-80">{conversation.starter_message}</span>
+                    <div className="flex justify-center mb-12">
+                        <div className="glass-panel px-6 py-4 rounded-2xl max-w-lg text-center">
+                            <div className="text-[10px] uppercase tracking-widest text-indigo-400 mb-2 font-bold">Initial Prompt</div>
+                            <p className="text-zinc-300 text-lg font-light leading-relaxed">"{conversation.starter_message}"</p>
+                        </div>
                     </div>
 
-                    {/* Chat History */}
+                    {/* Messages */}
                     {messages.map((msg, idx) => (
-                        <div key={msg.id || idx} className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs opacity-50">[{new Date(msg.created_at).toLocaleTimeString()}]</span>
-                                <span className={`font-bold text-2xl ${msg.role === 'user' ? t.userText : t.aiText}`}>
-                                    {msg.persona?.name || msg.role.toUpperCase()}:
+                        <div key={msg.id || idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} group`}>
+                            <div className="flex items-center gap-2 mb-2 px-1">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.role === 'user' ? 'text-indigo-400' : 'text-purple-400'}`}>
+                                    {msg.persona?.name || msg.role}
+                                </span>
+                                <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {new Date(msg.created_at).toLocaleTimeString()}
                                 </span>
                             </div>
-                            <div className={`text-2xl leading-relaxed ${t.bubble}`}>
+                            <div className={`
+                                max-w-2xl p-6 rounded-2xl text-lg leading-relaxed shadow-lg backdrop-blur-sm
+                                ${msg.role === 'user' 
+                                    ? 'bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/20 rounded-tr-sm text-indigo-100' 
+                                    : 'bg-zinc-800/40 border border-white/5 rounded-tl-sm text-zinc-100'}
+                            `}>
                                 {msg.content}
                             </div>
                         </div>
                     ))}
 
-                    {/* Streaming Content */}
+                    {/* Streaming Indicator */}
                     {streamingSpeaker && (
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs opacity-50">[LIVE_STREAM]</span>
-                                <span className="font-bold text-2xl text-yellow-500 animate-pulse">
-                                    {streamingSpeaker}:
-                                </span>
+                        <div className="flex flex-col items-start animate-pulse">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 px-1">
+                                {streamingSpeaker} is typing...
                             </div>
-                            <div className={`text-2xl leading-relaxed ${t.bubble} border-yellow-900/50`}>
+                            <div className="max-w-2xl p-6 rounded-2xl rounded-tl-sm bg-emerald-900/10 border border-emerald-500/20 text-emerald-100 text-lg leading-relaxed shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                                 {streamingContent}
-                                <span className="inline-block w-3 h-6 bg-yellow-500 ml-1 animate-ping"></span>
+                                <span className="inline-block w-2 H-5 bg-emerald-400 ml-1 animate-blink">|</span>
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* Status Bar */}
-                <div className={`${t.titleBar} p-2 text-sm flex justify-between px-4 opacity-90`}>
-                    <div className="flex gap-4">
-                        <div>PROVIDER_A: {conversation.provider_a}</div>
-                        <div>PROVIDER_B: {conversation.provider_b}</div>
-                    </div>
-                    <div className="flex gap-4 items-center">
-                        <a 
-                            href={`/chat/${conversation.id}/transcript`} 
-                            className="bg-black/20 px-2 hover:bg-black/40"
-                            download
-                        >
-                            DOWNLOAD_TRANSCRIPT
-                        </a>
-                        <div className="animate-pulse">SYSTEM_STABLE: 100%</div>
-                    </div>
                 </div>
             </div>
         </div>

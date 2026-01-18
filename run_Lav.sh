@@ -1,14 +1,10 @@
 #!/bin/bash
 
-# Navigate to the project directory
-PROJECT_DIR="chat_bridge_laravel"
-
-if [ -d "$PROJECT_DIR" ]; then
-    cd "$PROJECT_DIR"
-else
-    echo "❌ Error: Directory '$PROJECT_DIR' not found."
-    exit 1
-fi
+# Navigate to the project directory if needed
+# PROJECT_DIR="chat_bridge_laravel"
+# if [ -d "$PROJECT_DIR" ]; then
+#     cd "$PROJECT_DIR"
+# fi
 
 # Function to kill background processes on exit
 cleanup() {

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\Persona;
+use App\Jobs\RunChatSession;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -25,6 +27,7 @@ class ChatTest extends TestCase
 
     public function test_can_create_new_conversation(): void
     {
+        Queue::fake();
         $this->withoutMiddleware();
         $personaA = Persona::factory()->create();
         $personaB = Persona::factory()->create();
@@ -40,5 +43,7 @@ class ChatTest extends TestCase
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
         ]);
+        
+        Queue::assertPushed(RunChatSession::class);
     }
 }

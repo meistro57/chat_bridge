@@ -8,6 +8,18 @@ This repository contains **Chat Bridge**, an application for facilitating automa
 - **Stack**: Laravel 12 (PHP 8.2+), Inertia.js (React), TailwindCSS v4, SQLite.
 - **AI Integration**: Custom driver-based architecture supporting OpenAI, Anthropic, DeepSeek, Ollama, etc.
 
+## UI Design System: "Midnight Glass"
+
+The application features a custom implementation of a modern, dark-mode aesthetic.
+
+- **Theme**: Deep Zinc (`zinc-950`) background with ambient radial gradients.
+- **Glassmorphism**: Panels use translucent backgrounds (`bg-white/5`), backdrop blurs, and subtle white borders.
+- **Colors**:
+  - **Indigo/Violet**: Primary actions and brand accents.
+  - **Emerald**: Success states and active indicators.
+  - **Red**: Destructive actions (stops/deletes).
+- **Typography**: Uses modern system sans-serif fonts with tight tracking for headers and monospaced accents.
+
 ## Technical Architecture
 
 ### 1. The Manager Pattern (AI Drivers)

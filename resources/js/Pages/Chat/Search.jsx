@@ -10,74 +10,118 @@ export default function Search({ results, query }) {
     };
 
     return (
-        <div className="min-h-screen p-8 font-['VT323'] bg-[#c0c0c0]">
-            <Head title="Search Conversations" />
+        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+            <Head title="Search Archives" />
             
-            <div className="max-w-4xl mx-auto border-2 border-[#ffffff] shadow-[2px_2px_0px_0px_#000000]">
-                <div className="bg-[#000080] text-white p-1 flex justify-between items-center px-2">
-                    <span className="font-bold">CONVERSATION_SEARCH_QUERY.EXE</span>
-                    <Link href="/" className="bg-[#c0c0c0] text-black px-2 text-sm border-b border-r border-black shadow-[1px_1px_0px_0px_#ffffff_inset]">X</Link>
-                </div>
+            <div className="max-w-4xl mx-auto space-y-12">
+                {/* Header & Search Form */}
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                        <Link href="/chat" className="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                            Back to Dashboard
+                        </Link>
+                        <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500">Archive Link Active</span>
+                        </div>
+                    </div>
 
-                <div className="p-6">
-                    <form onSubmit={handleSearch} className="mb-8">
-                        <label className="block text-2xl mb-2 uppercase">Input Search Parameters:</label>
-                        <div className="flex gap-2">
+                    <div className="text-center space-y-4">
+                        <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">Archive Search</h1>
+                        <p className="text-zinc-500 max-w-lg mx-auto">Retrieve specific neural interactions by keyword, timestamp, or entity reference.</p>
+                    </div>
+
+                    <form onSubmit={handleSearch} className="relative max-w-2xl mx-auto group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                        <div className="relative flex items-center">
+                            <div className="absolute left-6 text-zinc-400 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            </div>
                             <input 
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="flex-1 bg-white border-2 border-[#808080] p-2 text-2xl shadow-[1px_1px_0px_0px_#000000_inset]"
-                                placeholder="Keyword lookup..."
+                                className="w-full glass-panel pl-16 pr-32 py-5 rounded-2xl text-xl bg-zinc-900/40 border-white/10 focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all placeholder:text-zinc-600"
+                                placeholder="Search transcript data..."
+                                autoFocus
                             />
                             <button 
                                 type="submit"
-                                className="bg-[#c0c0c0] px-6 py-2 text-2xl border-2 border-[#ffffff] shadow-[1px_1px_0px_0px_#000000] active:shadow-[-1px_-1px_0px_0px_#ffffff_inset]"
+                                className="absolute right-3 px-6 py-2.5 bg-zinc-100 text-zinc-900 font-bold rounded-xl hover:bg-white hover:scale-105 transition-all text-sm"
                             >
-                                EXECUTE
+                                Search
                             </button>
                         </div>
                     </form>
+                </div>
 
-                    <div className="space-y-6">
-                        <h2 className="text-2xl border-b-2 border-[#000080] text-[#000080] mb-4 uppercase">
-                            Query Results: {results.length} found
-                        </h2>
+                {/* Results Area */}
+                <div className="space-y-2">
+                    {query && (
+                        <div className="flex items-center justify-between text-zinc-500 text-sm border-b border-white/5 pb-4">
+                            <span>Found {results.length} matching records</span>
+                            <span className="font-mono text-xs opacity-50">QUERY: "{query}"</span>
+                        </div>
+                    )}
 
+                    <div className="grid gap-4">
                         {results.map((msg) => (
-                            <div key={msg.id} className="bg-white p-4 border-2 border-[#808080] hover:bg-[#ffffcc]">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-bold text-xl text-[#000080]">
-                                        {msg.persona?.name || 'SYSTEM'}:
-                                    </span>
-                                    <Link 
-                                        href={`/chat/${msg.conversation_id}`} 
-                                        className="text-sm underline hover:font-bold"
-                                    >
-                                        VIEW_FULL_CONTEXT [{msg.conversation_id.substring(0,8)}]
-                                    </Link>
-                                </div>
-                                <p className="text-xl leading-relaxed italic">
-                                    "{msg.content.substring(0, 200)}{msg.content.length > 200 ? '...' : ''}"
-                                </p>
-                                <div className="mt-2 text-sm opacity-60">
-                                    TIMESTAMP: {new Date(msg.created_at).toLocaleString()} | 
-                                    AGENTS: {msg.conversation.provider_a} vs {msg.conversation.provider_b}
+                            <div key={msg.id} className="group glass-panel p-6 rounded-2xl hover:border-indigo-500/30 transition-all duration-300">
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border border-white/5 ${
+                                                msg.persona ? 'bg-indigo-500/10 text-indigo-400' : 'bg-purple-500/10 text-purple-400'
+                                            }`}>
+                                                {msg.persona ? 'P' : 'S'}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-zinc-200">{msg.persona?.name || 'SYSTEM'}</div>
+                                                <div className="text-[10px] uppercase text-zinc-500 flex items-center gap-1">
+                                                    in session 
+                                                    <Link href={`/chat/${msg.conversation_id}`} className="hover:text-white transition-colors border-b border-dotted border-zinc-600 hover:border-white">
+                                                        {msg.conversation_id.substring(0,8)}
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-zinc-600 font-mono">
+                                            {new Date(msg.created_at).toLocaleString()}
+                                        </div>
+                                    </div>
+                                    
+                                    <p className="pl-11 text-zinc-300 leading-relaxed border-l-2 border-white/5 py-1">
+                                        "{msg.content.substring(0, 300)}{msg.content.length > 300 ? '...' : ''}"
+                                    </p>
+                                    
+                                    <div className="pl-11 pt-2 flex items-center gap-4">
+                                        <Link 
+                                            href={`/chat/${msg.conversation_id}`} 
+                                            className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                        >
+                                            View Full Context <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         ))}
 
-                        {results.length === 0 && searchTerm && (
-                            <p className="text-3xl text-center opacity-40 py-20 uppercase">NO_MATCHING_RECORDS_IN_DATABASE</p>
+                        {results.length === 0 && query && (
+                            <div className="text-center py-24 glass-panel rounded-3xl border-dashed border-zinc-800">
+                                <div className="inline-flex p-4 rounded-full bg-zinc-800/50 mb-4 text-zinc-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="m8 8 6 6"/><path d="m14 8-6 6"/></svg>
+                                </div>
+                                <h3 className="text-lg font-medium text-zinc-400">No matches located</h3>
+                                <p className="text-zinc-600">Try adjusting your search parameters.</p>
+                            </div>
                         )}
                         
-                        {!searchTerm && (
-                            <p className="text-2xl text-center opacity-40 py-20 uppercase">AWAITING_QUERY_INPUT</p>
+                        {!query && (
+                            <div className="text-center py-32 opacity-20">
+                                <h3 className="text-4xl font-bold tracking-tight text-zinc-500">AWAITING INPUT</h3>
+                            </div>
                         )}
-                    </div>
-
-                    <div className="mt-8">
-                        <Link href="/" className="text-xl underline">{"<-- RETURN_TO_DASHBOARD"}</Link>
                     </div>
                 </div>
             </div>

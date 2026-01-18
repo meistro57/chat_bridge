@@ -4,27 +4,60 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.jsx';
 
-@theme {
-    /* Retro Theme */
-    --color-retro-bg: #c0c0c0;
-    --color-retro-window-title: #000080;
-    --color-retro-border-light: #ffffff;
-    --color-retro-border-dark: #808080;
-    --color-retro-text: #000000;
+:root {
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(20, 20, 25, 0.6);
+    --neon-blue: #6366f1;
+    --neon-purple: #a855f7;
+}
 
-    /* Terminal/Matrix Theme */
-    --color-matrix-bg: #050505;
-    --color-matrix-text: #22c55e;
-    --color-matrix-border: #14532d;
-    --color-matrix-accent: #eab308;
+body {
+    background-color: #09090b; /* Zinc 950 */
+    background-image: 
+        radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%), 
+        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.15), transparent 25%);
+    color: #e4e4e7; /* Zinc 200 */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
 
-    /* Cyberpunk Theme */
-    --color-cyber-bg: #0d0221;
-    --color-cyber-text: #00ffcc;
-    --color-cyber-border: #ff00ff;
-    --color-cyber-accent: #ffff00;
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
 
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/* Animations */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
+}
+
+.animate-float {
+    animation: float 4s ease-in-out infinite;
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-panel:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
 }
