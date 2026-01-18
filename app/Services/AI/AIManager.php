@@ -2,6 +2,7 @@
 
 namespace App\Services\AI;
 
+use App\Models\ApiKey;
 use App\Services\AI\Drivers\AnthropicDriver;
 use App\Services\AI\Drivers\DeepSeekDriver;
 use App\Services\AI\Drivers\GeminiDriver;
@@ -11,6 +12,7 @@ use App\Services\AI\Drivers\OllamaDriver;
 use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\AI\Drivers\OpenRouterDriver;
 use Illuminate\Support\Manager;
+use Illuminate\Support\Facades\Log;
 
 class AIManager extends Manager
 {
@@ -19,9 +21,34 @@ class AIManager extends Manager
         return $this->config->get('ai.default', 'openai');
     }
 
+    /**
+     * Retrieve API Key from DB or Config
+     */
+    private function getKey(string $provider): ?string
+    {
+        try {
+            // 1. Try Database
+            $dbEntry = ApiKey::where('provider', $provider)
+                ->where('is_active', true)
+                ->latest()
+                ->first();
+
+            if ($dbEntry && !empty($dbEntry->key)) {
+                return $dbEntry->key;
+            }
+        } catch (\Exception $e) {
+            // Fallback if DB fails/missing
+            Log::warning("Failed to fetch API key from DB for {$provider}: " . $e->getMessage());
+        }
+
+        // 2. Fallback to Config
+        return config("services.{$provider}.key");
+    }
+
     public function createOpenAIDriver()
     {
-        $key = config('services.openai.key');
+        $key = $this->getKey('openai');
+        
         if (empty($key)) {
             return new MockDriver();
         }
@@ -34,7 +61,8 @@ class AIManager extends Manager
 
     public function createAnthropicDriver()
     {
-        $key = config('services.anthropic.key');
+        $key = $this->getKey('anthropic');
+        
         if (empty($key)) {
             return new MockDriver();
         }
@@ -47,7 +75,8 @@ class AIManager extends Manager
 
     public function createDeepSeekDriver()
     {
-        $key = config('services.deepseek.key');
+        $key = $this->getKey('deepseek');
+        
         if (empty($key)) {
             return new MockDriver();
         }
@@ -60,7 +89,8 @@ class AIManager extends Manager
 
     public function createOpenRouterDriver()
     {
-        $key = config('services.openrouter.key');
+        $key = $this->getKey('openrouter');
+        
         if (empty($key)) {
             return new MockDriver();
         }
@@ -75,7 +105,8 @@ class AIManager extends Manager
 
     public function createGeminiDriver()
     {
-        $key = config('services.gemini.key');
+        $key = $this->getKey('gemini');
+        
         if (empty($key)) {
             return new MockDriver();
         }

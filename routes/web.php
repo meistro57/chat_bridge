@@ -19,3 +19,6 @@ Route::prefix('chat')->group(function () {
 
 use App\Http\Controllers\PersonaController;
 Route::resource('personas', PersonaController::class);
+
+use App\Http\Controllers\ApiKeyController;
+Route::resource('api-keys', ApiKeyController::class);
