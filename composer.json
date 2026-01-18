@@ -13,6 +13,7 @@
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "neuron-core/neuron-ai": "^2.11",
         "saloonphp/saloon": "^3.0"
     },
     "require-dev": {

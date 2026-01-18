@@ -1,12 +1,16 @@
 <?php
 
-use App\Http\Controllers\Api\McpController;
+use App\Http\Controllers\Api\ChatBridgeController;
+use App\Http\Middleware\EnsureChatBridgeToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::post('/chat-bridge/respond', [ChatBridgeController::class, 'respond'])
+    ->middleware(EnsureChatBridgeToken::class);
 
 Route::prefix('mcp')->group(function () {
     Route::get('/health', [McpController::class, 'health']);
