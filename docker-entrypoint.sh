@@ -3,6 +3,9 @@ set -e
 
 echo "🚀 Starting Chat Bridge Docker initialization..."
 
+# Clear cached framework files to avoid stale package discovery issues
+rm -f /var/www/html/bootstrap/cache/*.php
+
 # Wait for PostgreSQL to be ready
 if [ "${DB_CONNECTION}" = "pgsql" ]; then
     echo "⏳ Waiting for PostgreSQL..."
