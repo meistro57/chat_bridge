@@ -142,9 +142,25 @@ php artisan migrate --force
 npm run build
 ```
 
-### 6. (Optional) Seed Sample Data
+### 7. Start the Application
+For automatic port selection and service management (recommended):
 ```bash
-php artisan db:seed
+chmod +x start-services.sh
+./start-services.sh
+```
+
+This script will:
+1. Find available ports for Web and WebSocket servers
+2. Configure your environment
+3. Rebuild frontend assets
+4. Start Web Server, Reverb, and Queue
+5. Display the access URLs
+
+Or run manually:
+```bash
+php artisan serve
+php artisan queue:work
+php artisan reverb:start
 ```
 
 ---

@@ -64,6 +64,13 @@ npm run build
 ```
 
 ### Running Locally
+**Recommended: Use the start script**
+This script handles port selection and starts all services (App, Reverb, Queue).
+```bash
+./start-services.sh
+```
+
+**Or run services manually:**
 ```bash
 # Start backend
 php artisan serve
