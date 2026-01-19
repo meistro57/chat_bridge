@@ -72,4 +72,10 @@ return [
         'model' => env('LMSTUDIO_MODEL', 'local-model'),
     ],
 
+    'qdrant' => [
+        'host' => env('QDRANT_HOST', 'localhost'),
+        'port' => env('QDRANT_PORT', 6333),
+        'enabled' => env('QDRANT_ENABLED', true),
+    ],
+
 ];
