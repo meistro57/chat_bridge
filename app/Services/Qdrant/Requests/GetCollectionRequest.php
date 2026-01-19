@@ -11,8 +11,7 @@ class GetCollectionRequest extends Request
 
     public function __construct(
         protected string $collectionName,
-    ) {
-    }
+    ) {}
 
     public function resolveEndpoint(): string
     {

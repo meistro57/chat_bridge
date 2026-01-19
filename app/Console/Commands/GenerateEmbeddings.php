@@ -39,6 +39,7 @@ class GenerateEmbeddings extends Command
 
         if ($messagesWithoutEmbeddings === 0) {
             $this->info('All messages already have embeddings!');
+
             return self::SUCCESS;
         }
 
@@ -46,8 +47,9 @@ class GenerateEmbeddings extends Command
 
         $confirm = $this->confirm('Do you want to generate embeddings for these messages?', true);
 
-        if (!$confirm) {
+        if (! $confirm) {
             $this->info('Operation cancelled.');
+
             return self::SUCCESS;
         }
 
@@ -81,7 +83,7 @@ class GenerateEmbeddings extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $this->info("✓ Embedding generation complete!");
+        $this->info('✓ Embedding generation complete!');
         $this->info("  - Generated: {$generated}");
         if ($failed > 0) {
             $this->warn("  - Failed: {$failed}");

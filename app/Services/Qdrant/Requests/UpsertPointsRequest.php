@@ -16,8 +16,7 @@ class UpsertPointsRequest extends Request implements HasBody
     public function __construct(
         protected string $collectionName,
         protected array $points,
-    ) {
-    }
+    ) {}
 
     public function resolveEndpoint(): string
     {

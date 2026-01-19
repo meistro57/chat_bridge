@@ -2,14 +2,13 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Models\ChatBridgeThread;
 use App\Neuron\Agents\ChatBridgeAgent;
-use NeuronAI\Chat\Messages\UserMessage;
-use NeuronAI\Chat\Messages\Message; // Import Message
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Mockery\MockInterface;
+use NeuronAI\Chat\Messages\Message; // Import Message
+use NeuronAI\Chat\Messages\UserMessage;
+use Tests\TestCase;
 
 class ChatBridgeApiTest extends TestCase
 {
@@ -29,11 +28,11 @@ class ChatBridgeApiTest extends TestCase
         // Mock Agent
         $this->mock(ChatBridgeAgent::class, function (MockInterface $mock) {
             $mock->shouldReceive('setPersona')->once()->andReturnSelf();
-            
+
             // Mock the chat() method to return a response object with getContent()
             $mockResponse = Mockery::mock(Message::class); // Mock Message specifically
             $mockResponse->shouldReceive('getContent')->once()->andReturn('Hello from Agent');
-            
+
             $mock->shouldReceive('chat')
                 ->once()
                 ->with(Mockery::type(UserMessage::class), Mockery::type('array'))
@@ -46,7 +45,7 @@ class ChatBridgeApiTest extends TestCase
             'message' => 'Hello World',
             'persona' => 'Be kind',
         ], [
-            'X-CHAT-BRIDGE-TOKEN' => 'secret123'
+            'X-CHAT-BRIDGE-TOKEN' => 'secret123',
         ]);
 
         // Assertions
@@ -69,7 +68,7 @@ class ChatBridgeApiTest extends TestCase
             'content' => 'Hello from Agent',
             'role' => 'assistant',
         ]);
-        
+
         // Clean environment
         putenv('CHAT_BRIDGE_TOKEN');
     }
@@ -77,12 +76,12 @@ class ChatBridgeApiTest extends TestCase
     public function test_respond_endpoint_unauthorized_without_token()
     {
         putenv('CHAT_BRIDGE_TOKEN=secret123');
-        
+
         $response = $this->postJson('/api/chat-bridge/respond', [
             'bridge_thread_id' => 'abc',
-            'message' => 'hi'
+            'message' => 'hi',
         ]);
-        
+
         $response->assertStatus(401);
     }
 }

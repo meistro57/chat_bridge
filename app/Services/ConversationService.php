@@ -91,7 +91,7 @@ class ConversationService
                 $this->rag->storeMessage($message);
             }
         } catch (\Exception $e) {
-            Log::warning("Embedding generation failed for message {$message->id}: " . $e->getMessage());
+            Log::warning("Embedding generation failed for message {$message->id}: ".$e->getMessage());
         }
 
         return $message;
@@ -105,7 +105,7 @@ class ConversationService
         // Get the most recent user/assistant message to use as search query
         $lastMessage = $history->last();
 
-        if (!$lastMessage || empty($lastMessage->content)) {
+        if (! $lastMessage || empty($lastMessage->content)) {
             return collect();
         }
 
@@ -121,7 +121,7 @@ class ConversationService
         $currentMessageIds = $history->pluck('id')->filter()->all();
 
         return $relevantMessages->filter(function ($message) use ($currentMessageIds) {
-            return !in_array($message->id, $currentMessageIds);
+            return ! in_array($message->id, $currentMessageIds);
         });
     }
 

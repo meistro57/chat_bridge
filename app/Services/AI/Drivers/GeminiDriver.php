@@ -3,7 +3,6 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
-use App\Services\AI\Data\MessageData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -22,7 +21,7 @@ class GeminiDriver implements AIDriverInterface
         $response = Http::post("{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}", $payload);
 
         if ($response->failed()) {
-            throw new \Exception("Gemini API Error: " . $response->body());
+            throw new \Exception('Gemini API Error: '.$response->body());
         }
 
         return $response->json('candidates.0.content.parts.0.text');
@@ -37,13 +36,13 @@ class GeminiDriver implements AIDriverInterface
 
         $body = $response->toPsrResponse()->getBody();
 
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $line = $this->readLine($body);
-            
+
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
                 $json = json_decode($data, true);
-                
+
                 $content = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
                 if ($content) {
                     yield $content;
@@ -60,9 +59,9 @@ class GeminiDriver implements AIDriverInterface
             ? ['parts' => [['text' => $systemMessages->pluck('content')->implode("\n\n")]]]
             : null;
 
-        $contents = $messages->where('role', '!=', 'system')->map(fn($m) => [
+        $contents = $messages->where('role', '!=', 'system')->map(fn ($m) => [
             'role' => $m->role === 'assistant' ? 'model' : 'user',
-            'parts' => [['text' => $m->content]]
+            'parts' => [['text' => $m->content]],
         ])->values()->all();
 
         return array_filter([
@@ -78,13 +77,14 @@ class GeminiDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
-        while (!$stream->eof()) {
+        while (! $stream->eof()) {
             $char = $stream->read(1);
             if ($char === "\n") {
                 break;
             }
             $buffer .= $char;
         }
+
         return trim($buffer);
     }
 }

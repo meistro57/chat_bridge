@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\Persona;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
-use App\Models\Persona;
 
 class RolesJsonSeeder extends Seeder
 {
@@ -15,15 +15,17 @@ class RolesJsonSeeder extends Seeder
     {
         $jsonPath = base_path('roles.json');
 
-        if (!File::exists($jsonPath)) {
+        if (! File::exists($jsonPath)) {
             $this->command->error("roles.json not found at $jsonPath");
+
             return;
         }
 
         $json = json_decode(File::get($jsonPath), true);
 
-        if (!isset($json['persona_library'])) {
+        if (! isset($json['persona_library'])) {
             $this->command->error("No 'persona_library' key found in roles.json");
+
             return;
         }
 

@@ -3,13 +3,14 @@
 namespace App\Neuron\Agents;
 
 use NeuronAI\Agent;
+use NeuronAI\Providers\AIProviderInterface;
 use NeuronAI\Providers\Anthropic\Anthropic;
 use NeuronAI\Providers\OpenAI\OpenAI;
-use NeuronAI\Providers\AIProviderInterface;
 
 class ChatBridgeAgent extends Agent
 {
     protected string $model;
+
     protected string $extraSystemPrompt = '';
 
     public function provider(): AIProviderInterface
@@ -32,12 +33,12 @@ class ChatBridgeAgent extends Agent
 
     public function instructions(): string
     {
-        $instructions = "You are a concise and helpful assistant for ChatBridge.";
+        $instructions = 'You are a concise and helpful assistant for ChatBridge.';
         $instructions .= "\n- When context is missing, ask 1 clarifying question max.";
         $instructions .= "\n- Never hallucinate external actions; only respond with text.";
-        
+
         if ($this->extraSystemPrompt) {
-            $instructions .= "\n\nPersona Instructions:\n" . $this->extraSystemPrompt;
+            $instructions .= "\n\nPersona Instructions:\n".$this->extraSystemPrompt;
         }
 
         return $instructions;
@@ -48,6 +49,7 @@ class ChatBridgeAgent extends Agent
         if ($persona) {
             $this->extraSystemPrompt = $persona;
         }
+
         return $this;
     }
 }

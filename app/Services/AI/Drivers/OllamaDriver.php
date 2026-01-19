@@ -3,7 +3,6 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
-use App\Services\AI\Data\MessageData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -26,7 +25,7 @@ class OllamaDriver implements AIDriverInterface
         ]);
 
         if ($response->failed()) {
-            throw new \Exception("Ollama API Error: " . $response->body());
+            throw new \Exception('Ollama API Error: '.$response->body());
         }
 
         return $response->json('message.content');
@@ -47,13 +46,15 @@ class OllamaDriver implements AIDriverInterface
 
         $body = $response->toPsrResponse()->getBody();
 
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $line = $this->readLine($body);
-            if (!$line) continue;
+            if (! $line) {
+                continue;
+            }
 
             $json = json_decode($line, true);
             $content = $json['message']['content'] ?? '';
-            
+
             if ($content) {
                 yield $content;
             }
@@ -67,13 +68,14 @@ class OllamaDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
-        while (!$stream->eof()) {
+        while (! $stream->eof()) {
             $char = $stream->read(1);
             if ($char === "\n") {
                 break;
             }
             $buffer .= $char;
         }
+
         return trim($buffer);
     }
 }

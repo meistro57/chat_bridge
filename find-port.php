@@ -1,14 +1,18 @@
 <?php
+
 $host = '127.0.0.1';
 $startPort = 8000;
 $endPort = 8100;
 
-function isPortFree($host, $port) {
+function isPortFree($host, $port)
+{
     $connection = @fsockopen($host, $port);
     if (is_resource($connection)) {
         fclose($connection);
+
         return false;
     }
+
     return true;
 }
 

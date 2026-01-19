@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Persona;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\File;
 
 class PersonaSeeder extends Seeder
@@ -14,14 +14,14 @@ class PersonaSeeder extends Seeder
     public function run(): void
     {
         $rolesPath = base_path('../roles.json');
-        
-        if (!File::exists($rolesPath)) {
+
+        if (! File::exists($rolesPath)) {
             return;
         }
 
         $rolesData = json_decode(File::get($rolesPath), true);
-        
-        if (!isset($rolesData['persona_library'])) {
+
+        if (! isset($rolesData['persona_library'])) {
             return;
         }
 

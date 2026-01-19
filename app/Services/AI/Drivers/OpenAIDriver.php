@@ -3,10 +3,8 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
-use App\Services\AI\Data\MessageData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class OpenAIDriver implements AIDriverInterface
 {
@@ -26,7 +24,7 @@ class OpenAIDriver implements AIDriverInterface
             ]);
 
         if ($response->failed()) {
-            throw new \Exception("OpenAI API Error: " . $response->body());
+            throw new \Exception('OpenAI API Error: '.$response->body());
         }
 
         return $response->json('choices.0.message.content');
@@ -45,19 +43,19 @@ class OpenAIDriver implements AIDriverInterface
 
         $body = $response->toPsrResponse()->getBody();
 
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $line = $this->readLine($body);
-            
+
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
-                
+
                 if (trim($data) === '[DONE]') {
                     break;
                 }
 
                 $json = json_decode($data, true);
                 $content = $json['choices'][0]['delta']['content'] ?? '';
-                
+
                 if ($content) {
                     yield $content;
                 }
@@ -68,13 +66,14 @@ class OpenAIDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
-        while (!$stream->eof()) {
+        while (! $stream->eof()) {
             $char = $stream->read(1);
             if ($char === "\n") {
                 break;
             }
             $buffer .= $char;
         }
+
         return trim($buffer);
     }
 }

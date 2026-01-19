@@ -55,7 +55,7 @@ class PersonaController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|unique:personas,name,' . $persona->id,
+            'name' => 'required|string|unique:personas,name,'.$persona->id,
             'provider' => 'required|string',
             'model' => 'nullable|string',
             'system_prompt' => 'required|string',

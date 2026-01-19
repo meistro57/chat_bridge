@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Conversation;
-use App\Models\Persona;
 use App\Jobs\RunChatSession;
-use Illuminate\Http\Request;
+use App\Models\Conversation;
 use App\Services\AI\TranscriptService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
@@ -27,8 +26,8 @@ class ChatController extends Controller
 
         if ($query) {
             $messages = \App\Models\Message::whereHas('conversation', function ($q) {
-                    $q->where('user_id', auth()->id());
-                })
+                $q->where('user_id', auth()->id());
+            })
                 ->where('content', 'like', "%{$query}%")
                 ->with(['conversation', 'persona'])
                 ->latest()
@@ -128,6 +127,7 @@ class ChatController extends Controller
         }
 
         $path = $transcripts->generate($conversation);
-        return response()->download(storage_path('app/' . $path));
+
+        return response()->download(storage_path('app/'.$path));
     }
 }

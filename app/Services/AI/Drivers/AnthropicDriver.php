@@ -3,10 +3,8 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
-use App\Services\AI\Data\MessageData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class AnthropicDriver implements AIDriverInterface
 {
@@ -28,7 +26,7 @@ class AnthropicDriver implements AIDriverInterface
         ])->post("{$this->baseUrl}/messages", $payload);
 
         if ($response->failed()) {
-            throw new \Exception("Anthropic API Error: " . $response->body());
+            throw new \Exception('Anthropic API Error: '.$response->body());
         }
 
         return $response->json('content.0.text');
@@ -44,28 +42,29 @@ class AnthropicDriver implements AIDriverInterface
             'anthropic-version' => $this->version,
             'content-type' => 'application/json',
         ])->withOptions(['stream' => true])
-          ->post("{$this->baseUrl}/messages", $payload);
+            ->post("{$this->baseUrl}/messages", $payload);
 
         if ($response->failed()) {
-            throw new \Exception("Anthropic API Connection Failed: " . $response->body());
+            throw new \Exception('Anthropic API Connection Failed: '.$response->body());
         }
 
         $body = $response->toPsrResponse()->getBody();
 
         $event = '';
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $line = $this->readLine($body);
-            
+
             if (str_starts_with($line, 'event: ')) {
                 $event = trim(substr($line, 7));
+
                 continue;
             }
 
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
-                
+
                 if ($event === 'error') {
-                     throw new \Exception("Anthropic Stream Error: " . $data);
+                    throw new \Exception('Anthropic Stream Error: '.$data);
                 }
 
                 $json = json_decode($data, true);
@@ -96,7 +95,7 @@ class AnthropicDriver implements AIDriverInterface
 
         return array_filter([
             'model' => $this->model,
-            'messages' => $filteredMessages->map(fn($m) => [
+            'messages' => $filteredMessages->map(fn ($m) => [
                 'role' => $m->role === 'assistant' ? 'assistant' : 'user',
                 'content' => $m->content,
             ])->all(),
@@ -109,13 +108,14 @@ class AnthropicDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
-        while (!$stream->eof()) {
+        while (! $stream->eof()) {
             $char = $stream->read(1);
             if ($char === "\n") {
                 break;
             }
             $buffer .= $char;
         }
+
         return trim($buffer);
     }
 }

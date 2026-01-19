@@ -4,8 +4,8 @@ namespace App\Services\ChatBridge;
 
 use App\Models\ChatBridgeMessage;
 use App\Models\ChatBridgeThread;
-use NeuronAI\Chat\Messages\Message;
 use NeuronAI\Chat\Enums\MessageRole;
+use NeuronAI\Chat\Messages\Message;
 
 class HistoryStore
 {
@@ -34,8 +34,6 @@ class HistoryStore
     /**
      * Get recent messages formatted for Neuron AI.
      *
-     * @param ChatBridgeThread $thread
-     * @param int $limit
      * @return array<Message>
      */
     public function fetchRecentMessages(ChatBridgeThread $thread, int $limit = 50): array

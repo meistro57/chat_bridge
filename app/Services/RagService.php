@@ -15,8 +15,11 @@ use Illuminate\Support\Facades\Log;
 class RagService
 {
     protected QdrantConnector $qdrant;
+
     protected EmbeddingService $embeddingService;
+
     protected string $collectionName = 'chat_messages';
+
     protected int $vectorSize = 1536; // OpenAI embedding size
 
     public function __construct()
@@ -40,6 +43,7 @@ class RagService
 
             if ($response->successful()) {
                 Log::info('Qdrant collection already exists', ['collection' => $this->collectionName]);
+
                 return true;
             }
         } catch (\Exception $e) {
@@ -58,6 +62,7 @@ class RagService
 
             if ($response->successful()) {
                 Log::info('Qdrant collection created successfully', ['collection' => $this->collectionName]);
+
                 return true;
             }
 
@@ -88,8 +93,9 @@ class RagService
                 Log::warning('Message has no embedding, generating...', ['message_id' => $message->id]);
                 $embedding = $this->embeddingService->generate($message->content);
 
-                if (!$embedding) {
+                if (! $embedding) {
                     Log::error('Failed to generate embedding for message', ['message_id' => $message->id]);
+
                     return false;
                 }
 
@@ -118,6 +124,7 @@ class RagService
 
             if ($response->successful()) {
                 Log::info('Message stored in Qdrant', ['message_id' => $message->id]);
+
                 return true;
             }
 
@@ -140,10 +147,10 @@ class RagService
     /**
      * Search for similar messages using RAG
      *
-     * @param string $query The search query
-     * @param int $limit Maximum number of results
-     * @param array|null $filter Additional filters (e.g., conversation_id, persona_id)
-     * @param float $scoreThreshold Minimum similarity score (0-1)
+     * @param  string  $query  The search query
+     * @param  int  $limit  Maximum number of results
+     * @param  array|null  $filter  Additional filters (e.g., conversation_id, persona_id)
+     * @param  float  $scoreThreshold  Minimum similarity score (0-1)
      * @return Collection Collection of Message models with similarity scores
      */
     public function searchSimilarMessages(
@@ -156,8 +163,9 @@ class RagService
             // Generate embedding for the query
             $queryEmbedding = $this->embeddingService->generate($query);
 
-            if (!$queryEmbedding) {
+            if (! $queryEmbedding) {
                 Log::error('Failed to generate embedding for query');
+
                 return collect();
             }
 
@@ -187,7 +195,7 @@ class RagService
                     ];
                 }
 
-                if (!empty($must)) {
+                if (! empty($must)) {
                     $qdrantFilter = ['must' => $must];
                 }
             }
@@ -203,8 +211,9 @@ class RagService
                 )
             );
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('Failed to search Qdrant', ['response' => $response->body()]);
+
                 return collect();
             }
 
@@ -221,6 +230,7 @@ class RagService
 
                 if ($message) {
                     $message->similarity_score = $score;
+
                     return $message;
                 }
 
@@ -241,9 +251,9 @@ class RagService
      * Get relevant context for a conversation using RAG
      * This retrieves similar past messages to provide context for the AI
      *
-     * @param string $currentMessage The current message to find context for
-     * @param string|null $conversationId Optional conversation ID to limit search
-     * @param int $limit Maximum number of context messages
+     * @param  string  $currentMessage  The current message to find context for
+     * @param  string|null  $conversationId  Optional conversation ID to limit search
+     * @param  int  $limit  Maximum number of context messages
      * @return Collection Collection of relevant messages
      */
     public function getRelevantContext(
@@ -288,9 +298,11 @@ class RagService
     {
         try {
             $response = $this->qdrant->send(new GetCollectionRequest($this->collectionName));
+
             return $response->successful();
         } catch (\Exception $e) {
             Log::warning('Qdrant service not available', ['error' => $e->getMessage()]);
+
             return false;
         }
     }

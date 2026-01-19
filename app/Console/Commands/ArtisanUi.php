@@ -1,22 +1,21 @@
 <?php
+
 // File: app/Console/Commands/ArtisanUi.php
 
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 
 use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\select;
-use function Laravel\Prompts\search;
-use function Laravel\Prompts\text;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\warning;
 use function Laravel\Prompts\error;
+use function Laravel\Prompts\info;
 use function Laravel\Prompts\note;
+use function Laravel\Prompts\search;
+use function Laravel\Prompts\select;
+use function Laravel\Prompts\text;
+use function Laravel\Prompts\warning;
 
 class ArtisanUi extends Command
 {
@@ -35,6 +34,7 @@ class ArtisanUi extends Command
         $allCommands = $this->getAllArtisanCommands();
         if (empty($allCommands)) {
             error('No Artisan commands found. Something is very wrong. 😅');
+
             return self::FAILURE;
         }
 
@@ -46,6 +46,7 @@ class ArtisanUi extends Command
 
             if ($mode === 'quit') {
                 info('Alright. Closing the hatch. 🚪');
+
                 return self::SUCCESS;
             }
 
@@ -67,8 +68,9 @@ class ArtisanUi extends Command
             $args = $this->promptArgsIfWanted($picked);
             $this->runArtisanCommand($picked, $args, $disableColor);
 
-            if (!confirm('Run another command?', true)) {
+            if (! confirm('Run another command?', true)) {
                 info('Done. Terminal throne relinquished. 👑');
+
                 return self::SUCCESS;
             }
         }
@@ -88,8 +90,8 @@ class ArtisanUi extends Command
             label: 'Artisan UI',
             options: [
                 'groups' => 'Browse by group (ai, bridge, make, etc.)',
-                'all'    => 'Search across ALL commands',
-                'quit'   => 'Quit',
+                'all' => 'Search across ALL commands',
+                'quit' => 'Quit',
             ],
             default: 'groups',
             hint: 'Tip: use arrow keys, type to filter, Enter to select.'
@@ -126,6 +128,7 @@ class ArtisanUi extends Command
     {
         if (empty($commands)) {
             warning('No commands in that group.');
+
             return null;
         }
 
@@ -136,7 +139,10 @@ class ArtisanUi extends Command
                 $value = Str::lower(trim($value));
 
                 $filtered = array_filter($commands, function ($cmd) use ($value) {
-                    if ($value === '') return true;
+                    if ($value === '') {
+                        return true;
+                    }
+
                     return Str::contains(Str::lower($cmd), $value);
                 });
 
@@ -147,13 +153,14 @@ class ArtisanUi extends Command
                 foreach ($filtered as $cmd) {
                     $out[$cmd] = $this->paintCommandLabel($cmd);
                 }
+
                 return $out;
             },
             placeholder: 'e.g. bridge:chat, ai:test, migrate, test',
             hint: 'Type to filter. Enter to run. Esc to cancel (or choose Back).'
         );
 
-        if (!$selected) {
+        if (! $selected) {
             return null;
         }
 
@@ -162,7 +169,7 @@ class ArtisanUi extends Command
 
     private function promptArgsIfWanted(string $command): string
     {
-        if (!confirm('Add arguments/options?', false)) {
+        if (! confirm('Add arguments/options?', false)) {
             return '';
         }
 
@@ -197,8 +204,9 @@ class ArtisanUi extends Command
             echo $buffer;
         });
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             error("Command failed (exit {$process->getExitCode()}).");
+
             return;
         }
 
@@ -215,17 +223,19 @@ class ArtisanUi extends Command
         if ($json !== null) {
             $names = [];
             foreach (($json['commands'] ?? []) as $cmd) {
-                if (!empty($cmd['name'])) {
+                if (! empty($cmd['name'])) {
                     $names[] = $cmd['name'];
                 }
             }
             $names = array_values(array_unique($names));
             sort($names);
+
             return $names;
         }
 
         // Fallback: plain text parse
         $output = $this->runAndCapture('php artisan list --no-ansi');
+
         return $this->parseArtisanListText($output);
     }
 
@@ -233,12 +243,12 @@ class ArtisanUi extends Command
     {
         $output = $this->runAndCapture('php artisan list --format=json --no-ansi');
 
-        if (!is_string($output) || trim($output) === '') {
+        if (! is_string($output) || trim($output) === '') {
             return null;
         }
 
         $decoded = json_decode($output, true);
-        if (!is_array($decoded)) {
+        if (! is_array($decoded)) {
             return null;
         }
 
@@ -251,7 +261,7 @@ class ArtisanUi extends Command
         $process->run();
 
         // If it fails, we still might get useful output.
-        return (string) $process->getOutput() . (string) $process->getErrorOutput();
+        return (string) $process->getOutput().(string) $process->getErrorOutput();
     }
 
     private function parseArtisanListText(string $text): array
@@ -272,7 +282,7 @@ class ArtisanUi extends Command
                 $name = $m[1];
 
                 // filter section headers like "ai", "bridge", "make" (they appear alone sometimes)
-                if (!Str::contains($name, ':') && in_array($name, ['ai','auth','boost','bridge','cache','channel','config','db','env','event','inertia','install','key','lang','make','mcp','migrate','model','optimize','package','queue','reverb','roster','route','sail','sanctum','schedule','schema','storage','stub','vendor','view'], true)) {
+                if (! Str::contains($name, ':') && in_array($name, ['ai', 'auth', 'boost', 'bridge', 'cache', 'channel', 'config', 'db', 'env', 'event', 'inertia', 'install', 'key', 'lang', 'make', 'mcp', 'migrate', 'model', 'optimize', 'package', 'queue', 'reverb', 'roster', 'route', 'sail', 'sanctum', 'schedule', 'schema', 'storage', 'stub', 'vendor', 'view'], true)) {
                     continue;
                 }
 
@@ -282,6 +292,7 @@ class ArtisanUi extends Command
 
         $names = array_values(array_unique($names));
         sort($names);
+
         return $names;
     }
 
@@ -319,12 +330,12 @@ class ArtisanUi extends Command
     {
         return match ($group) {
             'bridge' => "🧠 {$group}",
-            'ai'     => "🤖 {$group}",
-            'make'   => "🧰 {$group}",
-            'migrate'=> "🧱 {$group}",
-            'test'   => "🧪 {$group}",
-            'core'   => "⚙️ {$group}",
-            default  => "📦 {$group}",
+            'ai' => "🤖 {$group}",
+            'make' => "🧰 {$group}",
+            'migrate' => "🧱 {$group}",
+            'test' => "🧪 {$group}",
+            'core' => "⚙️ {$group}",
+            default => "📦 {$group}",
         };
     }
 
@@ -334,15 +345,17 @@ class ArtisanUi extends Command
         if (Str::contains($cmd, ':')) {
             $left = Str::before($cmd, ':');
             $right = Str::after($cmd, ':');
+
             return "{$left}:{$right}";
         }
+
         return $cmd;
     }
 
     private function ensureTtyHints(): void
     {
         // Helpful hints if someone runs this in a non-interactive environment
-        if (!Process::isTtySupported()) {
+        if (! Process::isTtySupported()) {
             warning('TTY not supported here. UI still works, but output streaming may be less fancy.');
         }
     }

@@ -2,7 +2,6 @@
 
 namespace App\Services\AI\Drivers;
 
-use App\Services\AI\Data\MessageData;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -36,7 +35,7 @@ class OpenRouterDriver extends OpenAIDriver
             ]);
 
         if ($response->failed()) {
-            throw new \Exception("OpenRouter API Error: " . $response->body());
+            throw new \Exception('OpenRouter API Error: '.$response->body());
         }
 
         return $response->json('choices.0.message.content');
@@ -55,23 +54,23 @@ class OpenRouterDriver extends OpenAIDriver
 
         $body = $response->toPsrResponse()->getBody();
 
-        while (!$body->eof()) {
+        while (! $body->eof()) {
             $line = $this->readLine($body);
-            
+
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
-                
+
                 if (trim($data) === '[DONE]') {
                     break;
                 }
 
                 $json = json_decode($data, true);
                 if (isset($json['error'])) {
-                    throw new \Exception("OpenRouter Stream Error: " . json_encode($json['error']));
+                    throw new \Exception('OpenRouter Stream Error: '.json_encode($json['error']));
                 }
 
                 $content = $json['choices'][0]['delta']['content'] ?? '';
-                
+
                 if ($content) {
                     yield $content;
                 }

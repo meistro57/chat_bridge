@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\File;
 class StopWordService
 {
     protected array $stopWords = [];
+
     protected bool $enabled = false;
 
     public function __construct()
@@ -21,7 +22,7 @@ class StopWordService
 
     public function shouldStop(string $text): bool
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return false;
         }
 

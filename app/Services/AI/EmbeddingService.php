@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 class EmbeddingService
 {
     protected ?string $apiKey;
+
     protected string $baseUrl = 'https://api.openai.com/v1';
 
     public function __construct()
@@ -31,7 +32,7 @@ class EmbeddingService
             ]);
 
         if ($response->failed()) {
-            throw new \Exception("OpenAI Embedding Error: " . $response->body());
+            throw new \Exception('OpenAI Embedding Error: '.$response->body());
         }
 
         return $response->json('data.0.embedding');

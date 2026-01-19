@@ -19,7 +19,7 @@ class ApiKeyController extends Controller
                     'id' => $key->id,
                     'provider' => $key->provider,
                     'label' => $key->label,
-                    'masked_key' => substr($key->key, 0, 8) . '...' . substr($key->key, -4),
+                    'masked_key' => substr($key->key, 0, 8).'...'.substr($key->key, -4),
                     'is_active' => (bool) $key->is_active,
                     'created_at' => $key->created_at,
                 ];
@@ -67,7 +67,7 @@ class ApiKeyController extends Controller
                 'label' => $apiKey->label,
                 'is_active' => (bool) $apiKey->is_active,
                 // Don't send the full key for security
-            ]
+            ],
         ]);
     }
 
@@ -93,7 +93,7 @@ class ApiKeyController extends Controller
             'is_active' => $validated['is_active'],
         ]);
 
-        if (!empty($validated['key'])) {
+        if (! empty($validated['key'])) {
             $apiKey->key = $validated['key'];
         }
 
@@ -112,6 +112,7 @@ class ApiKeyController extends Controller
         }
 
         $apiKey->delete();
+
         return redirect()->route('api-keys.index')->with('success', 'API Key deleted.');
     }
 }

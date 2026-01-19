@@ -19,8 +19,7 @@ class SearchPointsRequest extends Request implements HasBody
         protected int $limit = 10,
         protected ?array $filter = null,
         protected float $scoreThreshold = 0.7,
-    ) {
-    }
+    ) {}
 
     public function resolveEndpoint(): string
     {

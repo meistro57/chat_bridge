@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Services\AI\EmbeddingService;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Services\AI\EmbeddingService;
 use Illuminate\Http\Request;
 
 class McpController extends Controller
@@ -32,6 +32,7 @@ class McpController extends Controller
     public function recentChats(Request $request)
     {
         $limit = $request->query('limit', 10);
+
         return Conversation::latest()->limit($limit)->get();
     }
 
@@ -43,7 +44,7 @@ class McpController extends Controller
     public function search(Request $request)
     {
         $keyword = $request->query('keyword');
-        
+
         return Message::where('content', 'like', "%{$keyword}%")
             ->with(['conversation', 'persona'])
             ->latest()
@@ -56,7 +57,7 @@ class McpController extends Controller
         $topic = $request->query('topic');
         $limit = (int) $request->query('limit', 5);
 
-        if (!$topic) {
+        if (! $topic) {
             return response()->json([]);
         }
 
@@ -85,12 +86,13 @@ class McpController extends Controller
             // Calculate cosine similarity
             $results = $messages->map(function ($message) use ($queryEmbedding) {
                 $message->similarity = $this->cosineSimilarity($queryEmbedding, $message->embedding);
+
                 return $message;
             })
-            ->filter(fn($m) => $m->similarity > 0.3)
-            ->sortByDesc('similarity')
-            ->take($limit)
-            ->values();
+                ->filter(fn ($m) => $m->similarity > 0.3)
+                ->sortByDesc('similarity')
+                ->take($limit)
+                ->values();
 
             return response()->json($results);
         } catch (\Exception $e) {

@@ -10,13 +10,13 @@ class QdrantConnector extends Connector
     use AcceptsJson;
 
     protected ?int $connectTimeout = 10;
+
     protected ?int $requestTimeout = 30;
 
     public function __construct(
         protected string $host = 'localhost',
         protected int $port = 6333,
-    ) {
-    }
+    ) {}
 
     public function resolveBaseUrl(): string
     {

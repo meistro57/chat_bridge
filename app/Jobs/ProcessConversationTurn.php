@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Events\MessageChunkSent;
 use App\Events\MessageCompleted;
 use App\Models\Conversation;
-use App\Models\Persona;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\StopWordService;
@@ -29,26 +28,26 @@ class ProcessConversationTurn implements ShouldQueue
     public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts)
     {
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
-        
+
         if ($conversation->status !== 'active' || $this->round > $this->maxRounds) {
             $conversation->update(['status' => 'completed']);
             $transcripts->generate($conversation);
+
             return;
         }
 
         $personaA = $conversation->personaA;
         $personaB = $conversation->personaB;
 
-        if (!$personaA || !$personaB) {
+        if (! $personaA || ! $personaB) {
             // Log error or fallback
             return;
         }
 
         $lastMessage = $conversation->messages()->whereNotNull('persona_id')->latest()->first();
-        $currentPersona = (!$lastMessage || $lastMessage->persona_id === $personaB->id) ? $personaA : $personaB;
+        $currentPersona = (! $lastMessage || $lastMessage->persona_id === $personaB->id) ? $personaA : $personaB;
 
-        $history = $conversation->messages->map(fn($m) => 
-            new MessageData($m->role, $m->content)
+        $history = $conversation->messages->map(fn ($m) => new MessageData($m->role, $m->content)
         )->take(-10);
 
         $driver = $ai->driver($currentPersona->provider);
@@ -76,6 +75,7 @@ class ProcessConversationTurn implements ShouldQueue
         if ($stopWords->shouldStop($fullResponse)) {
             $conversation->update(['status' => 'completed']);
             $transcripts->generate($conversation);
+
             return;
         }
 

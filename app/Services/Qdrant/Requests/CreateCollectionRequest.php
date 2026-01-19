@@ -17,8 +17,7 @@ class CreateCollectionRequest extends Request implements HasBody
         protected string $collectionName,
         protected int $vectorSize,
         protected string $distance = 'Cosine',
-    ) {
-    }
+    ) {}
 
     public function resolveEndpoint(): string
     {

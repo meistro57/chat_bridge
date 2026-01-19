@@ -60,9 +60,9 @@ class RunChatSession implements ShouldQueue
                     ->where('role', 'assistant')
                     ->latest()
                     ->first();
-                    
-                $currentPersona = (!$lastMessage || $lastMessage->persona_id === $conversation->personaB->id) 
-                    ? $conversation->personaA 
+
+                $currentPersona = (! $lastMessage || $lastMessage->persona_id === $conversation->personaB->id)
+                    ? $conversation->personaA
                     : $conversation->personaB;
 
                 // 3. Prepare History
@@ -71,23 +71,23 @@ class RunChatSession implements ShouldQueue
                     ->take(10)
                     ->get()
                     ->sortBy('id')
-                    ->map(fn($m) => new MessageData($m->role, $m->content));
+                    ->map(fn ($m) => new MessageData($m->role, $m->content));
 
                 // 4. Generate & Stream
                 $fullResponse = '';
                 // Yield chunks from service
                 foreach ($service->generateTurn($currentPersona, $history) as $chunk) {
                     $fullResponse .= $chunk;
-                    
+
                     broadcast(new MessageChunkSent(
                         conversationId: $conversation->id,
                         chunk: $chunk,
                         role: 'assistant',
                         personaName: $currentPersona->name
                     ));
-                    
+
                     if (Cache::get("conversation.stop.{$this->conversationId}")) {
-                        break; 
+                        break;
                     }
                 }
 
@@ -110,7 +110,7 @@ class RunChatSession implements ShouldQueue
                 $service->completeConversation($conversation);
             }
         } catch (\Throwable $e) {
-            Log::error("Job failed for conversation {$this->conversationId}: " . $e->getMessage());
+            Log::error("Job failed for conversation {$this->conversationId}: ".$e->getMessage());
             $conversation->update(['status' => 'failed']);
             broadcast(new \App\Events\ConversationStatusUpdated($conversation));
             throw $e;

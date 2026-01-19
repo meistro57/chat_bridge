@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Conversation;
+use App\Jobs\RunChatSession;
 use App\Models\Persona;
 use App\Models\User;
-use App\Jobs\RunChatSession;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ChatTest extends TestCase
@@ -46,7 +45,7 @@ class ChatTest extends TestCase
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
         ]);
-        
+
         Queue::assertPushed(RunChatSession::class);
     }
 }

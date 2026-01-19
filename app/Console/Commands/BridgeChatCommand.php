@@ -9,19 +9,19 @@ use App\Models\Message;
 use App\Models\Persona;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
+use App\Services\AI\EmbeddingService;
 use App\Services\AI\StopWordService;
 use App\Services\AI\TranscriptService;
 use Illuminate\Console\Command;
+
+use function Laravel\Prompts\info;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
-use function Laravel\Prompts\info;
-use function Laravel\Prompts\spin;
-
-use App\Services\AI\EmbeddingService;
 
 class BridgeChatCommand extends Command
 {
     protected $signature = 'bridge:chat {--max-rounds=10}';
+
     protected $description = 'Start an AI vs AI conversation bridge';
 
     public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts, EmbeddingService $embeddings)
@@ -51,7 +51,7 @@ class BridgeChatCommand extends Command
         ]);
 
         $history = collect([
-            new MessageData('user', $starter)
+            new MessageData('user', $starter),
         ]);
 
         // Save starter message
@@ -69,7 +69,7 @@ class BridgeChatCommand extends Command
 
             $driver = $ai->driver($currentPersona->provider);
             $fullResponse = '';
-            
+
             $messages = collect();
             $messages->push(new MessageData('system', $currentPersona->system_prompt));
             foreach ($currentPersona->guidelines ?? [] as $guideline) {
@@ -79,7 +79,7 @@ class BridgeChatCommand extends Command
 
             try {
                 $this->output->write("<options=bold;fg=green>{$currentPersona->name}:</> ");
-                
+
                 foreach ($driver->streamChat($messages, $currentPersona->temperature) as $chunk) {
                     $this->output->write($chunk);
                     $fullResponse .= $chunk;
@@ -91,12 +91,12 @@ class BridgeChatCommand extends Command
                         personaName: $currentPersona->name
                     ));
                 }
-                
+
                 $this->newLine();
 
             } catch (\Exception $e) {
                 $this->newLine();
-                $this->error("Error: " . $e->getMessage());
+                $this->error('Error: '.$e->getMessage());
                 break;
             }
 
@@ -112,7 +112,7 @@ class BridgeChatCommand extends Command
                 $vector = $embeddings->getEmbedding($fullResponse);
                 $message->update(['embedding' => $vector]);
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("Embedding generation failed: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::warning('Embedding generation failed: '.$e->getMessage());
             }
 
             broadcast(new MessageCompleted($message));

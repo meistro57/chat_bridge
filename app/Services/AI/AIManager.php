@@ -11,8 +11,8 @@ use App\Services\AI\Drivers\MockDriver;
 use App\Services\AI\Drivers\OllamaDriver;
 use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\AI\Drivers\OpenRouterDriver;
-use Illuminate\Support\Manager;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Manager;
 
 class AIManager extends Manager
 {
@@ -33,12 +33,12 @@ class AIManager extends Manager
                 ->latest()
                 ->first();
 
-            if ($dbEntry && !empty($dbEntry->key)) {
+            if ($dbEntry && ! empty($dbEntry->key)) {
                 return $dbEntry->key;
             }
         } catch (\Exception $e) {
             // Fallback if DB fails/missing
-            Log::warning("Failed to fetch API key from DB for {$provider}: " . $e->getMessage());
+            Log::warning("Failed to fetch API key from DB for {$provider}: ".$e->getMessage());
         }
 
         // 2. Fallback to Config
@@ -48,9 +48,9 @@ class AIManager extends Manager
     public function createOpenAIDriver()
     {
         $key = $this->getKey('openai');
-        
+
         if (empty($key)) {
-            return new MockDriver();
+            return new MockDriver;
         }
 
         return new OpenAIDriver(
@@ -62,9 +62,9 @@ class AIManager extends Manager
     public function createAnthropicDriver()
     {
         $key = $this->getKey('anthropic');
-        
+
         if (empty($key)) {
-            return new MockDriver();
+            return new MockDriver;
         }
 
         return new AnthropicDriver(
@@ -76,9 +76,9 @@ class AIManager extends Manager
     public function createDeepSeekDriver()
     {
         $key = $this->getKey('deepseek');
-        
+
         if (empty($key)) {
-            return new MockDriver();
+            return new MockDriver;
         }
 
         return new DeepSeekDriver(
@@ -90,9 +90,9 @@ class AIManager extends Manager
     public function createOpenRouterDriver()
     {
         $key = $this->getKey('openrouter');
-        
+
         if (empty($key)) {
-            return new MockDriver();
+            return new MockDriver;
         }
 
         return new OpenRouterDriver(
@@ -106,9 +106,9 @@ class AIManager extends Manager
     public function createGeminiDriver()
     {
         $key = $this->getKey('gemini');
-        
+
         if (empty($key)) {
-            return new MockDriver();
+            return new MockDriver;
         }
 
         return new GeminiDriver(

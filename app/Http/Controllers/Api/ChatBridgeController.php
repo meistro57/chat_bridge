@@ -30,27 +30,27 @@ class ChatBridgeController extends Controller
         $agent = app(ChatBridgeAgent::class);
         $agent->setPersona($persona);
 
-        // 4. Load History (Agent usually processes history internally if passed, 
+        // 4. Load History (Agent usually processes history internally if passed,
         // OR we manually feed it. Neuron Agent usually has run($messages) or interactions.
         // We will fetch history and prep it.)
         $history = $this->historyStore->fetchRecentMessages($thread);
-        
-        // Note: fetchRecentMessages includes the just-saved user message? 
-        // Yes, if we saved it first. 
+
+        // Note: fetchRecentMessages includes the just-saved user message?
+        // Yes, if we saved it first.
         // HOWEVER, Neuron Agent::run usually takes the NEW message.
         // Let's see: $response = $agent->chat($message, $history);
         // Or if $history includes the message, maybe $agent->chat(null, $history)?
         // Let's assume standard: chat(string $input, array $previousMessages = [])
-        
+
         // We filter out the last user message from history to avoid duplication if we pass it as prompt
         // OR we pass the full history including the last message and pass empty prompt?
         // Let's try passing the user message explicitly and history WITHOUT it.
-        
+
         // Remove the last message from history if it matches current input (it should)
-        array_pop($history); 
+        array_pop($history);
 
         $response = $agent->chat(new UserMessage($userMessage), $history);
-        
+
         $assistantContent = (string) $response->getContent();
 
         // 5. Persist Assistant Message

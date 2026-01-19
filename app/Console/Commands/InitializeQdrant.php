@@ -30,10 +30,11 @@ class InitializeQdrant extends Command
         $this->info('Initializing Qdrant vector database...');
 
         // Check if Qdrant is available
-        if (!$rag->isAvailable()) {
+        if (! $rag->isAvailable()) {
             $this->error('Qdrant is not available. Please check your connection settings.');
-            $this->info('Host: ' . config('services.qdrant.host'));
-            $this->info('Port: ' . config('services.qdrant.port'));
+            $this->info('Host: '.config('services.qdrant.host'));
+            $this->info('Port: '.config('services.qdrant.port'));
+
             return self::FAILURE;
         }
 
@@ -41,8 +42,9 @@ class InitializeQdrant extends Command
 
         // Initialize collection
         $this->info('Creating collection if it doesn\'t exist...');
-        if (!$rag->initializeCollection()) {
+        if (! $rag->initializeCollection()) {
             $this->error('Failed to initialize Qdrant collection.');
+
             return self::FAILURE;
         }
 
@@ -60,6 +62,7 @@ class InitializeQdrant extends Command
 
             if ($messagesWithEmbeddings === 0) {
                 $this->warn('No messages with embeddings found. Generate embeddings first using: php artisan embeddings:generate');
+
                 return self::SUCCESS;
             }
 
@@ -85,7 +88,7 @@ class InitializeQdrant extends Command
             $bar->finish();
             $this->newLine(2);
 
-            $this->info("✓ Sync complete!");
+            $this->info('✓ Sync complete!');
             $this->info("  - Stored: {$stored}");
             if ($failed > 0) {
                 $this->warn("  - Failed: {$failed}");
