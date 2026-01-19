@@ -29,4 +29,4 @@ else
 fi
 
 echo ""
-echo "Test complete. Check docker-compose logs if issues persist."
+echo "Test complete. Check docker compose logs if issues persist."

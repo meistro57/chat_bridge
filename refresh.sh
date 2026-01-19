@@ -67,7 +67,7 @@ git pull --rebase
 
 # Clean up existing containers and images
 echo "🧹 Cleaning up Docker resources..."
-docker-compose down --volumes --remove-orphans 2>/dev/null || true
+docker compose down --volumes --remove-orphans 2>/dev/null || true
 docker system prune -f
 
 # Remove containers in case of stubborn ones
@@ -107,7 +107,7 @@ docker compose build --no-cache --parallel
 
 # Start database services first
 echo "🏃 Starting database and cache services..."
-docker-compose up -d postgres redis qdrant
+docker compose up -d postgres redis qdrant
 
 # Wait for services to be ready
 echo "⏳ Waiting for database to be ready..."
@@ -115,12 +115,12 @@ sleep 10
 
 # Run database migrations and seeders
 echo "🗃️ Running database setup..."
-docker-compose run --rm app php artisan migrate --force
-docker-compose run --rm app php artisan db:seed --force
+docker compose run --rm app php artisan migrate --force
+docker compose run --rm app php artisan db:seed --force
 
 # Start the main application
 echo "🚀 Starting application services..."
-docker-compose up -d
+docker compose up -d
 
 # Wait a bit for services to fully start
 echo "⏳ Waiting for services to initialize..."
@@ -128,12 +128,12 @@ sleep 15
 
 # Check if services are running
 echo "✅ Checking service status..."
-docker-compose ps
+docker compose ps
 
 # Set frontend environment and build
 echo "📦 Building frontend assets..."
-docker-compose exec app npm install
-docker-compose exec app npm run build
+docker compose exec app npm install
+docker compose exec app npm run build
 
 # Health checks
 echo "🔍 Performing health checks..."
@@ -151,7 +151,7 @@ done
 
 if [ "$APP_READY" = false ]; then
     echo "❌ App failed to start properly"
-    docker-compose logs app
+    docker compose logs app
     exit 1
 fi
 
@@ -163,10 +163,10 @@ echo "   Web App: http://localhost:8000"
 echo "   WebSocket: ws://localhost:8080"
 echo ""
 echo "🛠️ Useful commands:"
-echo "   View logs: docker-compose logs -f"
-echo "   Stop services: docker-compose down"
-echo "   Restart app: docker-compose restart app"
-echo "   Run tests: docker-compose exec app php artisan test"
+echo "   View logs: docker compose logs -f"
+echo "   Stop services: docker compose down"
+echo "   Restart app: docker compose restart app"
+echo "   Run tests: docker compose exec app php artisan test"
 echo ""
 echo "📝 API keys preserved from previous .env file"
 echo "   Edit .env file to update them if needed"
