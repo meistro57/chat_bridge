@@ -1,5 +1,12 @@
 # 🤖 Chat Bridge
 
+[![Tests](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml/badge.svg)](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml)
+[![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red)](https://github.com/meistro57/chat_bridge)
+
 **A sophisticated AI conversation orchestration platform built with Laravel 12 and React 19**
 
 Chat Bridge enables you to create, manage, and monitor automated conversations between AI personas powered by multiple LLM providers (OpenAI, Anthropic, and more). Perfect for testing AI interactions, generating synthetic conversations, and exploring multi-agent AI systems.
