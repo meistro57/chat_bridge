@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Persona;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,14 +13,15 @@ class PersonaTest extends TestCase
 
     public function test_can_list_personas(): void
     {
-        $response = $this->get('/personas');
+        $user = User::factory()->create();
+        $response = $this->actingAs($user)->get('/personas');
         $response->assertStatus(200);
     }
 
     public function test_can_create_persona(): void
     {
-        $this->withoutMiddleware();
-        $response = $this->post('/personas', [
+        $user = User::factory()->create();
+        $response = $this->actingAs($user)->post('/personas', [
             'name' => 'Test Persona',
             'provider' => 'openai',
             'system_prompt' => 'Be helpful',
