@@ -114,3 +114,4 @@ After defining schema, run `php artisan migrate`.
 - **Queue Worker Required**: If you create a chat and nothing happens, the queue worker is likely not running. Run `php artisan queue:work` or `queue:listen`.
 - **Environment config**: Tailwind v4 is used (configured in `vite.config.js` and CSS), so `tailwind.config.js` might be missing or minimal.
 - **Sqlite**: Default database is SQLite (`database/database.sqlite`).
+- **Docker Builds**: Ensure `composer.lock` is up-to-date. If you encounter `Class 'Laravel\Pail\PailServiceProvider' not found`, run `composer update` to sync the lock file.
