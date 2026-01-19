@@ -13,6 +13,7 @@ class Conversation extends Model
 
     protected $fillable = [
         'id',
+        'user_id',
         'persona_a_id',
         'persona_b_id',
         'provider_a',
@@ -45,5 +46,10 @@ class Conversation extends Model
     public function personaB()
     {
         return $this->belongsTo(Persona::class, 'persona_b_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

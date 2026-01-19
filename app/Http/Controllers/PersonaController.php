@@ -8,10 +8,15 @@ use Inertia\Inertia;
 
 class PersonaController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     public function index()
     {
         return Inertia::render('Personas/Index', [
-            'personas' => Persona::latest()->get(),
+            'personas' => auth()->user()->personas()->latest()->get(),
         ]);
     }
 
@@ -32,13 +37,17 @@ class PersonaController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        Persona::create($validated);
+        auth()->user()->personas()->create($validated);
 
         return redirect()->route('personas.index')->with('success', 'Persona created.');
     }
 
     public function edit(Persona $persona)
     {
+        if ($persona->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         return Inertia::render('Personas/Edit', [
             'persona' => $persona,
         ]);
@@ -46,6 +55,10 @@ class PersonaController extends Controller
 
     public function update(Request $request, Persona $persona)
     {
+        if ($persona->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|unique:personas,name,' . $persona->id,
             'provider' => 'required|string',
@@ -63,6 +76,10 @@ class PersonaController extends Controller
 
     public function destroy(Persona $persona)
     {
+        if ($persona->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $persona->delete();
 
         return redirect()->route('personas.index')->with('success', 'Persona deleted.');

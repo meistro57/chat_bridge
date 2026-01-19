@@ -10,6 +10,7 @@ class ApiKey extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'provider',
         'key',
         'label',
@@ -20,4 +21,9 @@ class ApiKey extends Model
         'key' => 'encrypted',
         'is_active' => 'boolean',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }
