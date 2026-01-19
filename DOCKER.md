@@ -7,6 +7,7 @@ This guide explains how to deploy Chat Bridge using Docker with integrated RAG (
 The Docker deployment consists of the following services:
 
 - **app**: Main Laravel application (Nginx + PHP-FPM)
+  - *Volume Mounted*: Local `./app` and `./database` are mounted for development convenience.
 - **queue**: Background queue worker for processing conversations
 - **reverb**: WebSocket server for real-time updates
 - **postgres**: PostgreSQL database for persistent data
@@ -271,10 +272,9 @@ docker compose exec postgres pg_isready
 # Check database exists
 docker compose exec postgres psql -U chatbridge -l
 
-# Recreate database
-docker compose down
-docker volume rm chat_bridge_postgres-data
-docker compose up -d
+# Fix "Duplicate table" or "Relation already exists" errors
+# This wipes the database and re-runs migrations fresh
+docker compose exec app php artisan migrate:fresh
 ```
 
 ### Qdrant Not Working

@@ -39,6 +39,8 @@ RUN apk add --no-cache \
     sqlite \
     sqlite-dev \
     postgresql-dev \
+    postgresql-client \
+    redis \
     nginx \
     supervisor \
     nodejs \

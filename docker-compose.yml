@@ -13,6 +13,8 @@ services:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./.env:/var/www/html/.env
+      - ./database:/var/www/html/database
+      - ./app:/var/www/html/app
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
@@ -35,6 +37,7 @@ services:
       - QDRANT_PORT=6333
     ports:
       - "${APP_PORT:-8000}:80"
+    command: sh -c "mkdir -p /var/log/supervisor && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
     depends_on:
       - postgres
       - redis
@@ -55,6 +58,8 @@ services:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./.env:/var/www/html/.env
+      - ./database:/var/www/html/database
+      - ./app:/var/www/html/app
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
@@ -90,6 +95,8 @@ services:
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
       - ./.env:/var/www/html/.env
+      - ./database:/var/www/html/database
+      - ./app:/var/www/html/app
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
