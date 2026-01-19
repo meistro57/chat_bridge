@@ -465,7 +465,7 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 ---
 
 #### CI/CD
-- [ ] GitHub Actions workflows
+- [x] GitHub Actions workflows
 - [ ] Automated deployments
 - [ ] Preview deployments (Vercel/Netlify)
 - [ ] Database migrations in CI

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ChatBridgeController;
+use App\Http\Controllers\Api\McpController;
 use App\Http\Middleware\EnsureChatBridgeToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;

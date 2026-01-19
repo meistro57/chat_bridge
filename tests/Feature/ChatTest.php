@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\Persona;
+use App\Models\User;
 use App\Jobs\RunChatSession;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,24 +16,26 @@ class ChatTest extends TestCase
 
     public function test_can_view_chat_dashboard(): void
     {
-        $response = $this->get('/chat');
+        $user = User::factory()->create();
+        $response = $this->actingAs($user)->get('/chat');
         $response->assertStatus(200);
     }
 
     public function test_can_search_messages(): void
     {
-        $response = $this->get('/chat/search?q=test');
+        $user = User::factory()->create();
+        $response = $this->actingAs($user)->get('/chat/search?q=test');
         $response->assertStatus(200);
     }
 
     public function test_can_create_new_conversation(): void
     {
         Queue::fake();
-        $this->withoutMiddleware();
-        $personaA = Persona::factory()->create();
-        $personaB = Persona::factory()->create();
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
 
-        $response = $this->post('/chat/store', [
+        $response = $this->actingAs($user)->post('/chat', [
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
             'starter_message' => 'Hello agents',

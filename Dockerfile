@@ -31,6 +31,9 @@ RUN apk add --no-cache \
     libpng-dev \
     oniguruma-dev \
     libxml2-dev \
+    libzip-dev \
+    curl-dev \
+    icu-dev \
     zip \
     unzip \
     sqlite \
@@ -51,7 +54,11 @@ RUN docker-php-ext-install \
     exif \
     pcntl \
     bcmath \
-    opcache
+    opcache \
+    xml \
+    curl \
+    zip \
+    intl
 
 # Install Redis extension
 RUN apk add --no-cache pcre-dev $PHPIZE_DEPS \
@@ -68,7 +75,7 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
 # Copy application files
 COPY . .

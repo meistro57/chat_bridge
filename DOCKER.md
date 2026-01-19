@@ -82,13 +82,13 @@ Using Docker Compose directly:
 
 ```bash
 # Build images
-docker-compose build
+docker compose build
 
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Wait for initialization (check logs)
-docker-compose logs -f app
+docker compose logs -f app
 ```
 
 ### 4. Access the Application
@@ -127,7 +127,7 @@ After first deployment, initialize the Qdrant vector database:
 make init
 
 # Or using Docker Compose
-docker-compose exec app php artisan qdrant:init
+docker compose exec app php artisan qdrant:init
 ```
 
 ### Sync Existing Messages
@@ -142,8 +142,8 @@ make embeddings
 make sync
 
 # Or combined
-docker-compose exec app php artisan embeddings:generate
-docker-compose exec app php artisan qdrant:init --sync
+docker compose exec app php artisan embeddings:generate
+docker compose exec app php artisan qdrant:init --sync
 ```
 
 ### Disable RAG
@@ -177,18 +177,18 @@ make clean         # Remove all containers and volumes
 
 ```bash
 # View logs
-docker-compose logs -f [service]
+docker compose logs -f [service]
 
 # Execute commands in containers
-docker-compose exec app php artisan [command]
-docker-compose exec queue php artisan queue:work
-docker-compose exec postgres psql -U chatbridge
+docker compose exec app php artisan [command]
+docker compose exec queue php artisan queue:work
+docker compose exec postgres psql -U chatbridge
 
 # Restart specific service
-docker-compose restart app
+docker compose restart app
 
 # Scale queue workers
-docker-compose up -d --scale queue=3
+docker compose up -d --scale queue=3
 ```
 
 ## Database Management
@@ -203,20 +203,20 @@ make migrate
 make fresh
 
 # Create new migration
-docker-compose exec app php artisan make:migration create_table_name
+docker compose exec app php artisan make:migration create_table_name
 ```
 
 ### Backups
 
 ```bash
 # Backup PostgreSQL database
-docker-compose exec postgres pg_dump -U chatbridge chatbridge > backup.sql
+docker compose exec postgres pg_dump -U chatbridge chatbridge > backup.sql
 
 # Restore from backup
-docker-compose exec -T postgres psql -U chatbridge chatbridge < backup.sql
+docker compose exec -T postgres psql -U chatbridge chatbridge < backup.sql
 
 # Backup Qdrant data
-docker-compose exec qdrant tar czf /qdrant/storage/backup.tar.gz /qdrant/storage
+docker compose exec qdrant tar czf /qdrant/storage/backup.tar.gz /qdrant/storage
 docker cp chatbridge-qdrant:/qdrant/storage/backup.tar.gz ./qdrant-backup.tar.gz
 ```
 
@@ -239,12 +239,12 @@ docker stats
 make logs
 
 # Specific service logs
-docker-compose logs -f app
-docker-compose logs -f queue
-docker-compose logs -f reverb
+docker compose logs -f app
+docker compose logs -f queue
+docker compose logs -f reverb
 
 # Last 100 lines
-docker-compose logs --tail=100 app
+docker compose logs --tail=100 app
 ```
 
 ## Troubleshooting
@@ -253,28 +253,28 @@ docker-compose logs --tail=100 app
 
 ```bash
 # Check service status
-docker-compose ps
+docker compose ps
 
 # View detailed logs
-docker-compose logs
+docker compose logs
 
 # Restart problematic service
-docker-compose restart [service]
+docker compose restart [service]
 ```
 
 ### Database Connection Issues
 
 ```bash
 # Verify PostgreSQL is running
-docker-compose exec postgres pg_isready
+docker compose exec postgres pg_isready
 
 # Check database exists
-docker-compose exec postgres psql -U chatbridge -l
+docker compose exec postgres psql -U chatbridge -l
 
 # Recreate database
-docker-compose down
+docker compose down
 docker volume rm chat_bridge_postgres-data
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Qdrant Not Working
@@ -284,32 +284,32 @@ docker-compose up -d
 curl http://localhost:6333/
 
 # Reinitialize collection
-docker-compose exec app php artisan qdrant:init
+docker compose exec app php artisan qdrant:init
 
 # View Qdrant logs
-docker-compose logs qdrant
+docker compose logs qdrant
 ```
 
 ### Queue Not Processing
 
 ```bash
 # Check queue worker logs
-docker-compose logs -f queue
+docker compose logs -f queue
 
 # Restart queue worker
-docker-compose restart queue
+docker compose restart queue
 
 # Process jobs manually
-docker-compose exec app php artisan queue:work --once
+docker compose exec app php artisan queue:work --once
 ```
 
 ### Clear Caches
 
 ```bash
-docker-compose exec app php artisan cache:clear
-docker-compose exec app php artisan config:clear
-docker-compose exec app php artisan route:clear
-docker-compose exec app php artisan view:clear
+docker compose exec app php artisan cache:clear
+docker compose exec app php artisan config:clear
+docker compose exec app php artisan route:clear
+docker compose exec app php artisan view:clear
 ```
 
 ## Production Deployment
@@ -329,10 +329,10 @@ docker-compose exec app php artisan view:clear
 
 ```bash
 # Scale queue workers
-docker-compose up -d --scale queue=5
+docker compose up -d --scale queue=5
 
 # Optimize caches
-docker-compose exec app php artisan optimize
+docker compose exec app php artisan optimize
 
 # Use production Redis configuration
 # Add to .env:

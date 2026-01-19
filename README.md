@@ -168,7 +168,7 @@ nano .env
 
 # 4. Start all services
 make setup
-# Or: docker-compose up -d
+# Or: docker compose up -d
 
 # 5. Access the application
 # Web: http://localhost:8000
@@ -444,6 +444,8 @@ Add API keys via the web interface (`/api-keys`) for secure encrypted storage.
 ---
 
 ## 🧪 Testing
+
+The project includes automated testing via PHPUnit and GitHub Actions.
 
 ```bash
 # Run all tests
