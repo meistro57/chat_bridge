@@ -268,18 +268,13 @@ php artisan view:cache
 
 ## 📖 Usage Guide
 
-### 1. Create Your First User
-Visit `http://localhost:8000/register` and create an account.
+### 1. Login with Default Admin
+Visit `http://localhost:8000/login` and use the default credentials:
 
-The first user should be set as admin:
-```bash
-php artisan tinker
-```
-```php
-$user = User::first();
-$user->role = 'admin';
-$user->save();
-```
+- **Email**: `admin@example.com`
+- **Password**: `password`
+
+This user is automatically created and granted admin rights during installation.
 
 ### 2. Add API Keys
 1. Navigate to `/api-keys`
