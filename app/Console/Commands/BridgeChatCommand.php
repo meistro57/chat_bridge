@@ -12,6 +12,7 @@ use App\Services\AI\Data\MessageData;
 use App\Services\AI\StopWordService;
 use App\Services\AI\TranscriptService;
 use Illuminate\Console\Command;
+use InvalidArgumentException;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 use function Laravel\Prompts\info;
@@ -21,17 +22,17 @@ use App\Services\AI\EmbeddingService;
 
 class BridgeChatCommand extends Command
 {
-    protected $signature = 'bridge:chat {--max-rounds=10}';
+    protected $signature = 'bridge:chat {--max-rounds=10} {--persona-a=} {--persona-b=} {--starter=}';
     protected $description = 'Start an AI vs AI conversation bridge';
 
     public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts, EmbeddingService $embeddings)
     {
         info('🌉 Welcome to Chat Bridge (Laravel Edition)');
 
-        $personaA = $this->selectPersona('Select Persona for Agent A');
-        $personaB = $this->selectPersona('Select Persona for Agent B');
+        $personaA = $this->resolvePersona('Select Persona for Agent A', $this->option('persona-a'));
+        $personaB = $this->resolvePersona('Select Persona for Agent B', $this->option('persona-b'));
 
-        $starter = text(
+        $starter = $this->option('starter') ?? text(
             label: 'Conversation Starter',
             placeholder: 'e.g., What is the future of AI?',
             required: true
@@ -134,6 +135,21 @@ class BridgeChatCommand extends Command
         info('✅ Conversation completed.');
         $transcripts->generate($conversation);
         info('📄 Transcript generated.');
+    }
+
+    protected function resolvePersona(string $label, ?string $optionId): Persona
+    {
+        if ($optionId) {
+            $persona = Persona::find($optionId);
+
+            if (! $persona) {
+                throw new InvalidArgumentException("Persona [{$optionId}] not found.");
+            }
+
+            return $persona;
+        }
+
+        return $this->selectPersona($label);
     }
 
     protected function selectPersona(string $label): Persona

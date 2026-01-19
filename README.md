@@ -21,6 +21,56 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Chat Bridge Overview
+
+This repository hosts the **Chat Bridge** application built on Laravel + Inertia. It exposes an API/UI served through Nginx and ships a CLI command (`bridge:chat`) that orchestrates conversations between two AI personas while persisting transcripts and embeddings.
+
+## Getting Started
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Node.js/npm (handled inside the Dockerfile)
+
+### Run the stack
+
+1. Build and start the containers:
+
+   ```bash
+   docker compose up --build
+   ```
+
+2. Visit http://localhost:8000 to confirm the UI is reachable (`@routes` indicates Inertia assets built).
+3. If you encounter `SQLSTATE[HY000]: General error: 8 attempt to write a readonly database`, run the following on the host before restarting the `app` service:
+
+   ```bash
+   chmod 666 database/database.sqlite
+   docker compose restart app
+   ```
+
+4. The Laravel container will automatically rebuild assets (`composer install` + `npm install && npm run build`) during the Docker build.
+
+5. Populate personas by ensuring `roles.json` exists alongside the repository root (`database/seeders/PersonaSeeder.php` expects `../roles.json`). If the file is missing, the seeder gracefully exits.
+
+## CLI Usage
+
+The `bridge:chat` command can now operate non-interactively:
+
+```bash
+docker compose exec app php artisan bridge:chat \
+  --max-rounds=0 \
+  --persona-a=PERSONA_UUID \
+  --persona-b=PERSONA_UUID \
+  --starter="Hello from CLI"
+```
+
+If persona IDs are omitted, `select` prompts appear and require a TTY.
+
+## Troubleshooting
+
+- Session/database writes rely on `database/database.sqlite` being writable by the container user. Keep the permissions relaxed (e.g., (`chmod 666 database/database.sqlite`)) or add a Docker entrypoint step that ensures the correct ownership/permissions.
+- Composer may warn about PSR-4 violations in `tests/certify.php`; adjust the namespace if you intend to run `composer install` without warnings.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
