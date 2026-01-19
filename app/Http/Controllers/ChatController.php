@@ -77,6 +77,7 @@ class ChatController extends Controller
         ]);
 
         $conversation->messages()->create([
+            'user_id' => auth()->id(),
             'role' => 'user',
             'content' => $validated['starter_message'],
         ]);
