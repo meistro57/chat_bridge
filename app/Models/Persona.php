@@ -12,6 +12,7 @@ class Persona extends Model
 
     protected $fillable = [
         'id',
+        'user_id',
         'name',
         'provider',
         'model',
@@ -25,4 +26,9 @@ class Persona extends Model
         'guidelines' => 'json',
         'temperature' => 'float',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

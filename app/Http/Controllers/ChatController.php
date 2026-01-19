@@ -12,11 +12,16 @@ use Inertia\Inertia;
 
 class ChatController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     public function index()
     {
         return Inertia::render('Chat', [
-            'personas' => Persona::all(),
-            'conversations' => Conversation::latest()->limit(50)->get(),
+            'personas' => auth()->user()->personas()->get(),
+            'conversations' => auth()->user()->conversations()->latest()->limit(50)->get(),
         ]);
     }
 
@@ -26,7 +31,10 @@ class ChatController extends Controller
         $messages = [];
 
         if ($query) {
-            $messages = \App\Models\Message::where('content', 'like', "%{$query}%")
+            $messages = \App\Models\Message::whereHas('conversation', function ($q) {
+                    $q->where('user_id', auth()->id());
+                })
+                ->where('content', 'like', "%{$query}%")
                 ->with(['conversation', 'persona'])
                 ->latest()
                 ->limit(20)
@@ -42,7 +50,7 @@ class ChatController extends Controller
     public function create()
     {
         return Inertia::render('Chat/Create', [
-            'personas' => Persona::all(),
+            'personas' => auth()->user()->personas()->get(),
         ]);
     }
 
@@ -54,10 +62,10 @@ class ChatController extends Controller
             'starter_message' => 'required|string',
         ]);
 
-        $personaA = Persona::find($validated['persona_a_id']);
-        $personaB = Persona::find($validated['persona_b_id']);
+        $personaA = auth()->user()->personas()->findOrFail($validated['persona_a_id']);
+        $personaB = auth()->user()->personas()->findOrFail($validated['persona_b_id']);
 
-        $conversation = Conversation::create([
+        $conversation = auth()->user()->conversations()->create([
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
             'provider_a' => $personaA->provider,
@@ -86,6 +94,10 @@ class ChatController extends Controller
 
     public function show(Conversation $conversation)
     {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         return Inertia::render('Chat/Show', [
             'conversation' => $conversation->load('messages.persona'),
             'stopSignal' => (bool) Cache::get("conversation.stop.{$conversation->id}"),
@@ -94,20 +106,32 @@ class ChatController extends Controller
 
     public function stop(Conversation $conversation)
     {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         Cache::put("conversation.stop.{$conversation->id}", true, now()->addHour());
-        
+
         return back()->with('success', 'Stop signal sent.');
     }
 
     public function destroy(Conversation $conversation)
     {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $conversation->delete();
-        
+
         return redirect()->route('chat.index')->with('success', 'Conversation deleted.');
     }
 
     public function transcript(Conversation $conversation, TranscriptService $transcripts)
     {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $path = $transcripts->generate($conversation);
         return response()->download(storage_path('app/' . $path));
     }

@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'is_active',
     ];
 
     /**
@@ -43,6 +45,27 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function personas()
+    {
+        return $this->hasMany(Persona::class);
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function apiKeys()
+    {
+        return $this->hasMany(ApiKey::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }

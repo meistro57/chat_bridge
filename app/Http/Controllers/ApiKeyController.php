@@ -8,13 +8,18 @@ use Inertia\Inertia;
 
 class ApiKeyController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         return Inertia::render('ApiKeys/Index', [
-            'apiKeys' => ApiKey::orderBy('provider')->latest()->get()->map(function ($key) {
+            'apiKeys' => auth()->user()->apiKeys()->orderBy('provider')->latest()->get()->map(function ($key) {
                 return [
                     'id' => $key->id,
                     'provider' => $key->provider,
@@ -46,7 +51,7 @@ class ApiKeyController extends Controller
             'label' => 'nullable|string',
         ]);
 
-        ApiKey::create($validated);
+        auth()->user()->apiKeys()->create($validated);
 
         return redirect()->route('api-keys.index')->with('success', 'API Key added successfully.');
     }
@@ -56,6 +61,10 @@ class ApiKeyController extends Controller
      */
     public function edit(ApiKey $apiKey)
     {
+        if ($apiKey->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         return Inertia::render('ApiKeys/Edit', [
             'apiKey' => [
                 'id' => $apiKey->id,
@@ -72,6 +81,10 @@ class ApiKeyController extends Controller
      */
     public function update(Request $request, ApiKey $apiKey)
     {
+        if ($apiKey->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'provider' => 'required|string',
             'label' => 'nullable|string',
@@ -99,6 +112,10 @@ class ApiKeyController extends Controller
      */
     public function destroy(ApiKey $apiKey)
     {
+        if ($apiKey->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $apiKey->delete();
         return redirect()->route('api-keys.index')->with('success', 'API Key deleted.');
     }
