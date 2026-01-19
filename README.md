@@ -49,12 +49,27 @@ Chat Bridge enables you to create, manage, and monitor automated conversations b
 - Smooth transitions and animations
 - Accessible interface
 
+### 🧠 RAG (Retrieval-Augmented Generation)
+- **AI Memory**: Persistent memory across conversations
+- **Semantic Search**: Find relevant past messages using embeddings
+- **Context-Aware Responses**: AI uses previous conversations for informed replies
+- **Vector Database**: Qdrant for efficient similarity search
+- **Automatic Embeddings**: Generated and stored for all messages
+
+### 🐳 Docker Support
+- **Complete Containerization**: Docker Compose orchestration
+- **Production-Ready**: PostgreSQL, Redis, Qdrant included
+- **Easy Deployment**: One-command setup
+- **Scalable Architecture**: Separate containers for app, queue, WebSocket
+- **Persistent Storage**: Volumes for database and vector storage
+
 ### 🚀 Performance & Scalability
 - Async job processing with Laravel Queue
 - Database-backed queue system
 - Long-running conversation support (20 min timeout)
 - Message embeddings for semantic search
 - Efficient N+1 query prevention
+- Vector search with sub-10ms response times
 
 ---
 
@@ -62,12 +77,13 @@ Chat Bridge enables you to create, manage, and monitor automated conversations b
 
 ### Backend
 - **Framework**: Laravel 12 (PHP 8.2+)
-- **Database**: SQLite (configurable to MySQL/PostgreSQL)
-- **Queue**: Database driver (Redis-ready)
+- **Database**: SQLite (dev) / PostgreSQL (Docker/production)
+- **Queue**: Database driver (dev) / Redis (Docker/production)
 - **WebSockets**: Laravel Reverb
 - **Authentication**: Laravel Breeze + Sanctum
 - **AI Integration**: Neuron AI (multi-provider abstraction)
 - **HTTP Client**: Saloon PHP
+- **Vector Database**: Qdrant (RAG functionality)
 
 ### Frontend
 - **Framework**: React 19
@@ -130,6 +146,75 @@ npm run build
 ```bash
 php artisan db:seed
 ```
+
+---
+
+## 🐳 Docker Deployment
+
+For production deployment or easier setup, use Docker:
+
+### Quick Start with Docker
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd chat_bridge
+
+# 2. Copy Docker environment file
+cp .env.docker .env
+
+# 3. Configure your API keys in .env
+nano .env
+
+# 4. Start all services
+make setup
+# Or: docker-compose up -d
+
+# 5. Access the application
+# Web: http://localhost:8000
+# WebSocket: http://localhost:8080
+# Qdrant: http://localhost:6333/dashboard
+```
+
+### Docker Services
+
+The Docker deployment includes:
+- **app**: Laravel application (Nginx + PHP-FPM)
+- **queue**: Background worker for conversations
+- **reverb**: WebSocket server for real-time updates
+- **postgres**: PostgreSQL database
+- **redis**: Redis for caching and queue
+- **qdrant**: Vector database for RAG
+
+### Initialize RAG
+
+After starting Docker services:
+
+```bash
+# Initialize Qdrant vector database
+make init
+
+# (Optional) Generate embeddings for existing messages
+make embeddings
+
+# (Optional) Sync existing messages to Qdrant
+make sync
+```
+
+### Common Docker Commands
+
+```bash
+make up           # Start all services
+make down         # Stop all services
+make logs         # View all logs
+make shell        # Open shell in app container
+make migrate      # Run migrations
+make clean        # Remove all containers and volumes
+```
+
+For detailed Docker documentation, see **[DOCKER.md](DOCKER.md)**
+
+For RAG functionality guide, see **[RAG_GUIDE.md](RAG_GUIDE.md)**
 
 ---
 
@@ -406,11 +491,19 @@ php artisan migrate --force
 
 ## 📚 Documentation
 
+### Chat Bridge Documentation
+- **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide
+- **[RAG_GUIDE.md](RAG_GUIDE.md)** - RAG functionality and AI memory guide
+- **[ROADMAP.md](ROADMAP.md)** - Future development plans
+- **[LARAVEL_ENHANCEMENTS.md](LARAVEL_ENHANCEMENTS.md)** - UX improvements
+
+### External Documentation
 - [Laravel Documentation](https://laravel.com/docs/12.x)
 - [Inertia.js Guide](https://inertiajs.com/)
 - [React Documentation](https://react.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [Laravel Reverb](https://reverb.laravel.com/)
+- [Qdrant Documentation](https://qdrant.tech/documentation/)
 
 ---
 

@@ -1,0 +1,53 @@
+# Version Control
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+vendor
+
+# Build artifacts
+/public/hot
+/public/storage
+/public/build
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+tests
+.phpunit.result.cache
+coverage
+
+# Documentation
+README.md
+*.md
+docs
+
+# Logs
+storage/logs/*.log
+npm-debug.log
+yarn-error.log
+
+# Database
+/database/database.sqlite
+*.sqlite
+
+# Misc
+.editorconfig
+.php-cs-fixer.php
+phpunit.xml
