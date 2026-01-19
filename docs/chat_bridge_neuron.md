@@ -9,9 +9,10 @@ The integration provides a dedicated API endpoint for AI agents to converse with
 ### Key Components
 
 - **Agent**: `App\Neuron\Agents\ChatBridgeAgent` (wraps Neuron AI Agent)
-- **Store**: `App\Services\ChatBridge\HistoryStore` (Manages DB persistence)
+- **Store**: `App\Services\ChatBridge\HistoryStore` (manages DB persistence)
 - **Models**: `ChatBridgeThread`, `ChatBridgeMessage`
 - **Controller**: `App\Http\Controllers\Api\ChatBridgeController`
+- **Middleware**: `App\Http\Middleware\EnsureChatBridgeToken` (token gate)
 
 ## Setup
 
@@ -32,11 +33,13 @@ The integration provides a dedicated API endpoint for AI agents to converse with
    # Neuron Provider
    NEURON_PROVIDER=openai
    OPENAI_API_KEY=sk-...
-   OPENAI_MODEL=gpt-4o-mini
+   OPENAI_MODEL=gpt-3.5-turbo
 
    # API Security
    CHAT_BRIDGE_TOKEN=your-secret-token-here
    ```
+
+   > ℹ️ If `CHAT_BRIDGE_TOKEN` is empty, the middleware currently allows requests through for local development convenience. Set it in production to enforce authentication.
 
 ## Usage
 
@@ -54,7 +57,11 @@ The integration provides a dedicated API endpoint for AI agents to converse with
 {
   "bridge_thread_id": "thread-101",
   "message": "Hello, who are you?",
-  "persona": "You are a pirate."
+  "persona": "You are a pirate.",
+  "metadata": {
+    "source": "widget",
+    "request_id": "req-123"
+  }
 }
 ```
 
@@ -65,6 +72,27 @@ The integration provides a dedicated API endpoint for AI agents to converse with
   "assistant_message": "Ahoy matey! I be Captain ChatBridge!",
   "thread_db_id": 1
 }
+```
+
+### Validation Rules
+
+- `bridge_thread_id`: required, string, max 255 chars.
+- `message`: required, string, max 20,000 chars.
+- `persona`: optional, string, max 5,000 chars.
+- `metadata`: optional, array (persisted with the user message).
+
+### Example cURL
+
+```bash
+curl -X POST http://localhost:8000/api/chat-bridge/respond \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -H 'X-CHAT-BRIDGE-TOKEN: your-secret-token-here' \
+  -d '{
+    "bridge_thread_id": "thread-101",
+    "message": "Hello, who are you?",
+    "persona": "You are a pirate."
+  }'
 ```
 
 ### Testing
