@@ -10,7 +10,7 @@ class AnthropicDriver implements AIDriverInterface
 {
     public function __construct(
         protected string $apiKey,
-        protected string $model = 'claude-3-5-sonnet-20241022',
+        protected string $model = 'claude-sonnet-4-5-20250929',
         protected string $version = '2023-06-01',
         protected string $baseUrl = 'https://api.anthropic.com/v1'
     ) {}
@@ -26,10 +26,18 @@ class AnthropicDriver implements AIDriverInterface
         ])->post("{$this->baseUrl}/messages", $payload);
 
         if ($response->failed()) {
-            throw new \Exception('Anthropic API Error: '.$response->body());
+            $errorBody = $response->json();
+            $errorMessage = $errorBody['error']['message'] ?? $response->body();
+            throw new \Exception('Anthropic API Error: '.$errorMessage);
         }
 
-        return $response->json('content.0.text');
+        $content = $response->json('content.0.text');
+
+        if ($content === null) {
+            throw new \Exception('Anthropic returned unexpected response format. Response: ' . json_encode($response->json()));
+        }
+
+        return $content;
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable

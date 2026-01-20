@@ -1,28 +1,102 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
+
+const PROVIDERS = [
+    { id: 'anthropic', name: 'Anthropic (Claude)' },
+    { id: 'openai', name: 'OpenAI (GPT)' },
+    { id: 'openrouter', name: 'OpenRouter' },
+    { id: 'gemini', name: 'Google Gemini' },
+    { id: 'deepseek', name: 'DeepSeek' },
+    { id: 'ollama', name: 'Ollama (Local)' },
+    { id: 'lmstudio', name: 'LM Studio (Local)' },
+];
 
 export default function Create({ personas }) {
     const { data, setData, post, processing, errors } = useForm({
         persona_a_id: '',
         persona_b_id: '',
+        provider_a: '',
+        provider_b: '',
+        model_a: '',
+        model_b: '',
+        temp_a: 0.7,
+        temp_b: 0.7,
         starter_message: '',
+        max_rounds: 10,
+        stop_word_detection: false,
+        stop_words: '',
+        stop_word_threshold: 0.8,
     });
+
+    const [modelsA, setModelsA] = useState([]);
+    const [modelsB, setModelsB] = useState([]);
+    const [loadingModelsA, setLoadingModelsA] = useState(false);
+    const [loadingModelsB, setLoadingModelsB] = useState(false);
+
+    const fetchModels = async (provider, setModels, setLoading) => {
+        if (!provider) {
+            setModels([]);
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`/api/providers/models?provider=${provider}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                console.error(`HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                setModels([]);
+                return;
+            }
+
+            const result = await response.json();
+            console.log(`Fetched models for ${provider}:`, result);
+            setModels(result.models || []);
+        } catch (error) {
+            console.error('Error fetching models:', error);
+            setModels([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchModels(data.provider_a, setModelsA, setLoadingModelsA);
+    }, [data.provider_a]);
+
+    useEffect(() => {
+        fetchModels(data.provider_b, setModelsB, setLoadingModelsB);
+    }, [data.provider_b]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post('/chat/store');
+
+        // Convert stop_words string to array
+        const submitData = {
+            ...data,
+            stop_words: data.stop_word_detection && data.stop_words
+                ? data.stop_words.split(',').map(w => w.trim()).filter(w => w.length > 0)
+                : [],
+        };
+
+        post(route('chat.store'), {
+            data: submitData
+        });
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 flex items-center justify-center p-4">
+        <div className="min-h-screen text-zinc-100 p-4 md:p-8">
             <Head title="Initialize Protocol" />
-            
-            <div className="w-full max-w-2xl glass-panel p-8 md:p-12 rounded-3xl relative overflow-hidden">
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -ml-32 -mb-32 pointer-events-none"></div>
 
-                <div className="flex justify-between items-center mb-8 relative z-10">
+            <div className="max-w-6xl mx-auto">
+                <div className="flex justify-between items-center mb-8">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Initialize Bridge</h1>
                         <p className="text-zinc-500 text-sm mt-1">Configure parameters for new neural handshake.</p>
@@ -32,71 +106,247 @@ export default function Create({ personas }) {
                     </Link>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-indigo-400 ml-1">Agent Concept A</label>
-                            <div className="relative">
-                                <select 
+                <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Agent Configuration Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Agent A */}
+                        <div className="glass-panel rounded-2xl p-6 space-y-4">
+                            <h2 className="text-lg font-bold text-indigo-400 uppercase tracking-wider mb-4">Agent Concept A</h2>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Persona</label>
+                                <select
                                     value={data.persona_a_id}
                                     onChange={e => setData('persona_a_id', e.target.value)}
-                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-zinc-100 appearance-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none"
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
                                 >
-                                    <option value="">Select Persona Entity...</option>
+                                    <option value="">Select Persona...</option>
                                     {personas.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name} ({p.provider})</option>
+                                        <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                {errors.persona_a_id && <div className="text-red-400 text-sm">{errors.persona_a_id}</div>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Provider</label>
+                                <select
+                                    value={data.provider_a}
+                                    onChange={e => {
+                                        setData('provider_a', e.target.value);
+                                        setData('model_a', '');
+                                    }}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
+                                >
+                                    <option value="">Select Provider...</option>
+                                    {PROVIDERS.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                                {errors.provider_a && <div className="text-red-400 text-sm">{errors.provider_a}</div>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Model</label>
+                                <select
+                                    value={data.model_a}
+                                    onChange={e => setData('model_a', e.target.value)}
+                                    disabled={!data.provider_a || loadingModelsA}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none disabled:opacity-50"
+                                >
+                                    <option value="">{loadingModelsA ? 'Loading models...' : 'Select Model...'}</option>
+                                    {modelsA.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.name}{m.cost ? ` - ${m.cost}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.model_a && <div className="text-red-400 text-sm">{errors.model_a}</div>}
+                                <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Temperature: {data.temp_a}</label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="2"
+                                    step="0.1"
+                                    value={data.temp_a}
+                                    onChange={e => setData('temp_a', parseFloat(e.target.value))}
+                                    className="w-full"
+                                />
+                                <div className="flex justify-between text-xs text-zinc-600">
+                                    <span>Deterministic</span>
+                                    <span>Creative</span>
                                 </div>
                             </div>
-                            {errors.persona_a_id && <div className="text-red-400 text-sm pl-1">{errors.persona_a_id}</div>}
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-purple-400 ml-1">Agent Concept B</label>
-                            <div className="relative">
-                                <select 
+                        {/* Agent B */}
+                        <div className="glass-panel rounded-2xl p-6 space-y-4">
+                            <h2 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-4">Agent Concept B</h2>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Persona</label>
+                                <select
                                     value={data.persona_b_id}
                                     onChange={e => setData('persona_b_id', e.target.value)}
-                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-zinc-100 appearance-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all outline-none"
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none"
                                 >
-                                    <option value="">Select Persona Entity...</option>
+                                    <option value="">Select Persona...</option>
                                     {personas.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name} ({p.provider})</option>
+                                        <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
-                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                {errors.persona_b_id && <div className="text-red-400 text-sm">{errors.persona_b_id}</div>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Provider</label>
+                                <select
+                                    value={data.provider_b}
+                                    onChange={e => {
+                                        setData('provider_b', e.target.value);
+                                        setData('model_b', '');
+                                    }}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none"
+                                >
+                                    <option value="">Select Provider...</option>
+                                    {PROVIDERS.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                                {errors.provider_b && <div className="text-red-400 text-sm">{errors.provider_b}</div>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Model</label>
+                                <select
+                                    value={data.model_b}
+                                    onChange={e => setData('model_b', e.target.value)}
+                                    disabled={!data.provider_b || loadingModelsB}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none disabled:opacity-50"
+                                >
+                                    <option value="">{loadingModelsB ? 'Loading models...' : 'Select Model...'}</option>
+                                    {modelsB.map(m => (
+                                        <option key={m.id} value={m.id}>
+                                            {m.name}{m.cost ? ` - ${m.cost}` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.model_b && <div className="text-red-400 text-sm">{errors.model_b}</div>}
+                                <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Temperature: {data.temp_b}</label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="2"
+                                    step="0.1"
+                                    value={data.temp_b}
+                                    onChange={e => setData('temp_b', parseFloat(e.target.value))}
+                                    className="w-full"
+                                />
+                                <div className="flex justify-between text-xs text-zinc-600">
+                                    <span>Deterministic</span>
+                                    <span>Creative</span>
                                 </div>
                             </div>
-                            {errors.persona_b_id && <div className="text-red-400 text-sm pl-1">{errors.persona_b_id}</div>}
                         </div>
                     </div>
 
-                    <div className="space-y-2">
+                    {/* Initial Prompt */}
+                    <div className="glass-panel rounded-2xl p-6 space-y-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-emerald-400 ml-1">Initial Stimulus (Prompt)</label>
-                        <textarea 
+                        <textarea
                             value={data.starter_message}
                             onChange={e => setData('starter_message', e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-zinc-100 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all outline-none min-h-[160px] resize-none leading-relaxed"
+                            className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-zinc-100 focus:ring-2 focus:ring-emerald-500/50 outline-none min-h-[120px] resize-none"
                             placeholder="Construct the initial scenario or query for the agents..."
                         ></textarea>
-                        {errors.starter_message && <div className="text-red-400 text-sm pl-1">{errors.starter_message}</div>}
+                        {errors.starter_message && <div className="text-red-400 text-sm">{errors.starter_message}</div>}
                     </div>
 
+                    {/* Chat Control Settings */}
+                    <div className="glass-panel rounded-2xl p-6 space-y-4">
+                        <h2 className="text-lg font-bold text-yellow-400 uppercase tracking-wider mb-4">Chat Control Settings</h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Max Rounds</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="100"
+                                    value={data.max_rounds}
+                                    onChange={e => setData('max_rounds', parseInt(e.target.value))}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
+                                />
+                                <p className="text-xs text-zinc-600">Maximum number of conversation turns</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.stop_word_detection}
+                                        onChange={e => setData('stop_word_detection', e.target.checked)}
+                                        className="w-5 h-5 rounded bg-zinc-900/50 border-white/10"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Enable Stop Word Detection</span>
+                                </label>
+                                <p className="text-xs text-zinc-600 ml-7">Automatically stop when specific words are detected</p>
+                            </div>
+                        </div>
+
+                        {data.stop_word_detection && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Stop Words (comma separated)</label>
+                                    <input
+                                        type="text"
+                                        value={data.stop_words}
+                                        onChange={e => setData('stop_words', e.target.value)}
+                                        placeholder="goodbye, farewell, end"
+                                        className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Detection Threshold: {data.stop_word_threshold}</label>
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="1"
+                                        step="0.1"
+                                        value={data.stop_word_threshold}
+                                        onChange={e => setData('stop_word_threshold', parseFloat(e.target.value))}
+                                        className="w-full"
+                                    />
+                                    <div className="flex justify-between text-xs text-zinc-600">
+                                        <span>Loose</span>
+                                        <span>Strict</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Submit Button */}
                     <div className="pt-4">
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             disabled={processing}
                             className="w-full group relative bg-white text-black rounded-xl py-4 font-bold overflow-hidden transition-all hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20 group-hover:opacity-40 transition-opacity animate-gradient-x"></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20 group-hover:opacity-40 transition-opacity"></div>
                             <span className="relative flex items-center justify-center gap-2">
                                 {processing ? (
                                     <>
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <svg className="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
@@ -104,7 +354,7 @@ export default function Create({ personas }) {
                                     </>
                                 ) : (
                                     <>
-                                        Begin Simulation 
+                                        Begin Simulation
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                                     </>
                                 )}

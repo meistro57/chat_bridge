@@ -24,8 +24,6 @@ class PersonaController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|unique:personas,name',
-            'provider' => 'required|string',
-            'model' => 'nullable|string',
             'system_prompt' => 'required|string',
             'guidelines' => 'nullable|array',
             'temperature' => 'required|numeric|min:0|max:2',
@@ -56,8 +54,6 @@ class PersonaController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|unique:personas,name,'.$persona->id,
-            'provider' => 'required|string',
-            'model' => 'nullable|string',
             'system_prompt' => 'required|string',
             'guidelines' => 'nullable|array',
             'temperature' => 'required|numeric|min:0|max:2',

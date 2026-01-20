@@ -25,12 +25,20 @@ class Conversation extends Model
         'starter_message',
         'status',
         'metadata',
+        'max_rounds',
+        'stop_word_detection',
+        'stop_words',
+        'stop_word_threshold',
     ];
 
     protected $casts = [
         'metadata' => 'json',
         'temp_a' => 'float',
         'temp_b' => 'float',
+        'max_rounds' => 'integer',
+        'stop_word_detection' => 'boolean',
+        'stop_words' => 'json',
+        'stop_word_threshold' => 'float',
     ];
 
     public function messages(): HasMany

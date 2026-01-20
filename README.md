@@ -44,13 +44,14 @@ Perfect for **AI researchers, developers, and enthusiasts** who want to experime
 <td width="50%">
 
 ### 🎭 **Persona System**
-Create sophisticated AI agents with:
+Create reusable AI persona templates with:
 - 🔧 Custom system prompts & guidelines
-- 🌡️ Temperature controls (0.0-2.0)
-- 🔄 Multi-provider support (8+ AI services)
+- 🌡️ Default temperature controls (0.0-2.0)
+- 🔄 **Provider/model-agnostic design**
 - 👥 Shared library - 56 pre-configured personas
 - 📝 Creator attribution tracking
 - ✏️ Full CRUD operations
+- 🎯 Reusable across any AI provider
 
 </td>
 <td width="50%">
@@ -58,8 +59,11 @@ Create sophisticated AI agents with:
 ### 💬 **Conversation Engine**
 Orchestrate AI discussions with:
 - ⚡ Real-time streaming via WebSockets
-- 🔄 Automated multi-turn dialogues
+- 🔄 Automated multi-turn dialogues (configurable max rounds)
 - 🎯 Manual stop/resume controls
+- 🛑 **Smart stop-word detection with thresholds**
+- 🤖 **Per-conversation provider/model selection**
+- 💰 **Live pricing display for 344+ models**
 - 📡 Live status broadcasting
 - 💾 Complete conversation history
 - 📥 Transcript export (CSV)
@@ -299,16 +303,16 @@ WebSocket Streaming
 
 ### **🎯 Supported AI Providers**
 
-| Provider | Models | Status |
-|----------|--------|--------|
-| 🤖 OpenAI | GPT-4, GPT-3.5, etc. | ✅ Active |
-| 🧠 Anthropic | Claude 3.5 Sonnet, Opus | ✅ Active |
-| 🌟 Google | Gemini Pro, Ultra | ✅ Active |
-| 🚀 DeepSeek | DeepSeek Chat | ✅ Active |
-| 🔀 OpenRouter | Multi-model Gateway | ✅ Active |
-| 🏠 Ollama | Local Models | ✅ Active |
-| 💻 LM Studio | Local Models | ✅ Active |
-| 🧪 Mock | Testing & Development | ✅ Active |
+| Provider | Models | Dynamic Fetching | Status |
+|----------|--------|------------------|--------|
+| 🤖 OpenAI | GPT-4o, GPT-4 Turbo, etc. | ✅ API | ✅ Active |
+| 🧠 Anthropic | Claude Sonnet 4.5, Opus 4.5, Haiku 4.5 | ✅ API | ✅ Active |
+| 🌟 Google Gemini | Gemini 2.0 Flash, 1.5 Pro | ⚙️ Static | ✅ Active |
+| 🚀 DeepSeek | DeepSeek Chat, R1 | ⚙️ Static | ✅ Active |
+| 🔀 OpenRouter | **344+ models** with live pricing | ✅ API | ✅ Active |
+| 🏠 Ollama | Local Models | ✅ Auto-detect | ✅ Active |
+| 💻 LM Studio | Local Models | ✅ Auto-detect | ✅ Active |
+| 🧪 Mock | Testing & Development | N/A | ✅ Active |
 
 ---
 
@@ -547,20 +551,35 @@ This admin user is automatically created with full admin rights during installat
 2. Click "Create Persona"
 3. Configure:
    - **Name**: Unique identifier
-   - **Provider**: AI provider (must have corresponding API key)
-   - **Model**: Specific model (e.g., "gpt-4", "claude-3-5-sonnet")
-   - **System Prompt**: Instructions for the AI
-   - **Guidelines**: JSON array of behavioral rules
-   - **Temperature**: 0.0 (deterministic) to 2.0 (creative)
+   - **System Prompt**: Instructions for the AI's personality and behavior
+   - **Default Temperature**: 0.0 (deterministic) to 2.0 (creative)
+   - **Notes**: Optional internal notes
 4. Save
+
+> 💡 **Note**: Personas are now provider/model-agnostic templates! You select the provider and model when creating a conversation, allowing you to reuse the same persona with different AI models.
 
 ### 4. Start a Conversation
 1. Navigate to `/chat/create`
-2. Select **Persona A** (starts conversation)
-3. Select **Persona B** (responds)
-4. Enter a **Starter Message**
-5. Click "Start Conversation"
-6. Watch the real-time conversation unfold!
+2. Configure **Agent A**:
+   - Select persona template
+   - Choose AI provider (Anthropic, OpenAI, OpenRouter, etc.)
+   - Select model from **dynamically fetched list** with pricing
+   - Adjust temperature if needed
+3. Configure **Agent B**:
+   - Select persona template
+   - Choose AI provider (can be different from Agent A!)
+   - Select model with live pricing
+   - Adjust temperature if needed
+4. Enter **Starter Message**
+5. Configure **Chat Control Settings**:
+   - **Max Rounds**: Limit conversation turns (1-100)
+   - **Stop Word Detection**: Enable automatic stopping
+   - **Stop Words**: Comma-separated trigger words (e.g., "goodbye, end")
+   - **Threshold**: Detection sensitivity (0.1-1.0)
+6. Click "Begin Simulation"
+7. Watch the real-time conversation unfold!
+
+> 💰 **Pricing**: All models display cost per 1M tokens (input/output) so you can make informed decisions!
 
 ### 5. Monitor Conversations
 - View active conversations on `/chat`
@@ -652,11 +671,14 @@ chat_bridge/
 
 ### Conversations
 - `GET /chat` - List conversations
-- `POST /chat` - Create conversation
+- `POST /chat` - Create conversation (with provider/model selection & chat controls)
 - `GET /chat/{id}` - View conversation
 - `POST /chat/{id}/stop` - Stop conversation
 - `DELETE /chat/{id}` - Delete conversation
 - `GET /chat/{id}/transcript` - Download transcript
+
+### Provider API
+- `GET /api/providers/models?provider={name}` - Get available models for provider (with pricing)
 
 ### Personas
 - `GET /personas` - List personas

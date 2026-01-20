@@ -59,7 +59,17 @@ class ChatController extends Controller
         $validated = $request->validate([
             'persona_a_id' => 'required|exists:personas,id',
             'persona_b_id' => 'required|exists:personas,id',
+            'provider_a' => 'required|string',
+            'provider_b' => 'required|string',
+            'model_a' => 'required|string',
+            'model_b' => 'required|string',
+            'temp_a' => 'required|numeric|min:0|max:2',
+            'temp_b' => 'required|numeric|min:0|max:2',
             'starter_message' => 'required|string',
+            'max_rounds' => 'required|integer|min:1|max:100',
+            'stop_word_detection' => 'boolean',
+            'stop_words' => 'array',
+            'stop_word_threshold' => 'numeric|min:0.1|max:1',
         ]);
 
         $personaA = Persona::findOrFail($validated['persona_a_id']);
@@ -69,21 +79,25 @@ class ChatController extends Controller
             'user_id' => auth()->id(),
             'persona_a' => $personaA->name,
             'persona_b' => $personaB->name,
-            'provider_a' => $personaA->provider,
-            'provider_b' => $personaB->provider,
+            'provider_a' => $validated['provider_a'],
+            'provider_b' => $validated['provider_b'],
         ]);
 
         $conversation = auth()->user()->conversations()->create([
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
-            'provider_a' => $personaA->provider,
-            'provider_b' => $personaB->provider,
-            'model_a' => $personaA->model,
-            'model_b' => $personaB->model,
-            'temp_a' => $personaA->temperature,
-            'temp_b' => $personaB->temperature,
+            'provider_a' => $validated['provider_a'],
+            'provider_b' => $validated['provider_b'],
+            'model_a' => $validated['model_a'],
+            'model_b' => $validated['model_b'],
+            'temp_a' => $validated['temp_a'],
+            'temp_b' => $validated['temp_b'],
             'starter_message' => $validated['starter_message'],
             'status' => 'active',
+            'max_rounds' => $validated['max_rounds'],
+            'stop_word_detection' => $validated['stop_word_detection'] ?? false,
+            'stop_words' => $validated['stop_words'] ?? [],
+            'stop_word_threshold' => $validated['stop_word_threshold'] ?? 0.8,
             'metadata' => [
                 'persona_a_name' => $personaA->name,
                 'persona_b_name' => $personaB->name,

@@ -42,7 +42,7 @@ return [
 
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
-        'model' => env('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-4-5-20250929'),
     ],
 
     'deepseek' => [

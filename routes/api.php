@@ -21,3 +21,6 @@ Route::prefix('mcp')->group(function () {
     Route::get('/contextual-memory', [McpController::class, 'contextualMemory']);
     Route::get('/conversation/{conversation}', [McpController::class, 'conversation']);
 });
+
+// Provider API routes (no auth required for model listing)
+Route::get('/providers/models', [\App\Http\Controllers\Api\ProviderController::class, 'getModels']);

@@ -14,8 +14,6 @@ class Persona extends Model
         'id',
         'user_id',
         'name',
-        'provider',
-        'model',
         'system_prompt',
         'guidelines',
         'temperature',

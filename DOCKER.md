@@ -248,6 +248,49 @@ docker compose logs -f reverb
 docker compose logs --tail=100 app
 ```
 
+## Frontend Assets & WebSocket Configuration
+
+### First-Time Setup
+
+Chat Bridge requires encryption keys to be set before building Docker images. Use the setup script:
+
+```bash
+./setup-docker.sh
+```
+
+This script automatically:
+1. Generates `APP_KEY`, `REVERB_APP_KEY`, and `REVERB_APP_SECRET`
+2. Configures `.env` for Docker environment
+3. Builds Docker images with correct frontend assets
+4. Starts all containers
+
+### Manual Frontend Build
+
+If you change `REVERB_APP_KEY` or other frontend variables in `.env`:
+
+**Development (with public volume mounted):**
+```bash
+npm run build
+docker compose restart app
+```
+
+**Production (without public volume):**
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+
+### WebSocket Connection Issues
+
+If you see "You must pass your app key when you instantiate Pusher":
+
+1. Verify `REVERB_APP_KEY` is set in `.env`
+2. Rebuild frontend assets:
+   ```bash
+   npm run build
+   docker compose restart app
+   ```
+
 ## Troubleshooting
 
 ### Services Won't Start

@@ -26,14 +26,27 @@ class AIManager extends Manager
      */
     private function getKey(string $provider): ?string
     {
-        // 1. Try Config (.env) FIRST
+        // 1. Try Config (.env) FIRST - for system-wide/admin keys
         $configKey = config("services.{$provider}.key");
         if (! empty($configKey)) {
             return $configKey;
         }
 
         try {
-            // 2. Fallback to Database
+            // 2. Try to get current user's key from Database
+            if (auth()->check()) {
+                $dbEntry = ApiKey::where('provider', $provider)
+                    ->where('user_id', auth()->id())
+                    ->where('is_active', true)
+                    ->latest()
+                    ->first();
+
+                if ($dbEntry && ! empty($dbEntry->key)) {
+                    return $dbEntry->key;
+                }
+            }
+
+            // 3. Fallback to any active key (for backward compatibility)
             $dbEntry = ApiKey::where('provider', $provider)
                 ->where('is_active', true)
                 ->latest()
@@ -73,7 +86,7 @@ class AIManager extends Manager
 
         return new AnthropicDriver(
             apiKey: $key,
-            model: config('services.anthropic.model', 'claude-3-5-sonnet-20241022')
+            model: config('services.anthropic.model', 'claude-sonnet-4-5-20250929')
         );
     }
 

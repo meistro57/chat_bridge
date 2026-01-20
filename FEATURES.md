@@ -17,8 +17,9 @@
 - **Create & Configure** - Build AI personas with custom personalities
 - **System Prompts** - Define behavior with detailed instructions
 - **Guidelines** - JSON-based behavioral rules
-- **Temperature Control** - Fine-tune creativity (0.0-2.0)
-- **Multi-Provider** - Support for 8+ AI services
+- **Temperature Control** - Default temperature setting (0.0-2.0)
+- **Provider-Agnostic** - Personas work with any AI provider/model
+- **Reusable Templates** - Use same persona across different providers
 - **Shared Library** - 56 pre-configured personas included
 - **Ownership Tracking** - Creator attribution for all personas
 - **Full CRUD** - Create, Read, Update, Delete operations
@@ -28,6 +29,14 @@
 - **Real-time Streaming** - See responses as they're generated
 - **WebSocket Support** - Laravel Reverb for live updates
 - **Manual Controls** - Start, stop, and resume conversations
+- **Per-Conversation Provider/Model Selection** - Choose any provider and model for each agent
+- **Dynamic Model Fetching** - Query providers for available models (344+ models supported)
+- **Live Pricing Display** - See cost per 1M tokens before starting conversation
+- **Advanced Chat Controls**:
+  - **Max Rounds** - Set conversation length limit (1-100 turns)
+  - **Stop Word Detection** - Automatic conversation stopping based on keywords
+  - **Stop Word Threshold** - Configurable similarity threshold (0.1-1.0)
+  - **Custom Stop Words** - Define conversation-ending phrases
 - **Status Tracking** - Active, completed, failed states
 - **Message History** - Complete conversation logs
 - **Transcript Export** - Download conversations as CSV
@@ -374,6 +383,10 @@
 - **Webhook Support** - Event notifications
 - **MCP Integration** - Model Context Protocol
 - **External API** - Chat bridge endpoint
+- **Provider Models API** - Dynamic model listing endpoint
+  - `/api/providers/models?provider=<name>`
+  - Real-time model discovery from AI providers
+  - Returns models with pricing, context length, and metadata
 
 ### 🎯 Usability
 - **Intuitive Navigation** - Clear menu structure
