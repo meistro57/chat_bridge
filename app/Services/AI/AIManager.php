@@ -26,8 +26,14 @@ class AIManager extends Manager
      */
     private function getKey(string $provider): ?string
     {
+        // 1. Try Config (.env) FIRST
+        $configKey = config("services.{$provider}.key");
+        if (! empty($configKey)) {
+            return $configKey;
+        }
+
         try {
-            // 1. Try Database
+            // 2. Fallback to Database
             $dbEntry = ApiKey::where('provider', $provider)
                 ->where('is_active', true)
                 ->latest()
@@ -37,12 +43,10 @@ class AIManager extends Manager
                 return $dbEntry->key;
             }
         } catch (\Exception $e) {
-            // Fallback if DB fails/missing
             Log::warning("Failed to fetch API key from DB for {$provider}: ".$e->getMessage());
         }
 
-        // 2. Fallback to Config
-        return config("services.{$provider}.key");
+        return null;
     }
 
     public function createOpenAIDriver()

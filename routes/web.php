@@ -7,12 +7,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/_boost/browser-logs', function(Request $request) {
+Route::post('/_boost/browser-logs', function (Request $request) {
     Log::channel('daily')->error('Browser Error', [
         'error' => $request->input('error'),
         'stack' => $request->input('stack'),
-        'url' => $request->input('url')
+        'url' => $request->input('url'),
     ]);
+
     return response()->json(['status' => 'logged']);
 });
 
@@ -22,8 +23,17 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
-        return redirect()->route('chat.index');
+        return \Inertia\Inertia::render('Dashboard', [
+            'user' => auth()->user(),
+        ]);
     })->name('dashboard');
+    // Admin routes
+    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        Route::get('/system', [\App\Http\Controllers\Admin\SystemController::class, 'index'])->name('system');
+        Route::post('/system/diagnostic', [\App\Http\Controllers\Admin\SystemController::class, 'runDiagnostic'])->name('system.diagnostic');
+    });
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -31,6 +41,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Persona routes
     Route::resource('personas', PersonaController::class);
+
+    // API Keys routes
+    Route::resource('api-keys', \App\Http\Controllers\ApiKeyController::class);
+    Route::post('/api-keys/{apiKey}/test', [\App\Http\Controllers\ApiKeyController::class, 'test'])->name('api-keys.test');
+
+    // Analytics routes
+    Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
+    Route::get('/analytics/query', [\App\Http\Controllers\AnalyticsController::class, 'query'])->name('analytics.query');
+    Route::get('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'export'])->name('analytics.export');
 
     // Chat routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');

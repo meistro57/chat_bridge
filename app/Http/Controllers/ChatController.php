@@ -4,17 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
+use App\Models\Persona;
 use App\Services\AI\TranscriptService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class ChatController extends Controller
 {
     public function index()
     {
+        Log::info('ChatController::index loading personas', [
+            'user_id' => auth()->id(),
+            'persona_count' => Persona::count()
+        ]);
         return Inertia::render('Chat', [
-            'personas' => auth()->user()->personas()->get(),
+            'personas' => Persona::orderBy('name')->get(),
             'conversations' => auth()->user()->conversations()->latest()->limit(50)->get(),
         ]);
     }
@@ -44,7 +50,7 @@ class ChatController extends Controller
     public function create()
     {
         return Inertia::render('Chat/Create', [
-            'personas' => auth()->user()->personas()->get(),
+            'personas' => Persona::orderBy('name')->get(),
         ]);
     }
 
@@ -56,8 +62,16 @@ class ChatController extends Controller
             'starter_message' => 'required|string',
         ]);
 
-        $personaA = auth()->user()->personas()->findOrFail($validated['persona_a_id']);
-        $personaB = auth()->user()->personas()->findOrFail($validated['persona_b_id']);
+        $personaA = Persona::findOrFail($validated['persona_a_id']);
+        $personaB = Persona::findOrFail($validated['persona_b_id']);
+
+        Log::info('Creating new conversation', [
+            'user_id' => auth()->id(),
+            'persona_a' => $personaA->name,
+            'persona_b' => $personaB->name,
+            'provider_a' => $personaA->provider,
+            'provider_b' => $personaB->provider,
+        ]);
 
         $conversation = auth()->user()->conversations()->create([
             'persona_a_id' => $personaA->id,
@@ -80,6 +94,11 @@ class ChatController extends Controller
             'user_id' => auth()->id(),
             'role' => 'user',
             'content' => $validated['starter_message'],
+        ]);
+
+        Log::info('Conversation created successfully', [
+            'conversation_id' => $conversation->id,
+            'starter_message_length' => strlen($validated['starter_message']),
         ]);
 
         dispatch(new RunChatSession($conversation->id));
@@ -105,6 +124,12 @@ class ChatController extends Controller
             abort(403);
         }
 
+        Log::info('User requested conversation stop', [
+            'conversation_id' => $conversation->id,
+            'user_id' => auth()->id(),
+            'message_count' => $conversation->messages()->count(),
+        ]);
+
         Cache::put("conversation.stop.{$conversation->id}", true, now()->addHour());
 
         return back()->with('success', 'Stop signal sent.');
@@ -115,6 +140,13 @@ class ChatController extends Controller
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
         }
+
+        Log::info('Deleting conversation', [
+            'conversation_id' => $conversation->id,
+            'user_id' => auth()->id(),
+            'message_count' => $conversation->messages()->count(),
+            'status' => $conversation->status,
+        ]);
 
         $conversation->delete();
 

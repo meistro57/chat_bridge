@@ -9,19 +9,18 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./bootstrap:/var/www/html/bootstrap
       - ./.env:/var/www/html/.env
       - ./database:/var/www/html/database
       - ./app:/var/www/html/app
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./public:/var/www/html/public
+      - ./config:/var/www/html/config
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
-      - DB_CONNECTION=pgsql
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=${DB_DATABASE:-chatbridge}
-      - DB_USERNAME=${DB_USERNAME:-chatbridge}
-      - DB_PASSWORD=${DB_PASSWORD:-secret}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
@@ -54,19 +53,18 @@ services:
     command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=1200
     volumes:
       - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./bootstrap:/var/www/html/bootstrap
       - ./.env:/var/www/html/.env
       - ./database:/var/www/html/database
       - ./app:/var/www/html/app
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./public:/var/www/html/public
+      - ./config:/var/www/html/config
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
-      - DB_CONNECTION=pgsql
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=${DB_DATABASE:-chatbridge}
-      - DB_USERNAME=${DB_USERNAME:-chatbridge}
-      - DB_PASSWORD=${DB_PASSWORD:-secret}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QUEUE_CONNECTION=redis
@@ -91,19 +89,28 @@ services:
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
     volumes:
       - ./storage:/var/www/html/storage
-      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+      - ./bootstrap:/var/www/html/bootstrap
       - ./.env:/var/www/html/.env
       - ./database:/var/www/html/database
       - ./app:/var/www/html/app
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./public:/var/www/html/public
+      - ./config:/var/www/html/config
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}
+      - DB_HOST=postgres
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - SKIP_MIGRATIONS=true
       - REVERB_HOST=0.0.0.0
       - REVERB_PORT=8080
       - REVERB_SCHEME=http
     ports:
       - "${REVERB_PORT:-8080}:8080"
     depends_on:
+      - postgres
       - redis
     networks:
       - chatbridge-network

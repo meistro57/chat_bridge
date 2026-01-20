@@ -11,7 +11,7 @@ class PersonaController extends Controller
     public function index()
     {
         return Inertia::render('Personas/Index', [
-            'personas' => auth()->user()->personas()->latest()->get(),
+            'personas' => Persona::latest()->get(),
         ]);
     }
 

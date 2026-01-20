@@ -130,6 +130,12 @@ class ConversationService
      */
     public function completeConversation(Conversation $conversation): void
     {
+        Log::info('Completing conversation', [
+            'conversation_id' => $conversation->id,
+            'total_messages' => $conversation->messages()->count(),
+            'previous_status' => $conversation->status,
+        ]);
+
         $conversation->update(['status' => 'completed']);
         $this->transcripts->generate($conversation);
 

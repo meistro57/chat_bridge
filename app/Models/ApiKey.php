@@ -15,11 +15,16 @@ class ApiKey extends Model
         'key',
         'label',
         'is_active',
+        'is_validated',
+        'last_validated_at',
+        'validation_error',
     ];
 
     protected $casts = [
         'key' => 'encrypted',
         'is_active' => 'boolean',
+        'is_validated' => 'boolean',
+        'last_validated_at' => 'datetime',
     ];
 
     public function user()

@@ -3,8 +3,22 @@ set -e
 
 echo "🚀 Starting Chat Bridge Docker initialization..."
 
+# Fix permissions on storage and cache to prevent permission issues on host
+# This ensures that both the container and the host user can write to logs/cache
+echo "🔧 Fixing permissions..."
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+
 # Clear cached framework files to avoid stale package discovery issues
 rm -f /var/www/html/bootstrap/cache/*.php
+
+# Ensure storage subdirectories exist with correct permissions
+mkdir -p /var/www/html/storage/framework/cache/data \
+         /var/www/html/storage/framework/sessions \
+         /var/www/html/storage/framework/views \
+         /var/www/html/storage/logs \
+         /var/www/html/storage/app/public
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
 
 # Wait for PostgreSQL to be ready
 if [ "${DB_CONNECTION}" = "pgsql" ]; then
@@ -36,9 +50,13 @@ if [ "${QDRANT_ENABLED}" = "true" ]; then
     echo "✅ Qdrant is ready!"
 fi
 
-# Run database migrations
-echo "📊 Running database migrations..."
-php artisan migrate --force
+# Run database migrations (skip for reverb service)
+if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
+    echo "📊 Running database migrations..."
+    php artisan migrate --force
+else
+    echo "⏭️  Skipping database migrations..."
+fi
 
 # Clear and cache configuration
 echo "⚙️  Optimizing application..."

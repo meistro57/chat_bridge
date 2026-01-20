@@ -13,7 +13,7 @@ class PersonaSeeder extends Seeder
      */
     public function run(): void
     {
-        $rolesPath = base_path('../roles.json');
+        $rolesPath = base_path('roles.json');
 
         if (! File::exists($rolesPath)) {
             return;
@@ -25,10 +25,13 @@ class PersonaSeeder extends Seeder
             return;
         }
 
+        $admin = \App\Models\User::where('email', 'admin')->orWhere('role', 'admin')->first();
+
         foreach ($rolesData['persona_library'] as $key => $data) {
             Persona::updateOrCreate(
                 ['name' => $data['name'] ?? $key],
                 [
+                    'user_id' => $admin?->id ?? 1,
                     'provider' => $data['provider'],
                     'model' => $data['model'] ?? null,
                     'system_prompt' => $data['system'],

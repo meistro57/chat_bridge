@@ -17,9 +17,9 @@ class DatabaseSeeder extends Seeder
     {
         // Create default admin user
         User::updateOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email' => 'admin'],
             [
-                'name' => 'Admin User',
+                'name' => 'Admin',
                 'password' => 'password',
                 'role' => 'admin',
                 'email_verified_at' => now(),

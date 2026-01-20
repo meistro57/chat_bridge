@@ -40,10 +40,22 @@ class RunChatSession implements ShouldQueue
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
 
         if ($conversation->status !== 'active') {
+            Log::info('Skipping conversation - not active', [
+                'conversation_id' => $this->conversationId,
+                'status' => $conversation->status,
+            ]);
             return;
         }
 
+        Log::info('Starting chat session', [
+            'conversation_id' => $this->conversationId,
+            'max_rounds' => $this->maxRounds,
+            'persona_a' => $conversation->personaA->name,
+            'persona_b' => $conversation->personaB->name,
+        ]);
+
         $round = 0;
+        $startTime = microtime(true);
 
         try {
             // Loop until max rounds or stopped
@@ -95,6 +107,14 @@ class RunChatSession implements ShouldQueue
                 $message = $service->saveTurn($conversation, $currentPersona, $fullResponse);
                 broadcast(new MessageCompleted($message));
 
+                Log::info('Turn completed', [
+                    'conversation_id' => $this->conversationId,
+                    'round' => $round + 1,
+                    'persona' => $currentPersona->name,
+                    'message_length' => strlen($fullResponse),
+                    'tokens_used' => $message->tokens_used ?? 0,
+                ]);
+
                 // 6. Check Stop Words
                 if ($stopWords->shouldStop($fullResponse)) {
                     Log::info("Conversation {$this->conversationId} stopped by stop word.");
@@ -107,10 +127,27 @@ class RunChatSession implements ShouldQueue
             }
 
             if ($round >= $this->maxRounds && $conversation->fresh()->status === 'active') {
+                Log::info('Conversation reached max rounds', [
+                    'conversation_id' => $this->conversationId,
+                    'rounds' => $round,
+                ]);
                 $service->completeConversation($conversation);
             }
+
+            $duration = microtime(true) - $startTime;
+            Log::info('Chat session completed', [
+                'conversation_id' => $this->conversationId,
+                'total_rounds' => $round,
+                'duration_seconds' => round($duration, 2),
+                'total_messages' => $conversation->messages()->count(),
+            ]);
         } catch (\Throwable $e) {
-            Log::error("Job failed for conversation {$this->conversationId}: ".$e->getMessage());
+            Log::error("Job failed for conversation {$this->conversationId}", [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'round' => $round,
+            ]);
             $conversation->update(['status' => 'failed']);
             broadcast(new \App\Events\ConversationStatusUpdated($conversation));
             throw $e;

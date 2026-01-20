@@ -1,9 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # ============================================================================
 # Chat Bridge - Test Runner Script
 # A colorful CLI menu for running tests and fixing issues
 # ============================================================================
+
+# Safety
+set -u
 
 # Color definitions
 RED='\033[0;31m'
@@ -75,8 +78,18 @@ print_menu_option() {
 }
 
 press_any_key() {
-    echo -e "\n${DIM}Press any key to continue...${NC}"
-    read -n 1 -s
+    echo -e "\n${DIM}Press Enter to continue...${NC}"
+    read -r
+}
+
+check_artisan_test() {
+    if ! php artisan list 2>/dev/null | grep -q "test "; then
+        print_error "Command 'artisan test' is missing!"
+        print_info "This typically means dev dependencies are missing."
+        print_info "Run 'composer install' to fix this."
+        return 1
+    fi
+    return 0
 }
 
 # ============================================================================
@@ -85,6 +98,12 @@ press_any_key() {
 
 run_all_tests() {
     print_section "Running All Tests (App + Modules)"
+    
+    if ! check_artisan_test; then
+        press_any_key
+        return
+    fi
+    
     print_info "Executing full test suite..."
 
     local all_passed=true
@@ -101,22 +120,29 @@ run_all_tests() {
 
     # Run module tests if modules exist
     if has_modules; then
-        local modules=($(list_modules))
-        if [[ ${#modules[@]} -gt 0 ]]; then
-            echo -e "\n${CYAN}${BOLD}Running Module Tests...${NC}\n"
+        if [ -d "Modules" ]; then
+            # Safe listing of modules
+            local modules=()
+            while IFS= read -r module; do
+                 modules+=("$module")
+            done < <(find Modules -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
 
-            for module in "${modules[@]}"; do
-                if [[ -d "Modules/$module/Tests" ]]; then
-                    echo -e "${BLUE}Testing module: $module${NC}"
+            if [[ ${#modules[@]} -gt 0 ]]; then
+                echo -e "\n${CYAN}${BOLD}Running Module Tests...${NC}\n"
 
-                    if php artisan test "Modules/$module/Tests" --colors=always 2>/dev/null; then
-                        print_success "Module $module tests passed!"
-                    else
-                        print_error "Module $module tests failed!"
-                        all_passed=false
+                for module in "${modules[@]}"; do
+                    if [[ -d "Modules/$module/Tests" ]]; then
+                        echo -e "${BLUE}Testing module: $module${NC}"
+
+                        if php artisan test "Modules/$module/Tests" --colors=always 2>/dev/null; then
+                            print_success "Module $module tests passed!"
+                        else
+                            print_error "Module $module tests failed!"
+                            all_passed=false
+                        fi
                     fi
-                fi
-            done
+                done
+            fi
         fi
     fi
 
@@ -134,6 +160,8 @@ run_all_tests() {
 
 run_feature_tests() {
     print_section "Running Feature Tests"
+    if ! check_artisan_test; then press_any_key; return; fi
+
     print_info "Executing feature test suite..."
 
     if php artisan test --testsuite=Feature --colors=always; then
@@ -148,6 +176,8 @@ run_feature_tests() {
 
 run_unit_tests() {
     print_section "Running Unit Tests"
+    if ! check_artisan_test; then press_any_key; return; fi
+
     print_info "Executing unit test suite..."
 
     if php artisan test --testsuite=Unit --colors=always; then
@@ -162,10 +192,18 @@ run_unit_tests() {
 
 run_specific_test() {
     print_section "Run Specific Test File"
+    if ! check_artisan_test; then press_any_key; return; fi
+
     echo -e "${YELLOW}Available test files:${NC}\n"
 
-    # List all test files with numbers
-    local files=($(find tests -name "*Test.php" -type f | sort))
+    # Robust file listing
+    local files=()
+    while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            files+=("$file")
+        fi
+    done < <(find tests -name "*Test.php" -type f | sort)
+
     local i=1
     for file in "${files[@]}"; do
         echo -e "  ${CYAN}[$i]${NC} $file"
@@ -175,7 +213,7 @@ run_specific_test() {
     echo -e "\n${WHITE}Enter file number (or 0 to cancel): ${NC}"
     read -r choice
 
-    if [[ "$choice" -eq 0 ]]; then
+    if [[ "$choice" == "0" ]]; then
         return
     fi
 
@@ -197,6 +235,7 @@ run_specific_test() {
 
 run_with_coverage() {
     print_section "Running Tests with Coverage"
+    if ! check_artisan_test; then press_any_key; return; fi
 
     if ! command -v php &> /dev/null; then
         print_error "PHP not found!"
@@ -220,6 +259,8 @@ run_with_coverage() {
 
 run_parallel_tests() {
     print_section "Running Tests in Parallel"
+    if ! check_artisan_test; then press_any_key; return; fi
+
     print_info "Executing tests in parallel mode..."
 
     if php artisan test --parallel --colors=always; then
@@ -233,6 +274,7 @@ run_parallel_tests() {
 
 run_failed_tests() {
     print_section "Re-running Failed Tests"
+    if ! check_artisan_test; then press_any_key; return; fi
 
     if [[ ! -f "$FAILED_TESTS_FILE" ]]; then
         print_warning "No failed tests recorded!"
@@ -243,8 +285,14 @@ run_failed_tests() {
 
     print_info "Re-running previously failed tests..."
 
-    # PHPUnit can re-run failed tests using --cache-result
-    if php artisan test --order-by=defects --colors=always; then
+    # Check for order-by support or fallback
+    if php artisan test --help | grep -q "order-by"; then
+        CMD="php artisan test --order-by=defects --colors=always"
+    else
+        CMD="php artisan test --colors=always" # Fallback
+    fi
+
+    if $CMD; then
         print_success "All previously failed tests now pass!"
         rm -f "$FAILED_TESTS_FILE"
     else
@@ -274,7 +322,9 @@ watch_tests() {
 
         clear
         print_section "Re-running Tests (File Changed)"
-        php artisan test --colors=always
+        if check_artisan_test; then
+            php artisan test --colors=always
+        fi
         echo -e "\n${DIM}Waiting for changes...${NC}"
     done
 }
@@ -290,7 +340,23 @@ run_docker_tests() {
 
     print_info "Running tests in Docker container..."
 
-    if docker compose exec app php artisan test --colors=always; then
+    # Check if app service exists
+    if ! docker compose ps --services | grep -q "^app$"; then
+        print_warning "Service 'app' not found in docker-compose.yml"
+        print_info "Assuming 'laravel.test' or similar..."
+        SERVICE_NAME=$(docker compose ps --services | grep -m1 "laravel\|app\|web")
+        if [ -z "$SERVICE_NAME" ]; then
+             print_error "Could not detect main application service."
+             press_any_key
+             return
+        fi
+    else
+        SERVICE_NAME="app"
+    fi
+    
+    print_info "Using service: $SERVICE_NAME"
+
+    if docker compose exec "$SERVICE_NAME" php artisan test --colors=always; then
         print_success "Docker tests passed!"
     else
         print_error "Docker tests failed!"
@@ -339,17 +405,7 @@ run_static_analysis() {
     # Check for PHPStan
     if [[ -f "vendor/bin/phpstan" ]]; then
         print_info "Running PHPStan..."
-
         if ./vendor/bin/phpstan analyse; then
-            print_success "No static analysis errors found!"
-        else
-            print_error "Static analysis found issues"
-        fi
-    # Check for Psalm
-    elif [[ -f "vendor/bin/psalm" ]]; then
-        print_info "Running Psalm..."
-
-        if ./vendor/bin/psalm; then
             print_success "No static analysis errors found!"
         else
             print_error "Static analysis found issues"
@@ -357,7 +413,6 @@ run_static_analysis() {
     # Check for Larastan
     elif [[ -f "vendor/bin/larastan" ]]; then
         print_info "Running Larastan..."
-
         if ./vendor/bin/larastan analyse; then
             print_success "No static analysis errors found!"
         else
@@ -381,14 +436,8 @@ clean_environment() {
 
     print_info "Clearing application cache..."
     php artisan cache:clear
-
-    print_info "Clearing config cache..."
     php artisan config:clear
-
-    print_info "Clearing route cache..."
     php artisan route:clear
-
-    print_info "Clearing view cache..."
     php artisan view:clear
 
     if [[ -d "$COVERAGE_DIR" ]]; then
@@ -405,35 +454,54 @@ clean_environment() {
     press_any_key
 }
 
+fix_permissions() {
+    print_section "Fixing Permissions"
+    print_info "Setting secure permissions on storage and bootstrap/cache..."
+
+    # Use more secure permissions (755 for directories, 644 for files)
+    if chmod -R 755 storage bootstrap/cache 2>/dev/null; then
+        print_success "Directory permissions set to 755"
+
+        # Make sure we can write to these directories
+        if [ -w storage ] && [ -w bootstrap/cache ]; then
+            print_success "Write permissions verified!"
+        else
+            print_warning "Directory permissions set, but may need ownership adjustment"
+            print_info "If tests fail, run: sudo chown -R \$USER:\$USER storage bootstrap/cache"
+        fi
+    else
+        print_error "Failed to set permissions"
+        print_info "Try: sudo chown -R \$USER:\$USER storage bootstrap/cache"
+    fi
+    press_any_key
+}
+
 list_test_files() {
     print_section "Test Files Overview"
 
     echo -e "${YELLOW}Feature Tests:${NC}"
     find tests/Feature -name "*Test.php" -type f | while read -r file; do
-        local test_count=$(grep -c "public function test_" "$file" 2>/dev/null || echo "0")
+        local test_count=$(grep -c "function test_" "$file" 2>/dev/null || echo "0")
         echo -e "  ${GREEN}${CHECK}${NC} $file ${DIM}($test_count tests)${NC}"
     done
 
     echo -e "\n${YELLOW}Unit Tests:${NC}"
     find tests/Unit -name "*Test.php" -type f | while read -r file; do
-        local test_count=$(grep -c "public function test_" "$file" 2>/dev/null || echo "0")
+        local test_count=$(grep -c "function test_" "$file" 2>/dev/null || echo "0")
         echo -e "  ${GREEN}${CHECK}${NC} $file ${DIM}($test_count tests)${NC}"
     done
 
     echo -e "\n${CYAN}${BOLD}Statistics:${NC}"
     local total_files=$(find tests -name "*Test.php" -type f | wc -l)
-    local feature_files=$(find tests/Feature -name "*Test.php" -type f | wc -l)
-    local unit_files=$(find tests/Unit -name "*Test.php" -type f | wc -l)
-
+    
     echo -e "  Total test files: ${WHITE}$total_files${NC}"
-    echo -e "  Feature tests: ${WHITE}$feature_files${NC}"
-    echo -e "  Unit tests: ${WHITE}$unit_files${NC}"
 
     press_any_key
 }
 
 generate_coverage_html() {
     print_section "Generating HTML Coverage Report"
+    if ! check_artisan_test; then press_any_key; return; fi
 
     print_info "Generating detailed coverage report..."
     print_warning "This may take a while..."
@@ -443,15 +511,6 @@ generate_coverage_html() {
     if XDEBUG_MODE=coverage php artisan test --coverage-html="$COVERAGE_DIR/html" --colors=always; then
         print_success "Coverage report generated!"
         print_info "Open: ${CYAN}$COVERAGE_DIR/html/index.html${NC}"
-
-        # Try to open in browser
-        if command -v xdg-open &> /dev/null; then
-            echo -e "\n${WHITE}Open report in browser? [y/N]:${NC} "
-            read -r open_browser
-            if [[ "$open_browser" == "y" || "$open_browser" == "Y" ]]; then
-                xdg-open "$COVERAGE_DIR/html/index.html" &
-            fi
-        fi
     else
         print_error "Failed to generate coverage report"
     fi
@@ -477,6 +536,22 @@ run_quick_check() {
         print_error "Missing (run: composer install)"
     fi
 
+    # Check environment file
+    echo -ne "${WHITE}Environment File:${NC} "
+    if [[ -f ".env" ]]; then
+        print_success "Found"
+    else
+        print_error "Missing (copy .env.example to .env)"
+    fi
+
+    # Check app key
+    echo -ne "${WHITE}Application Key:${NC} "
+    if grep -q "APP_KEY=base64:" .env 2>/dev/null; then
+        print_success "Set"
+    else
+        print_warning "Missing (run: php artisan key:generate)"
+    fi
+
     # Check test database
     echo -ne "${WHITE}Test Database:${NC} "
     if grep -q "DB_CONNECTION=sqlite" .env.testing 2>/dev/null || grep -q ":memory:" phpunit.xml; then
@@ -485,12 +560,54 @@ run_quick_check() {
         print_warning "Check configuration"
     fi
 
-    # Run a quick test
-    echo -e "\n${WHITE}Running smoke test...${NC}"
-    if php artisan test --testsuite=Unit --stop-on-failure --colors=always 2>&1 | tail -n 5; then
-        print_success "Basic tests working!"
+    # Check database connection
+    echo -ne "${WHITE}Database Connection:${NC} "
+    if php artisan db:show 2>/dev/null | grep -q "Connection"; then
+        print_success "Connected"
     else
-        print_error "Tests have issues"
+        print_warning "Check database settings"
+    fi
+
+    # Check migrations
+    echo -ne "${WHITE}Database Migrations:${NC} "
+    if php artisan migrate:status 2>/dev/null | grep -q "Ran"; then
+        print_success "Up to date"
+    else
+        print_warning "May need to run: php artisan migrate"
+    fi
+
+    # Check AI Manager registration
+    echo -ne "${WHITE}AI Manager Service:${NC} "
+    if php artisan tinker --execute="echo (app()->bound('ai') ? 'Registered' : 'Missing');" 2>/dev/null | grep -q "Registered"; then
+        print_success "Registered"
+    else
+        print_error "Not registered (check AppServiceProvider)"
+    fi
+
+    # Check permissions
+    echo -ne "${WHITE}Storage Permissions:${NC} "
+    if [[ -w "storage" ]] && [[ -w "bootstrap/cache" ]]; then
+        print_success "Writable"
+    else
+        print_error "Not writable (run option 15 to fix)"
+    fi
+
+    # Run a quick test (Robust logic)
+    echo -e "\n${WHITE}Running smoke test...${NC}"
+
+    if ! php artisan list 2>/dev/null | grep -q "test "; then
+        print_error "Command 'artisan test' NOT FOUND."
+        print_info "You might need to run 'composer install' to get dev dependencies."
+        print_warning "Check if 'nunomaduro/collision' is installed."
+    else
+        # Run in subshell to capture output without swallowing exit code
+        if php artisan test --testsuite=Unit --stop-on-failure --colors=always > /tmp/smoke_test.log 2>&1; then
+            print_success "Basic tests working!"
+        else
+            print_error "Tests have issues"
+            tail -n 5 /tmp/smoke_test.log
+        fi
+        rm -f /tmp/smoke_test.log
     fi
 
     press_any_key
@@ -504,6 +621,7 @@ save_failed_tests() {
 
 run_filter_test() {
     print_section "Run Tests by Filter"
+    if ! check_artisan_test; then press_any_key; return; fi
 
     echo -e "${WHITE}Enter test name filter (e.g., 'test_user_can_login'):${NC} "
     read -r filter
@@ -530,232 +648,119 @@ run_filter_test() {
 # ============================================================================
 
 has_modules() {
-    # Check if nwidart/laravel-modules is installed
-    if [[ -d "Modules" ]] || grep -q "nwidart/laravel-modules" composer.json 2>/dev/null; then
+    if [[ -d "Modules" ]]; then
         return 0
     fi
     return 1
 }
 
-list_modules() {
-    if [[ -d "Modules" ]]; then
-        find Modules -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort
-    fi
-}
+validate_ai_services() {
+    print_section "Validating AI Services"
 
-run_all_module_tests() {
-    print_section "Running All Module Tests"
+    print_info "Checking AI driver registration..."
 
-    if ! has_modules; then
-        print_warning "No Laravel modules found!"
-        print_info "Install nwidart/laravel-modules:"
-        echo -e "  ${CYAN}composer require nwidart/laravel-modules${NC}"
-        press_any_key
-        return
-    fi
+    # Check if AI manager is bound
+    if php artisan tinker --execute="
+        try {
+            \$ai = app('ai');
+            echo 'AI Manager: OK' . PHP_EOL;
 
-    print_info "Testing all modules..."
-
-    local modules=($(list_modules))
-    local failed_modules=()
-
-    for module in "${modules[@]}"; do
-        echo -e "\n${CYAN}${BOLD}Testing module: $module${NC}"
-
-        if php artisan test "Modules/$module/Tests" --colors=always 2>/dev/null; then
-            print_success "Module $module tests passed!"
-        else
-            print_error "Module $module tests failed!"
-            failed_modules+=("$module")
-        fi
-    done
-
-    echo ""
-    if [[ ${#failed_modules[@]} -eq 0 ]]; then
-        print_success "All module tests passed!"
+            // Test each driver
+            \$drivers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'ollama', 'lmstudio', 'mock'];
+            foreach (\$drivers as \$driver) {
+                try {
+                    \$instance = app('ai')->driver(\$driver);
+                    echo ucfirst(\$driver) . ' Driver: OK' . PHP_EOL;
+                } catch (Exception \$e) {
+                    echo ucfirst(\$driver) . ' Driver: FAILED - ' . \$e->getMessage() . PHP_EOL;
+                }
+            }
+        } catch (Exception \$e) {
+            echo 'AI Manager: FAILED - ' . \$e->getMessage() . PHP_EOL;
+        }
+    " 2>/dev/null; then
+        print_success "AI services validated!"
     else
-        print_error "Failed modules: ${failed_modules[*]}"
+        print_error "AI service validation failed!"
     fi
 
     press_any_key
 }
 
-run_specific_module_test() {
-    print_section "Run Specific Module Tests"
+check_database_setup() {
+    print_section "Database Setup Check"
 
-    if ! has_modules; then
-        print_warning "No Laravel modules found!"
-        print_info "Install nwidart/laravel-modules:"
-        echo -e "  ${CYAN}composer require nwidart/laravel-modules${NC}"
+    print_info "Checking database configuration..."
+
+    # Check if database is accessible
+    if ! php artisan db:show 2>&1 | grep -q "Connection"; then
+        print_error "Database connection failed!"
+        print_info "Check your .env file database settings"
         press_any_key
         return
     fi
 
-    local modules=($(list_modules))
+    print_success "Database connected"
 
-    if [[ ${#modules[@]} -eq 0 ]]; then
-        print_warning "No modules found in Modules directory!"
-        press_any_key
-        return
-    fi
+    # Check migrations
+    print_info "Checking migrations status..."
+    if php artisan migrate:status 2>&1 | grep -q "Pending"; then
+        print_warning "You have pending migrations!"
+        echo -ne "\n${WHITE}Run migrations now? (y/n): ${NC}"
+        read -r run_migrations
 
-    echo -e "${YELLOW}Available modules:${NC}\n"
-
-    local i=1
-    for module in "${modules[@]}"; do
-        # Count tests in module
-        local test_count=0
-        if [[ -d "Modules/$module/Tests" ]]; then
-            test_count=$(find "Modules/$module/Tests" -name "*Test.php" | wc -l)
-        fi
-        echo -e "  ${CYAN}[$i]${NC} $module ${DIM}($test_count test files)${NC}"
-        ((i++))
-    done
-
-    echo -e "\n${WHITE}Enter module number (or 0 to cancel): ${NC}"
-    read -r choice
-
-    if [[ "$choice" -eq 0 ]]; then
-        return
-    fi
-
-    if [[ "$choice" -gt 0 && "$choice" -le "${#modules[@]}" ]]; then
-        local selected_module="${modules[$((choice-1))]}"
-        print_info "Running tests for module: $selected_module"
-
-        if [[ ! -d "Modules/$selected_module/Tests" ]]; then
-            print_warning "No tests found for module: $selected_module"
-            press_any_key
-            return
-        fi
-
-        if php artisan test "Modules/$selected_module/Tests" --colors=always; then
-            print_success "Module $selected_module tests passed!"
-        else
-            print_error "Module $selected_module tests failed!"
-        fi
-    else
-        print_error "Invalid selection!"
-    fi
-
-    press_any_key
-}
-
-list_module_tests() {
-    print_section "Module Tests Overview"
-
-    if ! has_modules; then
-        print_warning "No Laravel modules found!"
-        print_info "To enable modular architecture, install:"
-        echo -e "  ${CYAN}composer require nwidart/laravel-modules${NC}"
-        echo -e "\n${DIM}Then create modules with:${NC}"
-        echo -e "  ${CYAN}php artisan module:make ModuleName${NC}"
-        press_any_key
-        return
-    fi
-
-    local modules=($(list_modules))
-
-    if [[ ${#modules[@]} -eq 0 ]]; then
-        print_warning "No modules found in Modules directory!"
-        press_any_key
-        return
-    fi
-
-    for module in "${modules[@]}"; do
-        echo -e "\n${YELLOW}${BOLD}Module: $module${NC}"
-
-        if [[ -d "Modules/$module/Tests" ]]; then
-            local feature_tests=$(find "Modules/$module/Tests/Feature" -name "*Test.php" 2>/dev/null | wc -l)
-            local unit_tests=$(find "Modules/$module/Tests/Unit" -name "*Test.php" 2>/dev/null | wc -l)
-
-            echo -e "  ${GREEN}${CHECK}${NC} Feature tests: ${WHITE}$feature_tests${NC}"
-            echo -e "  ${GREEN}${CHECK}${NC} Unit tests: ${WHITE}$unit_tests${NC}"
-
-            # List test files
-            find "Modules/$module/Tests" -name "*Test.php" 2>/dev/null | while read -r file; do
-                local test_count=$(grep -c "public function test_" "$file" 2>/dev/null || echo "0")
-                local relative_path=${file#Modules/$module/Tests/}
-                echo -e "    ${DIM}└─${NC} $relative_path ${DIM}($test_count tests)${NC}"
-            done
-        else
-            echo -e "  ${YELLOW}⚠${NC} No tests directory found"
-        fi
-    done
-
-    press_any_key
-}
-
-run_module_feature_tests() {
-    print_section "Running All Module Feature Tests"
-
-    if ! has_modules; then
-        print_warning "No Laravel modules found!"
-        press_any_key
-        return
-    fi
-
-    local modules=($(list_modules))
-
-    for module in "${modules[@]}"; do
-        if [[ -d "Modules/$module/Tests/Feature" ]]; then
-            echo -e "\n${CYAN}${BOLD}Testing $module feature tests...${NC}"
-
-            if php artisan test "Modules/$module/Tests/Feature" --colors=always; then
-                print_success "Module $module feature tests passed!"
+        if [[ "$run_migrations" == "y" ]]; then
+            print_info "Running migrations..."
+            if php artisan migrate --force; then
+                print_success "Migrations completed!"
             else
-                print_error "Module $module feature tests failed!"
+                print_error "Migration failed!"
             fi
         fi
-    done
-
-    press_any_key
-}
-
-run_module_unit_tests() {
-    print_section "Running All Module Unit Tests"
-
-    if ! has_modules; then
-        print_warning "No Laravel modules found!"
-        press_any_key
-        return
+    else
+        print_success "All migrations are up to date"
     fi
 
-    local modules=($(list_modules))
+    # Check if database is seeded
+    print_info "Checking if database needs seeding..."
+    if php artisan tinker --execute="echo (\\App\\Models\\User::count() > 0) ? 'Seeded' : 'Empty';" 2>/dev/null | grep -q "Empty"; then
+        print_warning "Database appears empty"
+        echo -ne "\n${WHITE}Run seeders now? (y/n): ${NC}"
+        read -r run_seeders
 
-    for module in "${modules[@]}"; do
-        if [[ -d "Modules/$module/Tests/Unit" ]]; then
-            echo -e "\n${CYAN}${BOLD}Testing $module unit tests...${NC}"
-
-            if php artisan test "Modules/$module/Tests/Unit" --colors=always; then
-                print_success "Module $module unit tests passed!"
+        if [[ "$run_seeders" == "y" ]]; then
+            print_info "Running database seeders..."
+            if php artisan db:seed --force; then
+                print_success "Database seeded!"
             else
-                print_error "Module $module unit tests failed!"
+                print_error "Seeding failed!"
             fi
         fi
-    done
+    else
+        print_success "Database contains data"
+    fi
 
     press_any_key
 }
 
-setup_module_testing() {
-    print_section "Setup Module Testing"
+optimize_application() {
+    print_section "Optimizing Application"
 
-    print_info "Installing nwidart/laravel-modules..."
+    print_info "Clearing all caches..."
+    php artisan cache:clear
+    php artisan config:clear
+    php artisan route:clear
+    php artisan view:clear
 
-    if composer require nwidart/laravel-modules; then
-        print_success "Laravel Modules installed!"
+    print_info "Optimizing application for production..."
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
 
-        print_info "Publishing configuration..."
-        php artisan vendor:publish --provider="Nwidart\Modules\LaravelModulesServiceProvider"
+    print_info "Optimizing composer autoloader..."
+    composer dump-autoload --optimize
 
-        print_success "Module system ready!"
-        print_info "Create your first module with:"
-        echo -e "  ${CYAN}php artisan module:make YourModuleName${NC}"
-    else
-        print_error "Failed to install Laravel Modules"
-    fi
-
+    print_success "Application optimized!"
     press_any_key
 }
 
@@ -774,14 +779,6 @@ show_menu() {
     print_menu_option "5" "${MAGNIFY}" "Run Tests by Filter/Pattern" "${BLUE}"
     print_menu_option "6" "${BUG}" "Re-run Failed Tests Only" "${RED}"
 
-    echo -e "\n${YELLOW}${BOLD}  📦 Module Testing${NC}"
-    print_menu_option "17" "${FIRE}" "Run All Module Tests" "${GREEN}"
-    print_menu_option "18" "${SPARKLES}" "Run Specific Module Tests" "${CYAN}"
-    print_menu_option "19" "${GEAR}" "Run Module Feature Tests" "${BLUE}"
-    print_menu_option "20" "${MAGNIFY}" "Run Module Unit Tests" "${BLUE}"
-    print_menu_option "21" "${SPARKLES}" "List Module Tests Overview" "${WHITE}"
-    print_menu_option "22" "${WRENCH}" "Setup Module Testing" "${MAGENTA}"
-
     echo -e "\n${YELLOW}${BOLD}  ${WRENCH} Advanced Testing${NC}"
     print_menu_option "7" "${SPARKLES}" "Run with Coverage Report" "${MAGENTA}"
     print_menu_option "8" "${ROCKET}" "Run Tests in Parallel" "${GREEN}"
@@ -793,10 +790,16 @@ show_menu() {
     print_menu_option "12" "${WRENCH}" "Fix Code Style Issues" "${GREEN}"
     print_menu_option "13" "${MAGNIFY}" "Run Static Analysis" "${CYAN}"
     print_menu_option "14" "${ROCKET}" "Quick Health Check" "${BLUE}"
+    print_menu_option "15" "${WRENCH}" "Fix Permissions" "${RED}"
+
+    echo -e "\n${YELLOW}${BOLD}  ${GEAR} Application Checks${NC}"
+    print_menu_option "16" "${ROCKET}" "Validate AI Services" "${MAGENTA}"
+    print_menu_option "17" "${GEAR}" "Check Database Setup" "${CYAN}"
+    print_menu_option "18" "${SPARKLES}" "Optimize Application" "${GREEN}"
 
     echo -e "\n${YELLOW}${BOLD}  ${GEAR} Maintenance${NC}"
-    print_menu_option "15" "${SPARKLES}" "List All Test Files" "${WHITE}"
-    print_menu_option "16" "${WRENCH}" "Clean Test Environment" "${YELLOW}"
+    print_menu_option "19" "${SPARKLES}" "List All Test Files" "${WHITE}"
+    print_menu_option "20" "${WRENCH}" "Clean Test Environment" "${YELLOW}"
 
     echo -e "\n${RED}${BOLD}  [0]${NC} ${CROSS}  ${WHITE}Exit${NC}"
 
@@ -813,6 +816,7 @@ show_menu() {
 # Create cache directory
 mkdir -p "$CACHE_DIR"
 
+# Main Loop
 while true; do
     show_menu
     read -r choice
@@ -832,18 +836,14 @@ while true; do
         12) fix_code_style ;;
         13) run_static_analysis ;;
         14) run_quick_check ;;
-        15) list_test_files ;;
-        16) clean_environment ;;
-        17) run_all_module_tests ;;
-        18) run_specific_module_test ;;
-        19) run_module_feature_tests ;;
-        20) run_module_unit_tests ;;
-        21) list_module_tests ;;
-        22) setup_module_testing ;;
+        15) fix_permissions ;;
+        16) validate_ai_services ;;
+        17) check_database_setup ;;
+        18) optimize_application ;;
+        19) list_test_files ;;
+        20) clean_environment ;;
         0)
-            clear
-            echo -e "${GREEN}${SPARKLES} Thanks for using Chat Bridge Test Runner! ${SPARKLES}${NC}"
-            echo -e "${CYAN}Happy testing!${NC}\n"
+            echo -e "\n${GREEN}${SPARKLES} Happy testing! ${SPARKLES}${NC}\n"
             exit 0
             ;;
         *)

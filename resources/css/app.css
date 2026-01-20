@@ -1,3 +1,86 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        @apply antialiased;
+    }
+
+    body {
+        @apply bg-zinc-950 text-zinc-100;
+    }
+}
+
+@layer components {
+    /* Glassmorphic panel with dark theme */
+    .glass-panel {
+        @apply bg-zinc-900/50 backdrop-blur-xl border-white/5;
+    }
+
+    /* Enhanced glass effect on hover */
+    .glass-panel-hover {
+        @apply glass-panel hover:bg-zinc-900/70 hover:border-white/10 transition-all duration-300;
+    }
+
+    /* Input field dark theme */
+    .input-dark {
+        @apply bg-zinc-900/50 border-zinc-700/50 text-zinc-100 placeholder-zinc-500
+               focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20
+               backdrop-blur-sm transition-all;
+    }
+
+    /* Button dark theme */
+    .btn-dark {
+        @apply bg-zinc-800/50 hover:bg-zinc-700/50 text-zinc-100
+               border border-zinc-700/50 hover:border-zinc-600/50
+               backdrop-blur-sm transition-all duration-200;
+    }
+
+    /* Card dark theme with gradient border */
+    .card-dark {
+        @apply glass-panel rounded-xl p-6 shadow-xl shadow-black/20;
+    }
+
+    /* Gradient text utilities */
+    .text-gradient-blue {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400;
+    }
+
+    .text-gradient-purple {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400;
+    }
+
+    .text-gradient-emerald {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400;
+    }
+}
+
+@layer utilities {
+    /* Scrollbar dark theme */
+    .scrollbar-dark::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .scrollbar-dark::-webkit-scrollbar-track {
+        @apply bg-zinc-900/50;
+    }
+
+    .scrollbar-dark::-webkit-scrollbar-thumb {
+        @apply bg-zinc-700/50 hover:bg-zinc-600/50 rounded-full;
+    }
+
+    /* Glow effect for interactive elements */
+    .glow-blue {
+        @apply shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:shadow-[0_0_40px_rgba(59,130,246,0.25)] transition-shadow;
+    }
+
+    .glow-purple {
+        @apply shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_40px_rgba(168,85,247,0.25)] transition-shadow;
+    }
+
+    .glow-emerald {
+        @apply shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:shadow-[0_0_40px_rgba(16,185,129,0.25)] transition-shadow;
+    }
+}

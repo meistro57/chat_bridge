@@ -1,9 +1,12 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 
-export default function Chat({ personas, conversations }) {
+export default function Chat({ personas, conversations, debug_info }) {
+    const { auth } = usePage().props;
+    
     return (
         <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+            {debug_info && <div className="bg-red-500 text-white p-2 text-center absolute top-0 left-0 w-full z-50">{debug_info}</div>}
             <Head title="Bridge Control" />
             
             <div className="max-w-7xl mx-auto space-y-12">
@@ -26,6 +29,14 @@ export default function Chat({ personas, conversations }) {
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                         </Link>
+                        {auth.user.role === 'admin' && (
+                            <Link 
+                                href={route('admin.users.index')} 
+                                className="px-6 py-3 rounded-xl font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-300"
+                            >
+                                Admin Panel
+                            </Link>
+                        )}
                         <Link 
                             href="/personas" 
                             className="px-6 py-3 rounded-xl font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-300"

@@ -1,110 +1,347 @@
+<div align="center">
+
 # 🤖 Chat Bridge
+
+### *The Ultimate AI Conversation Orchestration Platform*
 
 [![Tests](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml/badge.svg)](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red)](https://github.com/meistro57/chat_bridge)
 
-**A sophisticated AI conversation orchestration platform built with Laravel 12 and React 19**
+**Orchestrate intelligent conversations between AI agents. Test, experiment, and explore multi-agent AI systems with enterprise-grade tooling.**
 
-Chat Bridge enables you to create, manage, and monitor automated conversations between AI personas powered by multiple LLM providers (OpenAI, Anthropic, and more). Perfect for testing AI interactions, generating synthetic conversations, and exploring multi-agent AI systems.
+[Features](#-features) • [Installation](#-installation) • [Docker Setup](#-docker-deployment) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
 ---
 
-## ✨ Features
+</div>
 
-### 🎭 Persona Management
-- Create reusable AI agent configurations
-- Support for multiple AI providers (OpenAI, Anthropic, etc.)
-- Customizable system prompts and guidelines
-- Temperature control for response creativity
-- Per-user persona isolation
+## 🌟 What is Chat Bridge?
 
-### 💬 Conversation Orchestration
-- Automated multi-turn conversations between two personas
-- Real-time streaming responses via WebSockets
-- Configurable conversation parameters
-- Stop signal support for manual intervention
-- Conversation status tracking (active, completed, failed)
+Chat Bridge is a **production-ready AI conversation orchestration platform** that enables you to:
 
-### 🔐 User Authentication & Management
-- User registration and login (Laravel Breeze)
-- Role-based access control (User/Admin)
-- User-scoped data isolation
-- Admin panel for user management
-- Profile management
+- 🎭 **Create AI Personas** with custom behaviors, system prompts, and parameters
+- 💬 **Orchestrate Conversations** between different AI agents in real-time
+- 📊 **Analyze Interactions** with advanced analytics and full conversation history
+- 🔐 **Manage Credentials** securely with encrypted API key storage
+- 🧠 **Leverage RAG** for context-aware conversations with persistent memory
+- 🐛 **Debug Everything** with built-in Telescope and Debugbar integration
+- 🎨 **Enjoy Dark Mode** with our stunning "Midnight Glass" UI design
 
-### 🔑 API Key Management
-- Secure encrypted storage of API credentials
-- Support for multiple AI providers
-- Per-user API key isolation
-- Active/inactive key toggling
-- Masked key display for security
+Perfect for **AI researchers, developers, and enthusiasts** who want to experiment with multi-agent systems, test AI behaviors, generate synthetic training data, or simply explore the fascinating world of AI-to-AI conversations.
 
-### 📊 Real-time Features
-- Live message streaming with Laravel Reverb (WebSockets)
-- Chunk-by-chunk response updates
-- Conversation status broadcasting
-- Real-time UI updates with Inertia.js
+---
 
-### 🎨 Modern UI
-- "Midnight Glass" dark theme
-- Glassmorphic design with Tailwind CSS v4
-- Responsive React components
-- Smooth transitions and animations
-- Accessible interface
+## ✨ Features at a Glance
 
-### 🧠 RAG (Retrieval-Augmented Generation)
-- **AI Memory**: Persistent memory across conversations
-- **Semantic Search**: Find relevant past messages using embeddings
-- **Context-Aware Responses**: AI uses previous conversations for informed replies
-- **Vector Database**: Qdrant for efficient similarity search
-- **Automatic Embeddings**: Generated and stored for all messages
+<table>
+<tr>
+<td width="50%">
 
-### 🐳 Docker Support
-- **Complete Containerization**: Docker Compose orchestration
-- **Production-Ready**: PostgreSQL, Redis, Qdrant included
-- **Easy Deployment**: One-command setup
-- **Scalable Architecture**: Separate containers for app, queue, WebSocket
-- **Persistent Storage**: Volumes for database and vector storage
+### 🎭 **Persona System**
+Create sophisticated AI agents with:
+- 🔧 Custom system prompts & guidelines
+- 🌡️ Temperature controls (0.0-2.0)
+- 🔄 Multi-provider support (8+ AI services)
+- 👥 Shared library - 56 pre-configured personas
+- 📝 Creator attribution tracking
+- ✏️ Full CRUD operations
 
-### 🚀 Performance & Scalability
+</td>
+<td width="50%">
+
+### 💬 **Conversation Engine**
+Orchestrate AI discussions with:
+- ⚡ Real-time streaming via WebSockets
+- 🔄 Automated multi-turn dialogues
+- 🎯 Manual stop/resume controls
+- 📡 Live status broadcasting
+- 💾 Complete conversation history
+- 📥 Transcript export (CSV)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔐 **Security & Auth**
+Enterprise-grade protection:
+- 🔒 Encrypted API key storage
+- 👤 Role-based access (User/Admin)
+- 🔑 Per-user credential isolation
+- ✅ Real-time API key validation
+- 🛡️ CSRF & XSS protection
+- 🔐 Password hashing (bcrypt)
+
+</td>
+<td width="50%">
+
+### 🧠 **RAG Intelligence**
+Contextual AI with memory:
+- 🗄️ Qdrant vector database
+- 🔍 Semantic message search
+- 💭 Persistent conversation memory
+- ⚡ Sub-10ms retrieval times
+- 🎯 Context-aware responses
+- 📊 Automatic embeddings
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📊 **Analytics Suite**
+Deep insights into conversations:
+- 📈 7-day activity trends (charts)
+- 👥 Top persona statistics
+- 🔍 Advanced query filters
+- 📥 CSV export (1000 records)
+- 💬 Message & token tracking
+- 📊 Real-time metrics
+
+</td>
+<td width="50%">
+
+### 🐛 **Debug Tools**
+Professional debugging suite:
+- 🔭 **Laravel Telescope** - Monitor everything
+- 🐛 **Laravel Debugbar** - Real-time profiling
+- 🧪 **System Diagnostics** - Health checks
+- 📝 Enhanced logging system
+- 🔧 Maintenance automation
+- ✨ Code style fixer (Pint)
+
+</td>
+</tr>
+</table>
+
+### 🎨 **Midnight Glass UI Design**
+
+<table>
+<tr>
+<td align="center">
+<img src="https://img.shields.io/badge/Theme-Dark%20Only-181818?style=for-the-badge" alt="Dark Theme"/>
+<br/>
+<strong>Fully Dark UI</strong>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/Design-Glassmorphic-00D9FF?style=for-the-badge" alt="Glassmorphic"/>
+<br/>
+<strong>Frosted Glass Effects</strong>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/Colors-Gradient-FF6B6B?style=for-the-badge" alt="Gradients"/>
+<br/>
+<strong>Beautiful Gradients</strong>
+</td>
+<td align="center">
+<img src="https://img.shields.io/badge/UX-Smooth-4ECDC4?style=for-the-badge" alt="Smooth"/>
+<br/>
+<strong>Buttery Animations</strong>
+</td>
+</tr>
+</table>
+
+Our custom-designed dark theme features:
+- 🌑 **Deep zinc-950 background** - True black for OLED displays
+- ✨ **Glassmorphic panels** - Frosted glass with backdrop blur
+- 🎨 **Gradient accents** - Blue, purple, emerald, and cyan themes
+- 📜 **Custom scrollbars** - Styled for dark mode
+- 🎭 **Hover effects** - Elegant micro-interactions
+- 💫 **Glow effects** - Subtle shadows on interactive elements
+
+### 🐳 **Docker Deployment**
+
+```bash
+# One command to rule them all
+docker compose up -d
+```
+
+**Includes:**
+- 🚀 Nginx + PHP-FPM application server
+- 🗄️ PostgreSQL 16 database
+- 💾 Redis caching & queues
+- 🔌 Laravel Reverb WebSocket server
+- 👷 Background queue workers
+- 🧠 Qdrant vector database for RAG
+
+All services configured, optimized, and ready for production!
+
+### ⚡ **Performance**
+
+<table>
+<tr>
+<td align="center">
+<h3>🚀</h3>
+<strong>Sub-10ms</strong><br/>
+Vector Search
+</td>
+<td align="center">
+<h3>⚡</h3>
+<strong>20 min</strong><br/>
+Long Conversations
+</td>
+<td align="center">
+<h3>📊</h3>
+<strong>N+1</strong><br/>
+Query Prevention
+</td>
+<td align="center">
+<h3>🔄</h3>
+<strong>Real-time</strong><br/>
+WebSocket Streaming
+</td>
+</tr>
+</table>
+
 - Async job processing with Laravel Queue
-- Database-backed queue system
-- Long-running conversation support (20 min timeout)
-- Message embeddings for semantic search
-- Efficient N+1 query prevention
-- Vector search with sub-10ms response times
+- Redis-backed queue system
+- Efficient database queries
+- Real-time streaming responses
+- Optimized for scale
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **Framework**: Laravel 12 (PHP 8.2+)
-- **Database**: SQLite (dev) / PostgreSQL (Docker/production)
-- **Queue**: Database driver (dev) / Redis (Docker/production)
-- **WebSockets**: Laravel Reverb
-- **Authentication**: Laravel Breeze + Sanctum
-- **AI Integration**: Neuron AI (multi-provider abstraction)
-- **HTTP Client**: Saloon PHP
-- **Vector Database**: Qdrant (RAG functionality)
+<table>
+<tr>
+<td valign="top" width="50%">
 
-### Frontend
-- **Framework**: React 19
-- **SPA Bridge**: Inertia.js 2.0
-- **Build Tool**: Vite 7
-- **Styling**: Tailwind CSS v4
-- **Real-time**: Laravel Echo
-- **Icons**: Lucide React
+### **Backend Excellence**
 
-### Development Tools
-- **Testing**: PHPUnit/Pest
-- **Code Style**: Laravel Pint
-- **Logs**: Laravel Pail
-- **Package Manager**: Composer & NPM
+🔥 **Framework**
+- Laravel 12.x (Latest)
+- PHP 8.2+ with strict types
+
+🗄️ **Data Layer**
+- PostgreSQL 16 (Production)
+- SQLite (Development)
+- Redis (Cache & Queue)
+- Qdrant (Vector Database)
+
+⚡ **Real-time**
+- Laravel Reverb (WebSockets)
+- Laravel Echo (Client)
+- Server-Sent Events
+
+🔐 **Authentication**
+- Laravel Breeze
+- Laravel Sanctum
+- Role-based Access Control
+
+🤖 **AI Integration**
+- Neuron AI (Multi-provider)
+- Saloon PHP (HTTP Client)
+- 8+ AI Provider Support
+
+</td>
+<td valign="top" width="50%">
+
+### **Frontend Magic**
+
+⚛️ **UI Framework**
+- React 19 (Latest)
+- Inertia.js 2.0
+- TypeScript Support
+
+🎨 **Styling**
+- Tailwind CSS v4
+- Custom Dark Theme
+- Glassmorphic Design
+- CSS-in-JS Compatible
+
+📊 **Visualization**
+- Recharts (Analytics)
+- Custom Chart Components
+- Real-time Updates
+
+🔧 **Build Tools**
+- Vite 7 (Lightning Fast)
+- NPM/Yarn
+- Hot Module Replacement
+
+🐛 **Developer Tools**
+- Laravel Telescope
+- Laravel Debugbar
+- Laravel Pint (Code Style)
+- PHPUnit/Pest (Testing)
+
+</td>
+</tr>
+</table>
+
+### **🎯 Supported AI Providers**
+
+| Provider | Models | Status |
+|----------|--------|--------|
+| 🤖 OpenAI | GPT-4, GPT-3.5, etc. | ✅ Active |
+| 🧠 Anthropic | Claude 3.5 Sonnet, Opus | ✅ Active |
+| 🌟 Google | Gemini Pro, Ultra | ✅ Active |
+| 🚀 DeepSeek | DeepSeek Chat | ✅ Active |
+| 🔀 OpenRouter | Multi-model Gateway | ✅ Active |
+| 🏠 Ollama | Local Models | ✅ Active |
+| 💻 LM Studio | Local Models | ✅ Active |
+| 🧪 Mock | Testing & Development | ✅ Active |
+
+---
+
+## 🔧 Admin & Developer Tools
+
+Chat Bridge includes a comprehensive suite of professional tools for system administration and debugging:
+
+### 🧪 **System Diagnostics Dashboard** (`/admin/system`)
+
+A powerful web-based control panel with 8 diagnostic actions:
+
+| Action | Description | Use Case |
+|--------|-------------|----------|
+| 🏥 Health Check | Complete system status overview | Quick sanity check |
+| 🔐 Fix Permissions | Repair file permissions automatically | After deployment |
+| 🗑️ Clear Caches | Clear config, routes, views, events | Development workflow |
+| ⚡ Optimize App | Cache configs for production | Before going live |
+| 🤖 Validate AI | Test all AI service connections | API key validation |
+| 🗄️ Check Database | Database health & statistics | Monitoring |
+| 🧪 Run Tests | Execute full PHPUnit test suite | CI/CD integration |
+| ✨ Fix Code Style | Auto-fix with Laravel Pint | Code quality |
+
+**System Information Panel:**
+- PHP & Laravel versions
+- Environment & debug status
+- Memory limit & execution time
+- Disk space usage
+- Cache & Queue drivers
+- File permission status
+
+### 🔭 **Laravel Telescope** (`/telescope`)
+
+Professional application monitoring:
+- 📊 Request/Response tracking
+- 🐛 Exception monitoring
+- 💾 Database query profiling
+- 📬 Job & Queue monitoring
+- 📧 Mail & Notification tracking
+- 📝 Log aggregation
+- ⏱️ Performance metrics
+
+**Dark theme enabled** • **Admin-only access** • **Production-ready**
+
+### 🐛 **Laravel Debugbar**
+
+Real-time profiling bar (bottom of page):
+- ⚡ Query profiling with execution time
+- 🧠 Memory usage tracking
+- ⏱️ Timeline visualization
+- 📁 Included files list
+- 🔀 Route information
+- 📊 Request/Response data
+
+**Auto-disabled in production** • **Zero performance impact**
 
 ---
 
@@ -269,12 +506,12 @@ php artisan view:cache
 ## 📖 Usage Guide
 
 ### 1. Login with Default Admin
-Visit `http://localhost:8000/login` and use the default credentials:
+Visit `http://localhost:8000/login` (or `http://localhost:8002` for Docker) and use the default credentials:
 
-- **Email**: `admin@example.com`
+- **Username**: `admin` (accepts username without @ symbol)
 - **Password**: `password`
 
-This user is automatically created and granted admin rights during installation.
+This admin user is automatically created with full admin rights during installation via database seeder.
 
 ### 2. Add API Keys
 1. Navigate to `/api-keys`
@@ -338,8 +575,11 @@ chat_bridge/
 │   │   ├── AI/
 │   │   │   ├── AIManager.php                  # AI provider abstraction
 │   │   │   └── EmbeddingService.php           # Vector embeddings
+│   │   ├── System/
+│   │   │   └── [System services]              # System utilities
 │   │   ├── ConversationService.php            # Turn generation
-│   │   └── TranscriptService.php              # Export conversations
+│   │   ├── TranscriptService.php              # Export conversations
+│   │   └── AnalyticsController.php            # Analytics and queries
 │   └── Events/
 │       ├── MessageChunkSent.php               # Streaming chunks
 │       ├── MessageCompleted.php               # Full message
@@ -352,10 +592,13 @@ chat_bridge/
 │   │   │   ├── Auth/                          # Login/Register
 │   │   │   ├── Chat/                          # Conversation UI
 │   │   │   ├── Personas/                      # Persona management
-│   │   │   └── ApiKeys/                       # API key management
+│   │   │   ├── ApiKeys/                       # API key management
+│   │   │   ├── Analytics/                     # Analytics dashboard
+│   │   │   ├── Admin/                         # Admin panel
+│   │   │   └── Dashboard.jsx                  # Main dashboard
 │   │   └── app.jsx                            # React entry point
 │   └── css/
-│       └── app.css                            # Tailwind imports
+│       └── app.css                            # Tailwind + custom dark theme
 ├── routes/
 │   ├── web.php                                # Web routes
 │   ├── api.php                                # API routes
@@ -406,6 +649,12 @@ chat_bridge/
 - `POST /api-keys` - Add API key
 - `PUT /api-keys/{id}` - Update API key
 - `DELETE /api-keys/{id}` - Delete API key
+- `POST /api-keys/{id}/test` - Validate API key with provider
+
+### Analytics
+- `GET /analytics` - Analytics dashboard with charts
+- `POST /analytics/query` - Query conversation history
+- `POST /analytics/export` - Export conversations to CSV
 
 ### Admin (Requires Admin Role)
 - `GET /admin/users` - List all users
@@ -472,9 +721,14 @@ php artisan test
 # Run specific test file
 php artisan test tests/Feature/ConversationTest.php
 
-# With coverage
+# Run with coverage
 php artisan test --coverage
+
+# Use the interactive test runner
+./run_tests.sh
 ```
+
+**Or use the System Diagnostics panel** at `/admin/system` to run tests via the web interface!
 
 ---
 
@@ -511,19 +765,24 @@ php artisan migrate --force
 
 ## 📚 Documentation
 
-### Chat Bridge Documentation
-- **[DOCKER.md](DOCKER.md)** - Complete Docker deployment guide
-- **[RAG_GUIDE.md](RAG_GUIDE.md)** - RAG functionality and AI memory guide
-- **[ROADMAP.md](ROADMAP.md)** - Future development plans
-- **[LARAVEL_ENHANCEMENTS.md](LARAVEL_ENHANCEMENTS.md)** - UX improvements
+### 📖 Chat Bridge Documentation
+| Document | Description |
+|----------|-------------|
+| **[FEATURES.md](FEATURES.md)** | 🎯 Complete feature list (200+) |
+| **[DOCKER.md](DOCKER.md)** | 🐳 Docker deployment guide |
+| **[RAG_GUIDE.md](RAG_GUIDE.md)** | 🧠 RAG & AI memory guide |
+| **[ROADMAP.md](ROADMAP.md)** | 🗺️ Future development plans |
+| **[DATA_MANIPULATION.md](DATA_MANIPULATION.md)** | 📊 Data operations guide |
 
-### External Documentation
-- [Laravel Documentation](https://laravel.com/docs/12.x)
-- [Inertia.js Guide](https://inertiajs.com/)
-- [React Documentation](https://react.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Laravel Reverb](https://reverb.laravel.com/)
-- [Qdrant Documentation](https://qdrant.tech/documentation/)
+### 🌐 External Documentation
+- **[Laravel 12.x](https://laravel.com/docs/12.x)** - Framework documentation
+- **[React 19](https://react.dev/)** - UI library guide
+- **[Inertia.js](https://inertiajs.com/)** - SPA bridge documentation
+- **[Tailwind CSS v4](https://tailwindcss.com/)** - Styling framework
+- **[Laravel Reverb](https://reverb.laravel.com/)** - WebSocket server
+- **[Qdrant](https://qdrant.tech/documentation/)** - Vector database
+- **[Laravel Telescope](https://laravel.com/docs/telescope)** - Debug tool
+- **[Recharts](https://recharts.org/)** - Charting library
 
 ---
 
@@ -545,40 +804,106 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 ---
 
+## 🎯 Quick Stats
+
+<div align="center">
+
+| Metric | Count |
+|--------|-------|
+| 🎭 **Pre-configured Personas** | 56 |
+| 🤖 **AI Providers Supported** | 8+ |
+| ✨ **Features** | 200+ |
+| 🎨 **Custom CSS Utilities** | 15+ |
+| 📊 **Admin Dashboard Actions** | 8 |
+| 🧪 **Test Coverage** | Comprehensive |
+| 📦 **Total Dependencies** | 93+ |
+| ⚡ **Vector Search Speed** | <10ms |
+
+</div>
+
+---
+
+## 🌟 What Makes Chat Bridge Special?
+
+<table>
+<tr>
+<td width="50%">
+
+### 🎨 **Stunning UI**
+Not just functional—beautiful! Our custom "Midnight Glass" dark theme with glassmorphic design makes working with AI agents a visual treat.
+
+### 🔧 **Developer-First**
+Built by developers, for developers. Includes Telescope, Debugbar, comprehensive testing, and a full diagnostics suite.
+
+</td>
+<td width="50%">
+
+### 🚀 **Production-Ready**
+Not a toy project. Enterprise-grade security, performance optimization, Docker deployment, and comprehensive monitoring.
+
+### 🧠 **Intelligent**
+RAG-powered conversations with persistent memory. Your AI agents remember context across sessions for truly intelligent discussions.
+
+</td>
+</tr>
+</table>
+
+---
+
 ## 🙏 Acknowledgments
 
-- **Laravel** - Elegant PHP framework
-- **Inertia.js** - Modern monolith architecture
-- **React** - UI library
-- **Tailwind CSS** - Utility-first CSS
-- **Neuron AI** - Multi-provider AI abstraction
-- **Saloon PHP** - HTTP client for APIs
+Powered by amazing open-source projects:
+
+- **[Laravel](https://laravel.com)** - The PHP Framework for Web Artisans
+- **[React](https://react.dev)** - A JavaScript library for building user interfaces
+- **[Inertia.js](https://inertiajs.com)** - The Modern Monolith
+- **[Tailwind CSS](https://tailwindcss.com)** - A utility-first CSS framework
+- **[Vite](https://vitejs.dev)** - Next Generation Frontend Tooling
+- **[Qdrant](https://qdrant.tech)** - Vector Database for AI
+- **[Laravel Reverb](https://reverb.laravel.com)** - Blazing fast WebSockets
+- **[Neuron AI](https://github.com/UseNeuron/neuron)** - Multi-provider AI SDK
 
 ---
 
-## 📞 Support
+## 📞 Support & Community
 
-For support, please open an issue on GitHub or contact the maintainers.
-
----
-
-## 🗺️ Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for planned features and improvements.
+- 📧 **Issues**: [GitHub Issues](https://github.com/meistro57/chat_bridge/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/meistro57/chat_bridge/discussions)
+- 🐛 **Bug Reports**: Use GitHub Issues with the `bug` label
+- ✨ **Feature Requests**: Use GitHub Issues with the `enhancement` label
 
 ---
 
-## 🎨 Screenshots
+## 🗺️ What's Next?
 
-### Dashboard
-![Dashboard](docs/images/dashboard.png)
+Check out our [ROADMAP.md](ROADMAP.md) for upcoming features and improvements!
 
-### Conversation View
-![Conversation](docs/images/conversation.png)
-
-### Persona Management
-![Personas](docs/images/personas.png)
+**Coming Soon:**
+- 🌐 Multi-language support
+- 📱 Mobile app (React Native)
+- 🎙️ Voice conversation support
+- 🔌 Plugin system
+- 📊 Advanced analytics
+- 🤝 Team collaboration features
 
 ---
 
-Made with ❤️ using Laravel and React
+## ⭐ Star History
+
+If you find Chat Bridge useful, please consider giving it a star! ⭐
+
+---
+
+<div align="center">
+
+### Made with ❤️ by developers who love AI
+
+**[⬆ back to top](#-chat-bridge)**
+
+---
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/meistro57/chat_bridge/graphs/commit-activity)
+
+</div>
