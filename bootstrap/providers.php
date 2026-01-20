@@ -2,5 +2,5 @@
 
 return [
     App\Providers\AppServiceProvider::class,
-    App\Providers\TelescopeServiceProvider::class,
+    ...app()->environment('local') ? [App\Providers\TelescopeServiceProvider::class] : [],
 ];
