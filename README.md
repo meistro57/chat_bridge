@@ -127,6 +127,14 @@ Professional debugging suite:
 
 <img width="1358" height="1494" alt="image" src="https://github.com/user-attachments/assets/1ca7b2b0-4887-400b-8ab8-1a7cf72ffe19" />
 
+<img width="1386" height="598" alt="image" src="https://github.com/user-attachments/assets/a864f3f2-7732-4dee-8628-be9624e80e5d" />
+
+<img width="1384" height="1332" alt="image" src="https://github.com/user-attachments/assets/e6bdd7f2-20fe-4ae8-86b5-1160f822fb1b" />
+
+<img width="1385" height="987" alt="image" src="https://github.com/user-attachments/assets/da2d54f5-ffda-4e81-8c96-cacd50ec33ba" />
+
+<img width="1374" height="937" alt="image" src="https://github.com/user-attachments/assets/a739b01a-00eb-4c88-900c-8211ac69d96c" />
+
 
 <table>
 <tr>
