@@ -121,6 +121,12 @@ Professional debugging suite:
 </table>
 
 ### 🎨 **Midnight Glass UI Design**
+<img width="1381" height="1271" alt="image" src="https://github.com/user-attachments/assets/ef873609-f627-44dc-b205-18afd6a1b50f" />
+
+<img width="1374" height="1465" alt="image" src="https://github.com/user-attachments/assets/be91a4a9-1768-4966-8525-c673c9a7bb6e" />
+
+<img width="1358" height="1494" alt="image" src="https://github.com/user-attachments/assets/1ca7b2b0-4887-400b-8ab8-1a7cf72ffe19" />
+
 
 <table>
 <tr>
