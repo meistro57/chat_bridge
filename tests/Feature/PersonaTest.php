@@ -22,7 +22,6 @@ class PersonaTest extends TestCase
         $user = User::factory()->create();
         $response = $this->actingAs($user)->post('/personas', [
             'name' => 'Test Persona',
-            'provider' => 'openai',
             'system_prompt' => 'Be helpful',
             'temperature' => 0.7,
         ]);

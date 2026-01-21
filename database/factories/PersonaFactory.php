@@ -18,8 +18,6 @@ class PersonaFactory extends Factory
     {
         return [
             'name' => $this->faker->unique()->name(),
-            'provider' => 'openai',
-            'model' => 'gpt-4o-mini',
             'system_prompt' => $this->faker->sentence(),
             'temperature' => 0.7,
         ];

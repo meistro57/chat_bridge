@@ -37,7 +37,14 @@ class ChatTest extends TestCase
         $response = $this->actingAs($user)->post('/chat', [
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
             'starter_message' => 'Hello agents',
+            'max_rounds' => 10,
         ]);
 
         $response->assertRedirect();
