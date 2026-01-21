@@ -24,11 +24,30 @@ class AIManager extends Manager
     /**
      * Retrieve API Key from DB or Config
      */
+    private function decryptKey($encryptedKey)
+    {
+        \Log::info('Decrypting API Key', [
+            'encrypted_key' => substr($encryptedKey, 0, 20).'...',
+        ]);
+
+        try {
+            $decrypted = decrypt($encryptedKey);
+            return $decrypted;
+        } catch (\Exception $e) {
+            \Log::error('API Key Decryption Failed', [
+                'error' => $e->getMessage(),
+                'encrypted_length' => strlen($encryptedKey),
+            ]);
+            return null;
+        }
+    }
+
     private function getKey(string $provider): ?string
     {
         // 1. Try Config (.env) FIRST - for system-wide/admin keys
         $configKey = config("services.{$provider}.key");
         if (! empty($configKey)) {
+            \Log::info("Using config key for {$provider}");
             return $configKey;
         }
 
@@ -42,7 +61,11 @@ class AIManager extends Manager
                     ->first();
 
                 if ($dbEntry && ! empty($dbEntry->key)) {
-                    return $dbEntry->key;
+                    \Log::info("Found API key for {$provider} in database", [
+                        'user_id' => auth()->id(),
+                    ]);
+                    $decryptedKey = $this->decryptKey($dbEntry->key);
+                    return $decryptedKey;
                 }
             }
 
@@ -53,12 +76,19 @@ class AIManager extends Manager
                 ->first();
 
             if ($dbEntry && ! empty($dbEntry->key)) {
-                return $dbEntry->key;
+                \Log::info("Found fallback API key for {$provider}", [
+                    'user_id' => $dbEntry->user_id,
+                ]);
+                $decryptedKey = $this->decryptKey($dbEntry->key);
+                return $decryptedKey;
             }
         } catch (\Exception $e) {
-            Log::warning("Failed to fetch API key from DB for {$provider}: ".$e->getMessage());
+            \Log::warning("Failed to fetch API key from DB for {$provider}: ".$e->getMessage(), [
+                'exception_trace' => $e->getTraceAsString(),
+            ]);
         }
 
+        \Log::warning("No API key found for {$provider}");
         return null;
     }
 

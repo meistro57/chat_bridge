@@ -50,6 +50,10 @@ Chat generations are **asynchronous**.
 - **Persona**: Represents an AI identity (System Prompt, Model, Provider).
 - **Conversation**: A session between two Personas (A and B).
 - **Message**: Individual chat bubbles in the conversation.
+- **Transmission**: A flexible messaging system for sending messages across different channels and priorities.
+    - Supports prioritization (low/medium/high)
+    - Tracks sending status
+    - Allows custom routing methods
 
 ## Development Commands
 

@@ -6,8 +6,13 @@ echo "🚀 Starting Chat Bridge Docker initialization..."
 # Fix permissions on storage and cache to prevent permission issues on host
 # This ensures that both the container and the host user can write to logs/cache
 echo "🔧 Fixing permissions..."
-chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+
+# Ensure .env file has correct permissions
+touch /var/www/html/.env
+chmod 664 /var/www/html/.env
+chown www-data:www-data /var/www/html/.env
 
 # Clear cached framework files to avoid stale package discovery issues
 rm -f /var/www/html/bootstrap/cache/*.php
@@ -17,8 +22,15 @@ mkdir -p /var/www/html/storage/framework/cache/data \
          /var/www/html/storage/framework/sessions \
          /var/www/html/storage/framework/views \
          /var/www/html/storage/logs \
-         /var/www/html/storage/app/public
-chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || true
+         /var/www/html/storage/app/public \
+         /var/www/html/database
+
+# Ensure SQLite database exists with correct permissions
+touch /var/www/html/database/database.sqlite
+chmod 666 /var/www/html/database/database.sqlite
+chown www-data:www-data /var/www/html/database/database.sqlite
+
+chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
 
 # Wait for PostgreSQL to be ready
 if [ "${DB_CONNECTION}" = "pgsql" ]; then

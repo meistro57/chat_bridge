@@ -138,22 +138,49 @@ class ApiKeyController extends Controller
     public function test(ApiKey $apiKey)
     {
         if ($apiKey->user_id !== auth()->id()) {
+            \Log::warning('API Key Test Unauthorized', [
+                'requested_user_id' => $apiKey->user_id,
+                'current_user_id' => auth()->id(),
+            ]);
             abort(403);
         }
+
+        \Log::info('API Key Test Started', [
+            'provider' => $apiKey->provider,
+            'user_id' => auth()->id(),
+        ]);
 
         try {
             // Get the AI driver for this provider
             $driver = app('ai')->driver($apiKey->provider);
 
+            \Log::info('AI Driver Created', [
+                'driver_class' => get_class($driver),
+                'model' => method_exists($driver, 'getModel') ? $driver->getModel() : 'Unknown',
+            ]);
+
             // Test with a simple completion request
-            $messages = [
+            $messages = collect([
                 [
                     'role' => 'user',
                     'content' => 'Respond with only the word "OK" to confirm you are working.',
                 ],
-            ];
+            ]);
 
-            $result = $driver->completion($messages);
+            \Log::info('Attempting Completion', [
+                'provider' => $apiKey->provider,
+                'messages_count' => $messages->count(),
+            ]);
+
+            // Dynamically call the appropriate chat/completion method
+            $result = method_exists($driver, 'chat') 
+                ? $driver->chat($messages) 
+                : $driver->completion($messages);
+
+            \Log::info('Completion Result', [
+                'result_length' => strlen($result),
+                'result_preview' => substr($result, 0, 50),
+            ]);
 
             // If we get here without exception, the key is valid
             $apiKey->update([
@@ -169,6 +196,13 @@ class ApiKeyController extends Controller
                 'last_validated_at' => $apiKey->last_validated_at,
             ]);
         } catch (\Exception $e) {
+            \Log::error('API Key Test Failed', [
+                'provider' => $apiKey->provider,
+                'error_type' => get_class($e),
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+            ]);
+
             // Key is invalid or there was an error
             $apiKey->update([
                 'is_validated' => false,

@@ -27,9 +27,12 @@ services:
       - CACHE_DRIVER=redis
       - SESSION_DRIVER=redis
       - BROADCAST_DRIVER=reverb
-      - REVERB_HOST=0.0.0.0
+      - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REVERB_SCHEME=http
+      - VITE_REVERB_HOST=reverb
+      - VITE_REVERB_PORT=8080
+      - VITE_REVERB_SCHEME=http
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
     ports:
@@ -104,9 +107,12 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SKIP_MIGRATIONS=true
-      - REVERB_HOST=0.0.0.0
+      - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REVERB_SCHEME=http
+      - VITE_REVERB_HOST=reverb
+      - VITE_REVERB_PORT=8080
+      - VITE_REVERB_SCHEME=http
     ports:
       - "${REVERB_PORT:-8080}:8080"
     depends_on:
