@@ -36,8 +36,6 @@ class RolesJsonSeeder extends Seeder
             Persona::updateOrCreate(
                 ['name' => $data['name'] ?? $key],
                 [
-                    'provider' => $data['provider'] ?? 'openai',
-                    'model' => $data['model'] ?? null,
                     'system_prompt' => $data['system'] ?? '',
                     'guidelines' => $data['guidelines'] ?? [],
                     'temperature' => $data['temperature'] ?? 0.7, // Default if missing

@@ -32,8 +32,6 @@ class PersonaSeeder extends Seeder
                 ['name' => $data['name'] ?? $key],
                 [
                     'user_id' => $admin?->id ?? 1,
-                    'provider' => $data['provider'],
-                    'model' => $data['model'] ?? null,
                     'system_prompt' => $data['system'],
                     'guidelines' => $data['guidelines'] ?? [],
                     'temperature' => $data['temperature'] ?? ($rolesData['temp_a'] ?? 0.6),

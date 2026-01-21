@@ -77,7 +77,7 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
+RUN composer install --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
 # Copy application files
 COPY . .

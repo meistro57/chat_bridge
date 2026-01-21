@@ -29,7 +29,6 @@ vendor
 Thumbs.db
 
 # Testing
-tests
 .phpunit.result.cache
 .test_cache
 coverage
