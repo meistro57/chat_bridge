@@ -24,7 +24,14 @@ class GeminiDriver implements AIDriverInterface
             throw new \Exception('Gemini API Error: '.$response->body());
         }
 
-        return $response->json('candidates.0.content.parts.0.text');
+        $content = $response->json('candidates.0.content.parts.0.text');
+
+        if ($content === null) {
+            $responseData = $response->json();
+            throw new \Exception('Gemini API returned an unexpected response structure. Response: ' . json_encode($responseData));
+        }
+
+        return $content;
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable

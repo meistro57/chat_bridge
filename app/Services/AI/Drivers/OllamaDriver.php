@@ -28,7 +28,14 @@ class OllamaDriver implements AIDriverInterface
             throw new \Exception('Ollama API Error: '.$response->body());
         }
 
-        return $response->json('message.content');
+        $content = $response->json('message.content');
+
+        if ($content === null) {
+            $responseData = $response->json();
+            throw new \Exception('Ollama API returned an unexpected response structure. Response: ' . json_encode($responseData));
+        }
+
+        return $content;
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable

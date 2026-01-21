@@ -27,7 +27,14 @@ class OpenAIDriver implements AIDriverInterface
             throw new \Exception('OpenAI API Error: '.$response->body());
         }
 
-        return $response->json('choices.0.message.content');
+        $content = $response->json('choices.0.message.content');
+
+        if ($content === null) {
+            $responseData = $response->json();
+            throw new \Exception('OpenAI API returned an unexpected response structure. Response: ' . json_encode($responseData));
+        }
+
+        return $content;
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
