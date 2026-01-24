@@ -30,7 +30,7 @@ services:
       - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REVERB_SCHEME=http
-      - VITE_REVERB_HOST=reverb
+      - VITE_REVERB_HOST=localhost
       - VITE_REVERB_PORT=8080
       - VITE_REVERB_SCHEME=http
       - QDRANT_HOST=qdrant
@@ -110,7 +110,7 @@ services:
       - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REVERB_SCHEME=http
-      - VITE_REVERB_HOST=reverb
+      - VITE_REVERB_HOST=localhost
       - VITE_REVERB_PORT=8080
       - VITE_REVERB_SCHEME=http
     ports:
