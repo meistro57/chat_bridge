@@ -57,7 +57,7 @@ class AnalyticsController extends Controller
             'stats' => $stats,
             'recentActivity' => $recentActivity,
             'personaStats' => $personaStats,
-            'personas' => Persona::orderBy('name')->get(['id', 'name', 'provider']),
+            'personas' => Persona::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -110,7 +110,7 @@ class AnalyticsController extends Controller
         return Inertia::render('Analytics/Query', [
             'results' => $results,
             'filters' => $request->only(['keyword', 'date_from', 'date_to', 'persona_id', 'role', 'status', 'sort_order', 'per_page']),
-            'personas' => Persona::orderBy('name')->get(['id', 'name', 'provider']),
+            'personas' => Persona::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
