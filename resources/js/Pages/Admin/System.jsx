@@ -7,6 +7,14 @@ export default function System({ systemInfo }) {
     const [output, setOutput] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeAction, setActiveAction] = useState(null);
+    const [openaiKey, setOpenaiKey] = useState('');
+    const [openaiStatus, setOpenaiStatus] = useState({
+        isSet: systemInfo.openai_key_set,
+        last4: systemInfo.openai_key_last4,
+    });
+    const [savingKey, setSavingKey] = useState(false);
+    const [testingKey, setTestingKey] = useState(false);
+    const [clearingKey, setClearingKey] = useState(false);
 
     const runAction = async (action, label) => {
         setLoading(true);
@@ -21,6 +29,66 @@ export default function System({ systemInfo }) {
         } finally {
             setLoading(false);
             setActiveAction(null);
+        }
+    };
+
+    const saveOpenAiKey = async (e) => {
+        e.preventDefault();
+        setSavingKey(true);
+        setOutput('Saving OpenAI service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/openai-key', {
+                openai_key: openaiKey,
+            });
+            setOpenaiStatus({
+                isSet: response.data.openai_key_set,
+                last4: response.data.openai_key_last4,
+            });
+            setOpenaiKey('');
+            setOutput('✓ OpenAI service key updated.\n');
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setSavingKey(false);
+        }
+    };
+
+    const testOpenAiKey = async () => {
+        setTestingKey(true);
+        setOutput('Testing OpenAI service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/openai-key/test', {
+                openai_key: openaiKey.length ? openaiKey : null,
+            });
+            setOutput(`${response.data.message}\nResult: ${response.data.result}\n`);
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setTestingKey(false);
+        }
+    };
+
+    const clearOpenAiKey = async () => {
+        if (!confirm('Clear the OpenAI service key?')) {
+            return;
+        }
+
+        setClearingKey(true);
+        setOutput('Clearing OpenAI service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/openai-key/clear');
+            setOpenaiStatus({
+                isSet: response.data.openai_key_set,
+                last4: null,
+            });
+            setOutput('✓ OpenAI service key cleared.\n');
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setClearingKey(false);
         }
     };
 
@@ -95,6 +163,59 @@ export default function System({ systemInfo }) {
                                     active={activeAction === action.id}
                                 />
                             ))}
+                        </div>
+                    </div>
+
+                    {/* OpenAI Service Key */}
+                    <div className="glass-panel rounded-xl p-6 border border-white/5">
+                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Codex Service Key</h3>
+                        <p className="text-sm text-zinc-500 mb-4">
+                            This single admin key is used for Codex/Boost diagnostics and repair tasks.
+                        </p>
+                        <div className="flex items-center gap-3 mb-4">
+                            <StatusBadge
+                                label="OpenAI Key"
+                                status={openaiStatus.isSet}
+                            />
+                            {openaiStatus.isSet && openaiStatus.last4 && (
+                                <div className="text-xs text-zinc-500 font-mono">
+                                    Last 4: {openaiStatus.last4}
+                                </div>
+                            )}
+                        </div>
+                        <form onSubmit={saveOpenAiKey} className="flex flex-col md:flex-row gap-3">
+                            <input
+                                type="password"
+                                value={openaiKey}
+                                onChange={(event) => setOpenaiKey(event.target.value)}
+                                placeholder="sk-..."
+                                className="flex-1 bg-zinc-950/60 border border-white/10 rounded-lg px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+                            />
+                            <button
+                                type="submit"
+                                disabled={savingKey || openaiKey.length === 0}
+                                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {savingKey ? 'Saving...' : 'Save Key'}
+                            </button>
+                        </form>
+                        <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                            <button
+                                type="button"
+                                onClick={testOpenAiKey}
+                                disabled={testingKey || (!openaiStatus.isSet && openaiKey.length === 0)}
+                                className="px-4 py-2 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {testingKey ? 'Testing...' : 'Test Key'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearOpenAiKey}
+                                disabled={clearingKey || !openaiStatus.isSet}
+                                className="px-4 py-2 rounded-lg bg-red-600/90 hover:bg-red-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {clearingKey ? 'Clearing...' : 'Clear Key'}
+                            </button>
                         </div>
                     </div>
 

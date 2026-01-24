@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\AI\Data\MessageData;
+use App\Services\AI\Drivers\OpenAIDriver;
+use App\Services\System\EnvFileService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -11,6 +14,10 @@ use Inertia\Inertia;
 
 class SystemController extends Controller
 {
+    public function __construct(
+        private readonly EnvFileService $envService
+    ) {}
+
     public function index()
     {
         return Inertia::render('Admin/System', [
@@ -84,8 +91,90 @@ class SystemController extends Controller
         ]);
     }
 
+    public function updateOpenAiKey(Request $request)
+    {
+        $validated = $request->validate([
+            'openai_key' => 'required|string|min:20',
+        ]);
+
+        $this->envService->updateKey('OPENAI_API_KEY', $validated['openai_key']);
+        Artisan::call('config:clear');
+
+        Log::info('Service OpenAI key updated by admin', [
+            'user_id' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'openai_key_set' => true,
+            'openai_key_last4' => substr($validated['openai_key'], -4),
+        ]);
+    }
+
+    public function testOpenAiKey(Request $request)
+    {
+        $validated = $request->validate([
+            'openai_key' => 'nullable|string|min:20',
+        ]);
+
+        $key = $validated['openai_key'] ?? (string) config('services.openai.key', '');
+
+        if ($key === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'No OpenAI key configured.',
+            ], 422);
+        }
+
+        $driver = new OpenAIDriver(
+            apiKey: $key,
+            model: config('services.openai.model', 'gpt-4o-mini')
+        );
+
+        $messages = collect([
+            new MessageData('user', 'Respond with only the word "OK".'),
+        ]);
+
+        try {
+            $result = trim($driver->chat($messages, 0));
+        } catch (\Throwable $e) {
+            Log::warning('OpenAI key test failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'OpenAI key test failed: '.$e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result === 'OK' ? 'OpenAI key is valid.' : 'OpenAI responded, but content was unexpected.',
+            'result' => $result,
+        ]);
+    }
+
+    public function clearOpenAiKey()
+    {
+        $this->envService->updateKey('OPENAI_API_KEY', '');
+        Artisan::call('config:clear');
+
+        Log::info('Service OpenAI key cleared by admin', [
+            'user_id' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'openai_key_set' => false,
+        ]);
+    }
+
     private function getSystemInfo()
     {
+        $openaiKey = (string) config('services.openai.key', '');
+
         return [
             'php_version' => PHP_VERSION,
             'laravel_version' => app()->version(),
@@ -99,6 +188,8 @@ class SystemController extends Controller
             'disk_space' => $this->getDiskSpace(),
             'memory_limit' => ini_get('memory_limit'),
             'max_execution_time' => ini_get('max_execution_time'),
+            'openai_key_set' => $openaiKey !== '',
+            'openai_key_last4' => $openaiKey !== '' ? substr($openaiKey, -4) : null,
         ];
     }
 

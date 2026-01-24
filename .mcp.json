@@ -4,7 +4,7 @@
             "command": "wsl.exe",
             "args": [
                 "/home/mark/.config/herd-lite/bin/php",
-                "/home/mark/chat_bridge/chat_bridge_laravel/artisan",
+                "/home/mark/chat_bridge/artisan",
                 "boost:mcp"
             ]
         }

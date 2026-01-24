@@ -116,6 +116,7 @@ Professional debugging suite:
 - 🔭 **Laravel Telescope** - Monitor everything
 - 🐛 **Laravel Debugbar** - Real-time profiling
 - 🧪 **System Diagnostics** - Health checks
+- 🤖 **Codex/Boost MCP** - Admin-managed service key with test/clear controls
 - 📝 Enhanced logging system
 - 🔧 Maintenance automation
 - ✨ Code style fixer (Pint)
@@ -342,6 +343,11 @@ A powerful web-based control panel with 8 diagnostic actions:
 - Disk space usage
 - Cache & Queue drivers
 - File permission status
+
+**Codex Service Key Panel:**
+- Set a single OpenAI service key for Codex/Boost diagnostics
+- Test key connectivity from the dashboard
+- Clear the stored key when rotating credentials
 
 ### 🔭 **Laravel Telescope** (`/telescope`)
 

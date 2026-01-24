@@ -179,4 +179,9 @@ class AIManager extends Manager
             baseUrl: config('services.lmstudio.base_url', 'http://localhost:1234/v1')
         );
     }
+
+    public function createMockDriver()
+    {
+        return new MockDriver;
+    }
 }

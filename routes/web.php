@@ -32,6 +32,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
         Route::get('/system', [\App\Http\Controllers\Admin\SystemController::class, 'index'])->name('system');
         Route::post('/system/diagnostic', [\App\Http\Controllers\Admin\SystemController::class, 'runDiagnostic'])->name('system.diagnostic');
+        Route::post('/system/openai-key', [\App\Http\Controllers\Admin\SystemController::class, 'updateOpenAiKey'])->name('system.openai-key');
+        Route::post('/system/openai-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testOpenAiKey'])->name('system.openai-key.test');
+        Route::post('/system/openai-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearOpenAiKey'])->name('system.openai-key.clear');
     });
 
     // Profile routes
