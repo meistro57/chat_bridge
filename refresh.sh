@@ -58,5 +58,16 @@ echo "✨ Clearing application cache..."
 docker compose exec -T app php artisan optimize:clear
 docker compose exec -T app php artisan migrate --force
 
+echo "🌱 Checking seed data..."
+SEED_STATUS=$(docker compose exec -T app php -r "require 'vendor/autoload.php'; \$app=require 'bootstrap/app.php'; \$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); \$hasAdmin=\\App\\Models\\User::where('email', 'admin')->exists(); \$hasPersona=\\App\\Models\\Persona::query()->exists(); echo (\$hasAdmin && \$hasPersona) ? 'present' : 'missing';")
+SEED_STATUS=$(echo "$SEED_STATUS" | tr -d '\r')
+
+if [ "$SEED_STATUS" = "missing" ]; then
+    echo "🌱 Seeding database..."
+    docker compose exec -T app php artisan db:seed --force
+else
+    echo "✅ Seed data already present."
+fi
+
 echo "✅ Refresh Complete! Your app is running."
 echo "   Web: http://localhost:8000"
