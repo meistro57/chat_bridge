@@ -148,6 +148,9 @@ Professional debugging suite:
 
 <img width="1199" height="1170" alt="image" src="https://github.com/user-attachments/assets/720aaa2c-03fc-4a59-aa54-22cf4af39b27" />
 
+<img width="1501" height="902" alt="image" src="https://github.com/user-attachments/assets/a1810bd4-8f74-4407-a09c-add2edf94bc9" />
+
+
 <table>
 <tr>
 <td align="center">
