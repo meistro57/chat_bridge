@@ -62,7 +62,9 @@ export default function Index({ apiKeys }) {
                 {/* List */}
                 <div className="grid gap-4">
                     {apiKeys.map(key => (
-                        <div key={key.id} className="group glass-panel rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 hover:border-indigo-500/30 transition-all">
+                        <div key={key.id} className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15]">
+                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                             <div className="flex items-center gap-4 w-full md:w-auto">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 ${key.is_active ? 'bg-indigo-500/10 text-indigo-400' : 'bg-red-500/10 text-red-500'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
@@ -142,9 +144,10 @@ export default function Index({ apiKeys }) {
                     ))}
 
                     {apiKeys.length === 0 && (
-                        <div className="text-center py-24 glass-panel rounded-3xl border-dashed border-zinc-800">
-                            <p className="text-zinc-500 mb-4">No credentials stored locally.</p>
-                            <Link href="/api-keys/create" className="text-indigo-400 hover:text-indigo-300">Register a Provider Key</Link>
+                        <div className="relative text-center py-24 bg-zinc-900/50 backdrop-blur-2xl rounded-2xl border-2 border-dashed border-zinc-700 overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                            <p className="relative text-zinc-500 mb-4">No credentials stored locally.</p>
+                            <Link href="/api-keys/create" className="relative text-indigo-400 hover:text-indigo-300">Register a Provider Key</Link>
                         </div>
                     )}
                 </div>
