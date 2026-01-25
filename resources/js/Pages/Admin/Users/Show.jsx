@@ -71,7 +71,7 @@ export default function Show({ auth, user }) {
                                             <div className="flex justify-between items-center">
                                                 <div>
                                                     <div className="font-medium text-zinc-200">{persona.name}</div>
-                                                    <div className="text-sm text-zinc-500">{persona.model}</div>
+                                                    <div className="text-sm text-zinc-500">Temp {persona.temperature}</div>
                                                 </div>
                                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                                                     persona.is_active 

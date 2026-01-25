@@ -148,7 +148,7 @@ export default function Chat({ personas, conversations, debug_info }) {
                                             </div>
                                             <div>
                                                 <div className="text-zinc-200 font-medium">{persona.name}</div>
-                                                <div className="text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-indigo-400 transition-colors">{persona.provider}</div>
+                                                <div className="text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-indigo-400 transition-colors">Temp {persona.temperature}</div>
                                             </div>
                                         </div>
                                     </div>

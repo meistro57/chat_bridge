@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -28,5 +29,27 @@ class PersonaTest extends TestCase
 
         $response->assertRedirect('/personas');
         $this->assertDatabaseHas('personas', ['name' => 'Test Persona']);
+    }
+
+    public function test_can_update_persona(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        $response = $this->actingAs($user)->put("/personas/{$persona->id}", [
+            'name' => 'Updated Persona',
+            'system_prompt' => 'Be precise and concise.',
+            'temperature' => 1.1,
+            'notes' => 'Internal note',
+        ]);
+
+        $response->assertRedirect('/personas');
+        $this->assertDatabaseHas('personas', [
+            'id' => $persona->id,
+            'name' => 'Updated Persona',
+            'notes' => 'Internal note',
+        ]);
     }
 }

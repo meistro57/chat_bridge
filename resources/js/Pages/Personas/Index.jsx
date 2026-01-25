@@ -75,16 +75,12 @@ export default function Index({ personas }) {
                                     <div>
                                         <h3 className="font-bold text-lg text-zinc-100 group-hover:text-indigo-300 transition-colors">{persona.name}</h3>
                                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400">
-                                            {persona.provider}
+                                            Persona Template
                                         </span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-2 border-t border-white/[0.06] pt-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Model</span>
-                                        <span className="text-zinc-300 font-mono text-xs bg-zinc-900/60 px-2 py-0.5 rounded-lg">{persona.model || 'Default'}</span>
-                                    </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Creativity (Temp)</span>
                                         <div className="flex items-center gap-2">
