@@ -13,14 +13,60 @@
 }
 
 @layer components {
-    /* Glassmorphic panel with dark theme */
+    /* Glassmorphic panel with dark theme - base style */
     .glass-panel {
-        @apply bg-zinc-900/50 backdrop-blur-xl border-white/5;
+        @apply bg-zinc-900/40 backdrop-blur-xl border border-white/[0.08];
+    }
+
+    /* Enhanced glass card - matches the modern glass design */
+    .glass-card {
+        @apply relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl border border-white/[0.08]
+               shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden;
+    }
+
+    /* Glass card with subtle glow effect */
+    .glass-card-glow {
+        @apply glass-card ring-1 ring-white/[0.05]
+               shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)];
+    }
+
+    /* Glass card with accent border at bottom */
+    .glass-card-accent {
+        @apply glass-card;
+    }
+
+    .glass-card-accent::after {
+        content: '';
+        @apply absolute bottom-0 left-0 right-0 h-[2px]
+               bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80;
+    }
+
+    /* Glass card with colored accent variants */
+    .glass-card-accent-blue::after {
+        @apply bg-gradient-to-r from-blue-500/80 via-cyan-500/80 to-blue-400/80;
+    }
+
+    .glass-card-accent-purple::after {
+        @apply bg-gradient-to-r from-purple-500/80 via-pink-500/80 to-fuchsia-500/80;
+    }
+
+    .glass-card-accent-emerald::after {
+        @apply bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80;
+    }
+
+    .glass-card-accent-orange::after {
+        @apply bg-gradient-to-r from-orange-500/80 via-amber-500/80 to-yellow-500/80;
     }
 
     /* Enhanced glass effect on hover */
     .glass-panel-hover {
-        @apply glass-panel hover:bg-zinc-900/70 hover:border-white/10 transition-all duration-300;
+        @apply glass-panel hover:bg-zinc-900/60 hover:border-white/[0.12] transition-all duration-300;
+    }
+
+    .glass-card-hover {
+        @apply glass-card transition-all duration-300
+               hover:bg-zinc-900/60 hover:border-white/[0.12]
+               hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-[1.01];
     }
 
     /* Input field dark theme */
@@ -53,6 +99,14 @@
 
     .text-gradient-emerald {
         @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400;
+    }
+
+    .text-gradient-cyan {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-teal-400;
+    }
+
+    .text-gradient-orange {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-amber-400;
     }
 }
 

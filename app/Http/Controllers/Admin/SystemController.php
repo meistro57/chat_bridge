@@ -73,6 +73,10 @@ class SystemController extends Controller
                     $output = $this->fixCodeStyle();
                     break;
 
+                case 'invoke_codex':
+                    $output = $this->invokeCodex($request->input('prompt', ''));
+                    break;
+
                 default:
                     $success = false;
                     $output = "Unknown action: {$action}";
@@ -493,6 +497,88 @@ class SystemController extends Controller
         } else {
             $output[] = '✗ Laravel Pint not found';
             $output[] = '→ Install with: composer require laravel/pint --dev';
+        }
+
+        return implode("\n", $output);
+    }
+
+    private function invokeCodex(string $prompt): string
+    {
+        $output = [];
+
+        $output[] = 'Invoking Codex AI Agent...';
+        $output[] = '';
+
+        // Check if OpenAI key is set
+        $openaiKey = (string) config('services.openai.key', '');
+        if ($openaiKey === '') {
+            $output[] = '✗ Error: No OpenAI service key configured.';
+            $output[] = '→ Please set an OpenAI key in the Service Key section above.';
+
+            return implode("\n", $output);
+        }
+
+        // Get boost config to verify Codex is available
+        $boostConfig = $this->getBoostConfig();
+        if (! $boostConfig['present']) {
+            $output[] = '✗ Error: Boost configuration not found (boost.json missing).';
+
+            return implode("\n", $output);
+        }
+
+        if (! in_array('codex', $boostConfig['agents'])) {
+            $output[] = '✗ Error: Codex agent not registered in boost.json.';
+            $output[] = '→ Available agents: '.implode(', ', $boostConfig['agents']);
+
+            return implode("\n", $output);
+        }
+
+        // Default prompt for diagnostics if none provided
+        if (empty($prompt)) {
+            $prompt = 'Analyze the current system state and provide a brief health summary. List any potential issues or recommendations.';
+        }
+
+        $output[] = '✓ Codex agent verified';
+        $output[] = '✓ OpenAI key configured';
+        $output[] = '';
+        $output[] = '→ Prompt: '.$prompt;
+        $output[] = '';
+
+        try {
+            $driver = new OpenAIDriver(
+                apiKey: $openaiKey,
+                model: config('services.openai.model', 'gpt-4o')
+            );
+
+            // Build context for Codex
+            $systemContext = "You are Codex, an AI diagnostics agent for a Laravel application called Chat Bridge. ";
+            $systemContext .= "Current environment: ".app()->environment().". ";
+            $systemContext .= "PHP version: ".PHP_VERSION.". ";
+            $systemContext .= "Laravel version: ".app()->version().". ";
+            $systemContext .= "Respond concisely with actionable insights.";
+
+            $messages = collect([
+                new MessageData('system', $systemContext),
+                new MessageData('user', $prompt),
+            ]);
+
+            $response = $driver->chat($messages, 0.7);
+
+            $output[] = '─────────────────────────────────────────';
+            $output[] = 'CODEX RESPONSE:';
+            $output[] = '─────────────────────────────────────────';
+            $output[] = '';
+            $output[] = trim($response);
+            $output[] = '';
+            $output[] = '─────────────────────────────────────────';
+            $output[] = '✓ Codex invocation complete';
+
+        } catch (\Throwable $e) {
+            $output[] = '✗ Codex invocation failed: '.$e->getMessage();
+            Log::error('Codex invocation failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return implode("\n", $output);

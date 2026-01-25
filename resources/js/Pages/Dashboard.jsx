@@ -12,9 +12,7 @@ export default function Dashboard({ user }) {
                 </svg>
             ),
             color: 'from-blue-500 to-cyan-500',
-            bgColor: 'bg-blue-500/10',
-            borderColor: 'border-blue-500/20',
-            hoverBorder: 'hover:border-blue-500/50',
+            accent: 'blue',
         },
         {
             name: 'Personas',
@@ -29,9 +27,7 @@ export default function Dashboard({ user }) {
                 </svg>
             ),
             color: 'from-purple-500 to-pink-500',
-            bgColor: 'bg-purple-500/10',
-            borderColor: 'border-purple-500/20',
-            hoverBorder: 'hover:border-purple-500/50',
+            accent: 'purple',
         },
         {
             name: 'API Keys',
@@ -43,9 +39,7 @@ export default function Dashboard({ user }) {
                 </svg>
             ),
             color: 'from-emerald-500 to-teal-500',
-            bgColor: 'bg-emerald-500/10',
-            borderColor: 'border-emerald-500/20',
-            hoverBorder: 'hover:border-emerald-500/50',
+            accent: 'emerald',
         },
         {
             name: 'Analytics',
@@ -57,9 +51,7 @@ export default function Dashboard({ user }) {
                 </svg>
             ),
             color: 'from-cyan-500 to-blue-500',
-            bgColor: 'bg-cyan-500/10',
-            borderColor: 'border-cyan-500/20',
-            hoverBorder: 'hover:border-cyan-500/50',
+            accent: 'cyan',
         },
         {
             name: 'Profile',
@@ -72,9 +64,7 @@ export default function Dashboard({ user }) {
                 </svg>
             ),
             color: 'from-orange-500 to-red-500',
-            bgColor: 'bg-orange-500/10',
-            borderColor: 'border-orange-500/20',
-            hoverBorder: 'hover:border-orange-500/50',
+            accent: 'orange',
         },
     ];
 
@@ -94,9 +84,7 @@ export default function Dashboard({ user }) {
                     </svg>
                 ),
                 color: 'from-red-500 to-pink-500',
-                bgColor: 'bg-red-500/10',
-                borderColor: 'border-red-500/20',
-                hoverBorder: 'hover:border-red-500/50',
+                accent: 'red',
             },
             {
                 name: 'System Diagnostics',
@@ -109,9 +97,7 @@ export default function Dashboard({ user }) {
                     </svg>
                 ),
                 color: 'from-violet-500 to-purple-500',
-                bgColor: 'bg-violet-500/10',
-                borderColor: 'border-violet-500/20',
-                hoverBorder: 'hover:border-violet-500/50',
+                accent: 'violet',
             },
             {
                 name: 'Telescope',
@@ -125,9 +111,7 @@ export default function Dashboard({ user }) {
                     </svg>
                 ),
                 color: 'from-fuchsia-500 to-pink-500',
-                bgColor: 'bg-fuchsia-500/10',
-                borderColor: 'border-fuchsia-500/20',
-                hoverBorder: 'hover:border-fuchsia-500/50',
+                accent: 'pink',
             }
         );
     }
@@ -153,28 +137,34 @@ export default function Dashboard({ user }) {
                         <Link
                             key={module.name}
                             href={module.href}
-                            className={`group glass-panel rounded-2xl p-8 border bg-gradient-to-br from-white/10 via-white/5 to-white/0 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-all ${module.borderColor} ${module.hoverBorder} hover:shadow-[0_0_40px_rgba(255,255,255,0.08)] transform hover:scale-[1.02]`}
+                            className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-[1.02]"
                         >
-                            <div className="mb-6">
-                                <div className={`relative h-16 w-16 rounded-full bg-gradient-to-br ${module.color} p-[2px] shadow-[0_0_30px_rgba(255,255,255,0.06)] transition-transform group-hover:scale-110`}>
-                                    <div className={`flex h-full w-full items-center justify-center rounded-full ${module.bgColor} backdrop-blur-xl ring-1 ring-white/20`}>
-                                        <div className={`bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}>
+                            {/* Accent border at bottom */}
+                            <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r ${module.color} opacity-80`} />
+
+                            {/* Inner glow effect */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+
+                            <div className="relative mb-6">
+                                <div className={`relative h-14 w-14 rounded-xl bg-gradient-to-br ${module.color} p-[1px] shadow-[0_0_20px_rgba(255,255,255,0.06)] transition-transform group-hover:scale-110`}>
+                                    <div className="flex h-full w-full items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-xl">
+                                        <div className={`text-white/90`}>
                                             {module.icon}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <h3 className="text-2xl font-bold text-zinc-100 mb-2 group-hover:text-white transition-colors">
+                            <h3 className="relative text-xl font-bold text-zinc-100 mb-2 group-hover:text-white transition-colors">
                                 {module.name}
                             </h3>
 
-                            <p className="text-zinc-500 group-hover:text-zinc-400 transition-colors">
+                            <p className="relative text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors">
                                 {module.description}
                             </p>
 
                             {/* Arrow indicator */}
-                            <div className="mt-4 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors">
+                            <div className="relative mt-4 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors">
                                 <span className="text-sm font-medium mr-2">Open</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
                                     <line x1="5" y1="12" x2="19" y2="12"/>
@@ -186,22 +176,28 @@ export default function Dashboard({ user }) {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="glass-panel rounded-2xl p-8 border bg-gradient-to-br from-white/10 via-white/5 to-white/0 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] border-white/5 mt-12">
-                    <h2 className="text-xl font-bold text-zinc-100 mb-4">System Status</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="text-center">
+                <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden mt-12">
+                    {/* Accent border at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
+
+                    {/* Inner glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+
+                    <h2 className="relative text-xl font-bold text-zinc-100 mb-6">System Status</h2>
+                    <div className="relative grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="text-center p-4 rounded-xl bg-zinc-900/30 border border-white/[0.05]">
                             <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400 mb-1">
                                 Active
                             </div>
                             <div className="text-sm text-zinc-500">Application Status</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center p-4 rounded-xl bg-zinc-900/30 border border-white/[0.05]">
                             <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400 mb-1">
                                 {user?.role || 'User'}
                             </div>
                             <div className="text-sm text-zinc-500">Your Role</div>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center p-4 rounded-xl bg-zinc-900/30 border border-white/[0.05]">
                             <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400 mb-1">
                                 Laravel 12
                             </div>

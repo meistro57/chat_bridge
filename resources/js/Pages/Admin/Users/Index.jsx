@@ -29,19 +29,21 @@ export default function Index({ auth, users }) {
                         </Link>
                     </div>
 
-                    <div className="bg-zinc-900 overflow-hidden shadow-xl sm:rounded-lg border border-zinc-700/50">
-                        <div className="p-6 text-zinc-100">
-                            <table className="min-w-full divide-y divide-zinc-700">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500/80 via-pink-500/80 to-purple-500/80" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                        <div className="relative p-6 text-zinc-100">
+                            <table className="min-w-full divide-y divide-zinc-700/50">
                                 <thead>
                                     <tr>
-                                        <th className="px-6 py-3 bg-zinc-800 text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Name</th>
-                                        <th className="px-6 py-3 bg-zinc-800 text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Email</th>
-                                        <th className="px-6 py-3 bg-zinc-800 text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Role</th>
-                                        <th className="px-6 py-3 bg-zinc-800 text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Stats</th>
-                                        <th className="px-6 py-3 bg-zinc-800 text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-3 bg-zinc-800/50 backdrop-blur-sm text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider rounded-tl-lg">Name</th>
+                                        <th className="px-6 py-3 bg-zinc-800/50 backdrop-blur-sm text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Email</th>
+                                        <th className="px-6 py-3 bg-zinc-800/50 backdrop-blur-sm text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Role</th>
+                                        <th className="px-6 py-3 bg-zinc-800/50 backdrop-blur-sm text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider">Stats</th>
+                                        <th className="px-6 py-3 bg-zinc-800/50 backdrop-blur-sm text-left text-xs leading-4 font-medium text-zinc-400 uppercase tracking-wider rounded-tr-lg">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-zinc-900 divide-y divide-zinc-800">
+                                <tbody className="bg-transparent divide-y divide-zinc-800/50">
                                     {users.map((user) => (
                                         <tr key={user.id}>
                                             <td className="px-6 py-4 whitespace-no-wrap">

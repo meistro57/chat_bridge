@@ -33,18 +33,22 @@ export default function Index({ personas }) {
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {personas.map(persona => (
-                        <div key={persona.id} className="group glass-panel rounded-2xl p-6 relative overflow-hidden hover:border-indigo-500/30 transition-all duration-300">
+                        <div key={persona.id} className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15]">
+                            {/* Accent border at bottom */}
+                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-pink-500/80" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+
                             {/* Actions Overlay - Visible on Hover */}
                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <Link 
-                                    href={`/personas/${persona.id}/edit`} 
+                                <Link
+                                    href={`/personas/${persona.id}/edit`}
                                     className="p-2 rounded-lg bg-zinc-900/80 hover:bg-white text-zinc-400 hover:text-black transition-colors"
                                     title="Edit Configuration"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 </Link>
-                                <button 
-                                    onClick={() => handleDelete(persona.id)} 
+                                <button
+                                    onClick={() => handleDelete(persona.id)}
                                     className="p-2 rounded-lg bg-red-900/20 hover:bg-red-500 text-red-400 hover:text-white transition-colors"
                                     title="Delete Entity"
                                 >
@@ -52,7 +56,7 @@ export default function Index({ personas }) {
                                 </button>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="relative space-y-4">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center text-indigo-400">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -65,16 +69,16 @@ export default function Index({ personas }) {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2 border-t border-white/5 pt-4">
+                                <div className="space-y-2 border-t border-white/[0.06] pt-4">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Model</span>
-                                        <span className="text-zinc-300 font-mono text-xs bg-zinc-900 px-2 py-0.5 rounded">{persona.model || 'Default'}</span>
+                                        <span className="text-zinc-300 font-mono text-xs bg-zinc-900/60 px-2 py-0.5 rounded-lg">{persona.model || 'Default'}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-zinc-500">Creativity (Temp)</span>
                                         <div className="flex items-center gap-2">
                                             <div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-indigo-500" style={{ width: `${(persona.temperature / 2) * 100}%` }}></div>
+                                                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${(persona.temperature / 2) * 100}%` }}></div>
                                             </div>
                                             <span className="text-zinc-300 font-mono text-xs">{persona.temperature}</span>
                                         </div>
