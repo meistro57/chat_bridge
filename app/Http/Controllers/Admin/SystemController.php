@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\System\EnvFileService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class SystemController extends Controller
 {
@@ -18,14 +20,14 @@ class SystemController extends Controller
         private readonly EnvFileService $envService
     ) {}
 
-    public function index()
+    public function index(): InertiaResponse
     {
         return Inertia::render('Admin/System', [
             'systemInfo' => $this->getSystemInfo(),
         ]);
     }
 
-    public function runDiagnostic(Request $request)
+    public function runDiagnostic(Request $request): JsonResponse
     {
         $action = $request->input('action');
 
@@ -77,7 +79,7 @@ class SystemController extends Controller
             }
         } catch (\Exception $e) {
             $success = false;
-            $output = "Error: " . $e->getMessage();
+            $output = 'Error: '.$e->getMessage();
             Log::error('System diagnostic failed', [
                 'action' => $action,
                 'error' => $e->getMessage(),
@@ -91,7 +93,7 @@ class SystemController extends Controller
         ]);
     }
 
-    public function updateOpenAiKey(Request $request)
+    public function updateOpenAiKey(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'openai_key' => 'required|string|min:20',
@@ -111,7 +113,7 @@ class SystemController extends Controller
         ]);
     }
 
-    public function testOpenAiKey(Request $request)
+    public function testOpenAiKey(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'openai_key' => 'nullable|string|min:20',
@@ -156,7 +158,7 @@ class SystemController extends Controller
         ]);
     }
 
-    public function clearOpenAiKey()
+    public function clearOpenAiKey(): JsonResponse
     {
         $this->envService->updateKey('OPENAI_API_KEY', '');
         Artisan::call('config:clear');
@@ -171,9 +173,11 @@ class SystemController extends Controller
         ]);
     }
 
-    private function getSystemInfo()
+    private function getSystemInfo(): array
     {
         $openaiKey = (string) config('services.openai.key', '');
+        $boostConfig = $this->getBoostConfig();
+        $mcpHealth = $this->getMcpHealth();
 
         return [
             'php_version' => PHP_VERSION,
@@ -190,10 +194,12 @@ class SystemController extends Controller
             'max_execution_time' => ini_get('max_execution_time'),
             'openai_key_set' => $openaiKey !== '',
             'openai_key_last4' => $openaiKey !== '' ? substr($openaiKey, -4) : null,
+            'boost' => $boostConfig,
+            'mcp' => $mcpHealth,
         ];
     }
 
-    private function getDiskSpace()
+    private function getDiskSpace(): array
     {
         $free = disk_free_space('/');
         $total = disk_total_space('/');
@@ -205,7 +211,7 @@ class SystemController extends Controller
         ];
     }
 
-    private function formatBytes($bytes)
+    private function formatBytes(float|int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $bytes = max($bytes, 0);
@@ -213,64 +219,64 @@ class SystemController extends Controller
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
 
-        return round($bytes, 2) . ' ' . $units[$pow];
+        return round($bytes, 2).' '.$units[$pow];
     }
 
-    private function runHealthCheck()
+    private function runHealthCheck(): string
     {
         $checks = [];
 
         // PHP Version
-        $checks[] = "✓ PHP Version: " . PHP_VERSION;
+        $checks[] = '✓ PHP Version: '.PHP_VERSION;
 
         // Laravel Version
-        $checks[] = "✓ Laravel Version: " . app()->version();
+        $checks[] = '✓ Laravel Version: '.app()->version();
 
         // Environment
-        $checks[] = "✓ Environment: " . app()->environment();
+        $checks[] = '✓ Environment: '.app()->environment();
 
         // Composer Dependencies
         $checks[] = File::exists(base_path('vendor'))
-            ? "✓ Composer Dependencies: Installed"
-            : "✗ Composer Dependencies: Missing";
+            ? '✓ Composer Dependencies: Installed'
+            : '✗ Composer Dependencies: Missing';
 
         // Environment File
         $checks[] = File::exists(base_path('.env'))
-            ? "✓ Environment File: Found"
-            : "✗ Environment File: Missing";
+            ? '✓ Environment File: Found'
+            : '✗ Environment File: Missing';
 
         // App Key
         $checks[] = config('app.key')
-            ? "✓ Application Key: Set"
-            : "✗ Application Key: Missing";
+            ? '✓ Application Key: Set'
+            : '✗ Application Key: Missing';
 
         // Database Connection
         try {
             \DB::connection()->getPdo();
-            $checks[] = "✓ Database: Connected";
+            $checks[] = '✓ Database: Connected';
         } catch (\Exception $e) {
-            $checks[] = "✗ Database: Connection Failed";
+            $checks[] = '✗ Database: Connection Failed';
         }
 
         // Storage Permissions
         $checks[] = is_writable(storage_path())
-            ? "✓ Storage: Writable"
-            : "✗ Storage: Not Writable";
+            ? '✓ Storage: Writable'
+            : '✗ Storage: Not Writable';
 
         // Bootstrap Cache
         $checks[] = is_writable(base_path('bootstrap/cache'))
-            ? "✓ Bootstrap Cache: Writable"
-            : "✗ Bootstrap Cache: Not Writable";
+            ? '✓ Bootstrap Cache: Writable'
+            : '✗ Bootstrap Cache: Not Writable';
 
         // Queue Status
-        $checks[] = "→ Queue Driver: " . config('queue.default');
+        $checks[] = '→ Queue Driver: '.config('queue.default');
 
         // Cache Status
-        $checks[] = "→ Cache Driver: " . config('cache.default');
+        $checks[] = '→ Cache Driver: '.config('cache.default');
 
         // AI Services
         $aiDrivers = config('ai.drivers', []);
-        $enabledCount = count(array_filter($aiDrivers, fn($d) => $d['enabled'] ?? false));
+        $enabledCount = count(array_filter($aiDrivers, fn ($d) => $d['enabled'] ?? false));
         $checks[] = "→ AI Drivers: {$enabledCount} enabled";
 
         // Personas Count
@@ -284,11 +290,11 @@ class SystemController extends Controller
         return implode("\n", $checks);
     }
 
-    private function fixPermissions()
+    private function fixPermissions(): string
     {
         $output = [];
 
-        $output[] = "Setting permissions on storage and bootstrap/cache...";
+        $output[] = 'Setting permissions on storage and bootstrap/cache...';
 
         try {
             chmod(storage_path(), 0755);
@@ -298,17 +304,17 @@ class SystemController extends Controller
             $this->setPermissionsRecursive(storage_path(), 0755, 0644);
             $this->setPermissionsRecursive(base_path('bootstrap/cache'), 0755, 0644);
 
-            $output[] = "✓ Permissions set successfully";
-            $output[] = "✓ Directories: 755";
-            $output[] = "✓ Files: 644";
+            $output[] = '✓ Permissions set successfully';
+            $output[] = '✓ Directories: 755';
+            $output[] = '✓ Files: 644';
         } catch (\Exception $e) {
-            $output[] = "✗ Failed to set permissions: " . $e->getMessage();
+            $output[] = '✗ Failed to set permissions: '.$e->getMessage();
         }
 
         return implode("\n", $output);
     }
 
-    private function setPermissionsRecursive($path, $dirMode, $fileMode)
+    private function setPermissionsRecursive(string $path, int $dirMode, int $fileMode): void
     {
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($path),
@@ -324,52 +330,52 @@ class SystemController extends Controller
         }
     }
 
-    private function clearAllCache()
+    private function clearAllCache(): string
     {
         $output = [];
 
-        $output[] = "Clearing all caches...";
+        $output[] = 'Clearing all caches...';
 
         Artisan::call('config:clear');
-        $output[] = "✓ Config cache cleared";
+        $output[] = '✓ Config cache cleared';
 
         Artisan::call('cache:clear');
-        $output[] = "✓ Application cache cleared";
+        $output[] = '✓ Application cache cleared';
 
         Artisan::call('route:clear');
-        $output[] = "✓ Route cache cleared";
+        $output[] = '✓ Route cache cleared';
 
         Artisan::call('view:clear');
-        $output[] = "✓ View cache cleared";
+        $output[] = '✓ View cache cleared';
 
         Artisan::call('event:clear');
-        $output[] = "✓ Event cache cleared";
+        $output[] = '✓ Event cache cleared';
 
         $output[] = "\n✓ All caches cleared successfully!";
 
         return implode("\n", $output);
     }
 
-    private function optimizeApplication()
+    private function optimizeApplication(): string
     {
         $output = [];
 
-        $output[] = "Optimizing application...";
+        $output[] = 'Optimizing application...';
 
         if (app()->environment('production')) {
             Artisan::call('config:cache');
-            $output[] = "✓ Config cached";
+            $output[] = '✓ Config cached';
 
             Artisan::call('route:cache');
-            $output[] = "✓ Routes cached";
+            $output[] = '✓ Routes cached';
 
             Artisan::call('view:cache');
-            $output[] = "✓ Views cached";
+            $output[] = '✓ Views cached';
 
             Artisan::call('event:cache');
-            $output[] = "✓ Events cached";
+            $output[] = '✓ Events cached';
         } else {
-            $output[] = "→ Skipping optimization (not in production)";
+            $output[] = '→ Skipping optimization (not in production)';
             $output[] = "→ Run 'php artisan optimize' manually if needed";
         }
 
@@ -378,11 +384,11 @@ class SystemController extends Controller
         return implode("\n", $output);
     }
 
-    private function validateAIServices()
+    private function validateAIServices(): string
     {
         $output = [];
 
-        $output[] = "Validating AI services...";
+        $output[] = 'Validating AI services...';
 
         $drivers = config('ai.drivers', []);
 
@@ -393,7 +399,7 @@ class SystemController extends Controller
                     $driver = app('ai')->driver($name);
                     $output[] = "✓ {$name}: Available";
                 } catch (\Exception $e) {
-                    $output[] = "✗ {$name}: " . $e->getMessage();
+                    $output[] = "✗ {$name}: ".$e->getMessage();
                 }
             } else {
                 $output[] = "→ {$name}: Disabled";
@@ -405,19 +411,19 @@ class SystemController extends Controller
         return implode("\n", $output);
     }
 
-    private function checkDatabase()
+    private function checkDatabase(): string
     {
         $output = [];
 
-        $output[] = "Checking database...";
+        $output[] = 'Checking database...';
 
         try {
             $connection = \DB::connection();
             $pdo = $connection->getPdo();
 
-            $output[] = "✓ Database: Connected";
-            $output[] = "→ Driver: " . $connection->getDriverName();
-            $output[] = "→ Database: " . $connection->getDatabaseName();
+            $output[] = '✓ Database: Connected';
+            $output[] = '→ Driver: '.$connection->getDriverName();
+            $output[] = '→ Database: '.$connection->getDatabaseName();
 
             // Check migrations
             $migrationsRun = \DB::table('migrations')->count();
@@ -437,7 +443,7 @@ class SystemController extends Controller
             }
 
         } catch (\Exception $e) {
-            $output[] = "✗ Database error: " . $e->getMessage();
+            $output[] = '✗ Database error: '.$e->getMessage();
         }
 
         $output[] = "\n✓ Database check complete!";
@@ -445,28 +451,28 @@ class SystemController extends Controller
         return implode("\n", $output);
     }
 
-    private function runTests()
+    private function runTests(): string
     {
         $output = [];
 
-        $output[] = "Running tests...";
+        $output[] = 'Running tests...';
         $output[] = "This may take a minute...\n";
 
         try {
             Artisan::call('test', ['--stop-on-failure' => true]);
             $output[] = Artisan::output();
         } catch (\Exception $e) {
-            $output[] = "✗ Tests failed: " . $e->getMessage();
+            $output[] = '✗ Tests failed: '.$e->getMessage();
         }
 
         return implode("\n", $output);
     }
 
-    private function fixCodeStyle()
+    private function fixCodeStyle(): string
     {
         $output = [];
 
-        $output[] = "Fixing code style with Laravel Pint...";
+        $output[] = 'Fixing code style with Laravel Pint...';
 
         if (File::exists(base_path('vendor/bin/pint'))) {
             $process = new \Symfony\Component\Process\Process(
@@ -480,15 +486,68 @@ class SystemController extends Controller
             try {
                 $process->run();
                 $output[] = $process->getOutput();
-                $output[] = "✓ Code style fixed!";
+                $output[] = '✓ Code style fixed!';
             } catch (\Exception $e) {
-                $output[] = "✗ Failed: " . $e->getMessage();
+                $output[] = '✗ Failed: '.$e->getMessage();
             }
         } else {
-            $output[] = "✗ Laravel Pint not found";
-            $output[] = "→ Install with: composer require laravel/pint --dev";
+            $output[] = '✗ Laravel Pint not found';
+            $output[] = '→ Install with: composer require laravel/pint --dev';
         }
 
         return implode("\n", $output);
+    }
+
+    private function getBoostConfig(): array
+    {
+        $path = base_path('boost.json');
+
+        if (! File::exists($path)) {
+            return [
+                'present' => false,
+                'agents' => [],
+                'editors' => [],
+                'error' => null,
+            ];
+        }
+
+        try {
+            $decoded = json_decode(File::get($path), true, 512, JSON_THROW_ON_ERROR);
+
+            return [
+                'present' => true,
+                'agents' => $decoded['agents'] ?? [],
+                'editors' => $decoded['editors'] ?? [],
+                'error' => null,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'present' => false,
+                'agents' => [],
+                'editors' => [],
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    private function getMcpHealth(): array
+    {
+        try {
+            $response = app(\App\Http\Controllers\Api\McpController::class)->health();
+            $data = method_exists($response, 'getData') ? $response->getData(true) : [];
+
+            return [
+                'ok' => ($data['status'] ?? null) === 'ok',
+                'details' => $data,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'details' => [
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ],
+            ];
+        }
     }
 }

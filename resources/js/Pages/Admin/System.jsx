@@ -16,6 +16,14 @@ export default function System({ systemInfo }) {
     const [testingKey, setTestingKey] = useState(false);
     const [clearingKey, setClearingKey] = useState(false);
 
+    const boostAgents = systemInfo.boost?.agents?.length
+        ? systemInfo.boost.agents.join(', ')
+        : 'None';
+    const boostEditors = systemInfo.boost?.editors?.length
+        ? systemInfo.boost.editors.join(', ')
+        : 'None';
+    const mcpDetails = systemInfo.mcp?.details ?? {};
+
     const runAction = async (action, label) => {
         setLoading(true);
         setActiveAction(action);
@@ -150,6 +158,40 @@ export default function System({ systemInfo }) {
                         </div>
                     </div>
 
+                    {/* Codex + Boost Diagnostics */}
+                    <div className="glass-panel rounded-xl p-6 border border-white/5">
+                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Codex + Boost</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <InfoCard label="MCP Mode" value={mcpDetails.mcp_mode ?? 'Unknown'} />
+                            <InfoCard label="MCP Version" value={mcpDetails.version ?? 'Unknown'} />
+                            <InfoCard
+                                label="Vector Search"
+                                value={mcpDetails.vector_search ? 'Enabled' : 'Unavailable'}
+                            />
+                            <InfoCard label="Boost Agents" value={boostAgents} />
+                            <InfoCard label="Boost Editors" value={boostEditors} />
+                            <InfoCard
+                                label="Boost Config"
+                                value={systemInfo.boost?.present ? 'Loaded' : 'Missing'}
+                            />
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-4">
+                            <StatusBadge
+                                label="Boost Config"
+                                status={systemInfo.boost?.present && !systemInfo.boost?.error}
+                            />
+                            <StatusBadge
+                                label="MCP Health"
+                                status={systemInfo.mcp?.ok}
+                            />
+                        </div>
+                        {systemInfo.boost?.error && (
+                            <div className="mt-4 text-sm text-red-400 font-mono">
+                                Boost config error: {systemInfo.boost.error}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Diagnostic Actions */}
                     <div className="glass-panel rounded-xl p-6 border border-white/5">
                         <h3 className="text-lg font-bold text-zinc-100 mb-4">Diagnostic Actions</h3>
@@ -168,7 +210,7 @@ export default function System({ systemInfo }) {
 
                     {/* OpenAI Service Key */}
                     <div className="glass-panel rounded-xl p-6 border border-white/5">
-                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Codex Service Key</h3>
+                        <h3 className="text-lg font-bold text-zinc-100 mb-4">Codex/Boost Service Key</h3>
                         <p className="text-sm text-zinc-500 mb-4">
                             This single admin key is used for Codex/Boost diagnostics and repair tasks.
                         </p>
