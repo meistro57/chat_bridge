@@ -20,6 +20,8 @@ env*
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/debugbar
+/storage/postgres
 /vendor
 Homestead.json
 Homestead.yaml

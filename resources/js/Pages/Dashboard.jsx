@@ -153,11 +153,15 @@ export default function Dashboard({ user }) {
                         <Link
                             key={module.name}
                             href={module.href}
-                            className={`group glass-panel rounded-2xl p-8 border transition-all ${module.borderColor} ${module.hoverBorder} hover:shadow-[0_0_30px_rgba(255,255,255,0.05)] transform hover:scale-[1.02]`}
+                            className={`group glass-panel rounded-2xl p-8 border bg-gradient-to-br from-white/10 via-white/5 to-white/0 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-all ${module.borderColor} ${module.hoverBorder} hover:shadow-[0_0_40px_rgba(255,255,255,0.08)] transform hover:scale-[1.02]`}
                         >
-                            <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${module.bgColor} mb-6 group-hover:scale-110 transition-transform`}>
-                                <div className={`bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}>
-                                    {module.icon}
+                            <div className="mb-6">
+                                <div className={`relative h-16 w-16 rounded-full bg-gradient-to-br ${module.color} p-[2px] shadow-[0_0_30px_rgba(255,255,255,0.06)] transition-transform group-hover:scale-110`}>
+                                    <div className={`flex h-full w-full items-center justify-center rounded-full ${module.bgColor} backdrop-blur-xl ring-1 ring-white/20`}>
+                                        <div className={`bg-gradient-to-r ${module.color} bg-clip-text text-transparent`}>
+                                            {module.icon}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -182,7 +186,7 @@ export default function Dashboard({ user }) {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="glass-panel rounded-2xl p-8 border border-white/5 mt-12">
+                <div className="glass-panel rounded-2xl p-8 border bg-gradient-to-br from-white/10 via-white/5 to-white/0 backdrop-blur-2xl ring-1 ring-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.45)] border-white/5 mt-12">
                     <h2 className="text-xl font-bold text-zinc-100 mb-4">System Status</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="text-center">
