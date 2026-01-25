@@ -34,7 +34,7 @@ class AnthropicDriver implements AIDriverInterface
         $content = $response->json('content.0.text');
 
         if ($content === null) {
-            throw new \Exception('Anthropic returned unexpected response format. Response: ' . json_encode($response->json()));
+            throw new \Exception('Anthropic returned unexpected response format. Response: '.json_encode($response->json()));
         }
 
         return $content;

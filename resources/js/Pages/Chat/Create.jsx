@@ -13,7 +13,7 @@ const PROVIDERS = [
 ];
 
 export default function Create({ personas }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         persona_a_id: '',
         persona_b_id: '',
         provider_a: '',
@@ -28,6 +28,13 @@ export default function Create({ personas }) {
         stop_words: '',
         stop_word_threshold: 0.8,
     });
+
+    transform((payload) => ({
+        ...payload,
+        stop_words: payload.stop_word_detection && payload.stop_words
+            ? payload.stop_words.split(',').map((word) => word.trim()).filter((word) => word.length > 0)
+            : [],
+    }));
 
     const [modelsA, setModelsA] = useState([]);
     const [modelsB, setModelsB] = useState([]);
@@ -78,18 +85,7 @@ export default function Create({ personas }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-
-        // Convert stop_words string to array
-        const submitData = {
-            ...data,
-            stop_words: data.stop_word_detection && data.stop_words
-                ? data.stop_words.split(',').map(w => w.trim()).filter(w => w.length > 0)
-                : [],
-        };
-
-        post(route('chat.store'), {
-            data: submitData
-        });
+        post(route('chat.store'));
     };
 
     return (

@@ -80,7 +80,7 @@ class AnalyticsController extends Controller
             $query->where('created_at', '>=', $request->input('date_from'));
         }
         if ($request->filled('date_to')) {
-            $query->where('created_at', '<=', $request->input('date_to') . ' 23:59:59');
+            $query->where('created_at', '<=', $request->input('date_to').' 23:59:59');
         }
 
         // Filter by persona
@@ -131,7 +131,7 @@ class AnalyticsController extends Controller
             $query->where('created_at', '>=', $request->input('date_from'));
         }
         if ($request->filled('date_to')) {
-            $query->where('created_at', '<=', $request->input('date_to') . ' 23:59:59');
+            $query->where('created_at', '<=', $request->input('date_to').' 23:59:59');
         }
         if ($request->filled('persona_id')) {
             $query->where('persona_id', $request->input('persona_id'));
@@ -143,8 +143,8 @@ class AnalyticsController extends Controller
         $messages = $query->orderBy('created_at', 'desc')->limit(1000)->get();
 
         // Create CSV
-        $filename = 'chat-export-' . now()->format('Y-m-d-His') . '.csv';
-        $filepath = storage_path('app/' . $filename);
+        $filename = 'chat-export-'.now()->format('Y-m-d-His').'.csv';
+        $filepath = storage_path('app/'.$filename);
 
         $file = fopen($filepath, 'w');
 

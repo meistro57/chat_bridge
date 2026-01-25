@@ -17,8 +17,9 @@ class ChatController extends Controller
     {
         Log::info('ChatController::index loading personas', [
             'user_id' => auth()->id(),
-            'persona_count' => Persona::count()
+            'persona_count' => Persona::count(),
         ]);
+
         return Inertia::render('Chat', [
             'personas' => Persona::orderBy('name')->get(),
             'conversations' => auth()->user()->conversations()->latest()->limit(50)->get(),

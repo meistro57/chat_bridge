@@ -28,7 +28,7 @@ class GeminiDriver implements AIDriverInterface
 
         if ($content === null) {
             $responseData = $response->json();
-            throw new \Exception('Gemini API returned an unexpected response structure. Response: ' . json_encode($responseData));
+            throw new \Exception('Gemini API returned an unexpected response structure. Response: '.json_encode($responseData));
         }
 
         return $content;

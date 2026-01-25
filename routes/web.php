@@ -63,7 +63,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chat/{conversation}/stop', [ChatController::class, 'stop'])->name('chat.stop');
     Route::delete('/chat/{conversation}', [ChatController::class, 'destroy'])->name('chat.destroy');
     Route::get('/chat/{conversation}/transcript', [ChatController::class, 'transcript'])->name('chat.transcript');
-    
+
     // Transmission routes
     Route::get('/transmission', [\App\Http\Controllers\TransmissionController::class, 'index'])->name('transmission.index');
     Route::post('/transmission', [\App\Http\Controllers\TransmissionController::class, 'store'])->name('transmission.store');

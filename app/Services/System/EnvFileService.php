@@ -17,10 +17,10 @@ class EnvFileService
         }
 
         $content = File::get($path);
-        
+
         // Escape value if it contains spaces or special characters
         if (preg_match('/\s/', $value) || str_contains($value, '#')) {
-            $value = '"' . str_replace('"', '\"', $value) . '"';
+            $value = '"'.str_replace('"', '\"', $value).'"';
         }
 
         // Check if key exists
@@ -48,7 +48,7 @@ class EnvFileService
             'openrouter' => 'OPENROUTER_API_KEY',
             'postmark' => 'POSTMARK_API_KEY',
             'resend' => 'RESEND_API_KEY',
-            default => strtoupper($provider) . '_API_KEY',
+            default => strtoupper($provider).'_API_KEY',
         };
     }
 }

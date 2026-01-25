@@ -44,6 +44,7 @@ class RunChatSession implements ShouldQueue
                 'conversation_id' => $this->conversationId,
                 'status' => $conversation->status,
             ]);
+
             return;
         }
 

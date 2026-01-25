@@ -45,6 +45,9 @@ class ChatTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello agents',
             'max_rounds' => 10,
+            'stop_word_detection' => true,
+            'stop_words' => ['goodbye', 'end'],
+            'stop_word_threshold' => 0.8,
         ]);
 
         $response->assertRedirect();

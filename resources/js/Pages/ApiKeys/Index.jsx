@@ -29,15 +29,24 @@ export default function Index({ apiKeys }) {
                 },
             });
 
-            const data = await response.json();
+            let data;
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Failed to parse JSON response:', jsonError);
+                const textResponse = await response.text();
+                console.error('Response text:', textResponse);
+                throw new Error('Invalid response from server');
+            }
 
             if (response.ok) {
                 router.reload({ only: ['apiKeys'] });
             } else {
-                alert(`Validation failed: ${data.error || data.message}`);
+                alert(`Validation failed: ${data.error || data.message || 'Unknown error'}`);
                 router.reload({ only: ['apiKeys'] });
             }
         } catch (error) {
+            console.error('Test error:', error);
             alert(`Error testing API key: ${error.message}`);
         } finally {
             setTesting(prev => ({ ...prev, [id]: false }));

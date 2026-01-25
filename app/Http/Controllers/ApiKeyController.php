@@ -3,16 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\ApiKey;
-use App\Services\System\EnvFileService;
+use App\Services\AI\Data\MessageData;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ApiKeyController extends Controller
 {
-    public function __construct(
-        protected EnvFileService $envService
-    ) {}
-
     /**
      * Display a listing of the resource.
      */
@@ -55,10 +51,6 @@ class ApiKeyController extends Controller
         ]);
 
         auth()->user()->apiKeys()->create($validated);
-
-        // Update .env
-        $envKey = $this->envService->getEnvKey($validated['provider']);
-        $this->envService->updateKey($envKey, $validated['key']);
 
         return redirect()->route('api-keys.index')->with('success', 'API Key added successfully.');
     }
@@ -107,10 +99,6 @@ class ApiKeyController extends Controller
 
         if (! empty($validated['key'])) {
             $apiKey->key = $validated['key'];
-            
-            // Update .env
-            $envKey = $this->envService->getEnvKey($apiKey->provider);
-            $this->envService->updateKey($envKey, $validated['key']);
         }
 
         $apiKey->save();
@@ -161,10 +149,7 @@ class ApiKeyController extends Controller
 
             // Test with a simple completion request
             $messages = collect([
-                [
-                    'role' => 'user',
-                    'content' => 'Respond with only the word "OK" to confirm you are working.',
-                ],
+                new MessageData('user', 'Respond with only the word "OK" to confirm you are working.'),
             ]);
 
             \Log::info('Attempting Completion', [
@@ -173,8 +158,8 @@ class ApiKeyController extends Controller
             ]);
 
             // Dynamically call the appropriate chat/completion method
-            $result = method_exists($driver, 'chat') 
-                ? $driver->chat($messages) 
+            $result = method_exists($driver, 'chat')
+                ? $driver->chat($messages)
                 : $driver->completion($messages);
 
             \Log::info('Completion Result', [

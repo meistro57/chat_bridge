@@ -50,7 +50,7 @@ class Transmission extends Model
      */
     public function getShortIdAttribute()
     {
-        return Str::limit(hash('crc32', $this->id . $this->created_at), 8, '');
+        return Str::limit(hash('crc32', $this->id.$this->created_at), 8, '');
     }
 
     /**

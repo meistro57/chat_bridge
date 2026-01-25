@@ -72,8 +72,8 @@ class OpenRouterDriver extends OpenAIDriver
 
                 // Construct a meaningful error message
                 $errorMessage = 'OpenRouter API Error: ';
-                $errorMessage .= isset($jsonBody['error']['message']) 
-                    ? $jsonBody['error']['message'] 
+                $errorMessage .= isset($jsonBody['error']['message'])
+                    ? $jsonBody['error']['message']
                     : $response->body();
 
                 throw new \Exception($errorMessage, $response->status());
@@ -81,7 +81,7 @@ class OpenRouterDriver extends OpenAIDriver
 
             $responseJson = $response->json();
             $content = $responseJson['choices'][0]['message']['content'] ?? '';
-            
+
             \Log::info('OpenRouter Chat Response', [
                 'content_length' => strlen($content),
                 'tokens_used' => $responseJson['usage']['total_tokens'] ?? 0,

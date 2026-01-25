@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="5"
+    phpVersion="8.3"
+>
+    <projectFiles>
+        <directory name="app" />
+        <directory name="database" />
+        <directory name="routes" />
+    </projectFiles>
+    <excludeFiles>
+        <directory name="bootstrap/cache" />
+        <directory name="storage" />
+        <directory name="vendor" />
+    </excludeFiles>
+</psalm>

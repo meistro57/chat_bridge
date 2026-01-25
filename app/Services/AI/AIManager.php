@@ -11,7 +11,6 @@ use App\Services\AI\Drivers\MockDriver;
 use App\Services\AI\Drivers\OllamaDriver;
 use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\AI\Drivers\OpenRouterDriver;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Manager;
 
 class AIManager extends Manager
@@ -32,27 +31,22 @@ class AIManager extends Manager
 
         try {
             $decrypted = decrypt($encryptedKey);
+
             return $decrypted;
         } catch (\Exception $e) {
             \Log::error('API Key Decryption Failed', [
                 'error' => $e->getMessage(),
                 'encrypted_length' => strlen($encryptedKey),
             ]);
+
             return null;
         }
     }
 
     private function getKey(string $provider): ?string
     {
-        // 1. Try Config (.env) FIRST - for system-wide/admin keys
-        $configKey = config("services.{$provider}.key");
-        if (! empty($configKey)) {
-            \Log::info("Using config key for {$provider}");
-            return $configKey;
-        }
-
         try {
-            // 2. Try to get current user's key from Database
+            // 1. Try to get current user's key from Database FIRST
             if (auth()->check()) {
                 $dbEntry = ApiKey::where('provider', $provider)
                     ->where('user_id', auth()->id())
@@ -64,23 +58,25 @@ class AIManager extends Manager
                     \Log::info("Found API key for {$provider} in database", [
                         'user_id' => auth()->id(),
                     ]);
-                    $decryptedKey = $this->decryptKey($dbEntry->key);
-                    return $decryptedKey;
+
+                    // The ApiKey model has 'encrypted' cast, so $dbEntry->key is already decrypted
+                    return $dbEntry->key;
                 }
             }
 
-            // 3. Fallback to any active key (for backward compatibility)
+            // 2. Fallback to any active key from database
             $dbEntry = ApiKey::where('provider', $provider)
                 ->where('is_active', true)
                 ->latest()
                 ->first();
 
             if ($dbEntry && ! empty($dbEntry->key)) {
-                \Log::info("Found fallback API key for {$provider}", [
+                \Log::info("Found fallback API key for {$provider} in database", [
                     'user_id' => $dbEntry->user_id,
                 ]);
-                $decryptedKey = $this->decryptKey($dbEntry->key);
-                return $decryptedKey;
+
+                // The ApiKey model has 'encrypted' cast, so $dbEntry->key is already decrypted
+                return $dbEntry->key;
             }
         } catch (\Exception $e) {
             \Log::warning("Failed to fetch API key from DB for {$provider}: ".$e->getMessage(), [
@@ -88,7 +84,16 @@ class AIManager extends Manager
             ]);
         }
 
+        // 3. Final fallback to Config (.env) - for system-wide/admin keys when no user keys exist
+        $configKey = config("services.{$provider}.key");
+        if (! empty($configKey) && $configKey !== 'sk-sample-key') {
+            \Log::info("Using config key for {$provider}");
+
+            return $configKey;
+        }
+
         \Log::warning("No API key found for {$provider}");
+
         return null;
     }
 

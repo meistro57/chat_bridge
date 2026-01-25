@@ -17,6 +17,8 @@ export default function System({ systemInfo }) {
     const [clearingKey, setClearingKey] = useState(false);
     const [codexPrompt, setCodexPrompt] = useState('');
     const [invokingCodex, setInvokingCodex] = useState(false);
+    const [selectedAction, setSelectedAction] = useState('');
+    const [copied, setCopied] = useState(false);
 
     const boostAgents = systemInfo.boost?.agents?.length
         ? systemInfo.boost.agents.join(', ')
@@ -120,6 +122,59 @@ export default function System({ systemInfo }) {
         }
     };
 
+    const codexActions = [
+        {
+            id: 'health_check',
+            label: '🏥 System Health Analysis',
+            prompt: 'Perform a comprehensive health check of the Laravel application. Analyze database connectivity, cache status, queue workers, storage permissions, recent errors, and overall system performance. Provide actionable recommendations for any issues found.'
+        },
+        {
+            id: 'debug_recent_errors',
+            label: '🐛 Debug Recent Errors',
+            prompt: 'Analyze the most recent application errors and exceptions. Identify patterns, root causes, and provide specific debugging steps and potential fixes for each issue.'
+        },
+        {
+            id: 'optimize_queries',
+            label: '⚡ Database Query Analysis',
+            prompt: 'Analyze database queries for N+1 problems, missing indexes, and performance issues. Check the most frequently used models and their relationships. Suggest optimizations and improvements.'
+        },
+        {
+            id: 'security_audit',
+            label: '🔒 Security Audit',
+            prompt: 'Perform a security audit of the application. Check for: exposed API keys, CSRF protection, SQL injection vulnerabilities, XSS risks, insecure dependencies, missing rate limiting, and improper authorization checks. Provide specific remediation steps.'
+        },
+        {
+            id: 'test_coverage',
+            label: '🧪 Test Coverage Analysis',
+            prompt: 'Analyze the current test suite. Identify critical features lacking test coverage, suggest additional test cases, and recommend improvements to existing tests following TDD best practices.'
+        },
+        {
+            id: 'code_quality',
+            label: '✨ Code Quality Review',
+            prompt: 'Review code quality and adherence to Laravel best practices. Check for: proper use of Form Requests, Policies, Eloquent relationships, transactions, service layer patterns, and SOLID principles. Identify areas for refactoring.'
+        },
+        {
+            id: 'performance_analysis',
+            label: '🚀 Performance Analysis',
+            prompt: 'Analyze application performance. Check: slow queries, memory usage, cache hit rates, queue processing times, asset optimization, and identify bottlenecks. Provide specific optimization strategies.'
+        },
+        {
+            id: 'api_documentation',
+            label: '📚 API Routes Documentation',
+            prompt: 'Generate comprehensive documentation for all API routes. Include: endpoints, HTTP methods, parameters, validation rules, response formats, authentication requirements, and usage examples.'
+        },
+        {
+            id: 'dependency_audit',
+            label: '📦 Dependency Audit',
+            prompt: 'Audit Composer dependencies for: outdated packages, security vulnerabilities, unused packages, and compatibility issues. Recommend safe upgrade paths and necessary updates.'
+        },
+        {
+            id: 'database_migrations',
+            label: '🗄️ Migration Review',
+            prompt: 'Review database migrations for: proper indexing, foreign key constraints, data type optimizations, and rollback safety. Identify potential migration issues and suggest improvements.'
+        }
+    ];
+
     const actions = [
         { id: 'health_check', label: 'Health Check', icon: '🏥', color: 'blue' },
         { id: 'fix_permissions', label: 'Fix Permissions', icon: '🔐', color: 'purple' },
@@ -130,6 +185,24 @@ export default function System({ systemInfo }) {
         { id: 'run_tests', label: 'Run Tests', icon: '🧪', color: 'pink' },
         { id: 'fix_code_style', label: 'Fix Code Style', icon: '✨', color: 'indigo' },
     ];
+
+    const handleActionSelect = (actionId) => {
+        const action = codexActions.find(a => a.id === actionId);
+        if (action) {
+            setSelectedAction(actionId);
+            setCodexPrompt(action.prompt);
+        }
+    };
+
+    const copyToClipboard = async () => {
+        try {
+            await navigator.clipboard.writeText(output);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (error) {
+            console.error('Failed to copy:', error);
+        }
+    };
 
     return (
         <AuthenticatedLayout
@@ -216,53 +289,6 @@ export default function System({ systemInfo }) {
                         )}
                     </div>
 
-                    {/* Codex Invocation */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-2">
-                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-                        <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Invoke Codex Agent</h3>
-                        <p className="relative text-sm text-zinc-500 mb-4">
-                            Send a prompt to the Codex AI agent for diagnostics, analysis, or recommendations.
-                        </p>
-                        <form onSubmit={invokeCodex} className="relative space-y-4">
-                            <textarea
-                                value={codexPrompt}
-                                onChange={(e) => setCodexPrompt(e.target.value)}
-                                placeholder="Enter your prompt for Codex (e.g., 'Analyze the current system state and provide recommendations')..."
-                                rows={3}
-                                className="w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
-                            />
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <button
-                                    type="submit"
-                                    disabled={invokingCodex || !openaiStatus.isSet}
-                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-                                >
-                                    {invokingCodex ? (
-                                        <>
-                                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Invoking Codex...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2Z"/><path d="M12 12 4.5 19.5"/><path d="M21 21l-3-3"/></svg>
-                                            Invoke Codex
-                                        </>
-                                    )}
-                                </button>
-                                {!openaiStatus.isSet && (
-                                    <span className="text-sm text-yellow-400 flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                        Set an OpenAI key below to enable Codex
-                                    </span>
-                                )}
-                            </div>
-                        </form>
-                    </div>
-
                     {/* Diagnostic Actions */}
                     <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
@@ -336,12 +362,100 @@ export default function System({ systemInfo }) {
                         </div>
                     </div>
 
+                    {/* Codex Invocation */}
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-2">
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                        <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Invoke Codex Agent</h3>
+                        <p className="relative text-sm text-zinc-500 mb-4">
+                            Choose a predefined action or write a custom prompt for Codex AI agent diagnostics and analysis.
+                        </p>
+                        <form onSubmit={invokeCodex} className="relative space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-2">Quick Actions</label>
+                                <select
+                                    value={selectedAction}
+                                    onChange={(e) => handleActionSelect(e.target.value)}
+                                    className="w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                                >
+                                    <option value="">-- Select a Predefined Action --</option>
+                                    {codexActions.map((action) => (
+                                        <option key={action.id} value={action.id}>
+                                            {action.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-400 mb-2">Custom Prompt</label>
+                                <textarea
+                                    value={codexPrompt}
+                                    onChange={(e) => setCodexPrompt(e.target.value)}
+                                    placeholder="Enter your custom prompt or select a quick action above..."
+                                    rows={4}
+                                    className="w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 resize-none"
+                                />
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={invokingCodex || !openaiStatus.isSet}
+                                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.2)]"
+                                >
+                                    {invokingCodex ? (
+                                        <>
+                                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Invoking Codex...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2Z"/><path d="M12 12 4.5 19.5"/><path d="M21 21l-3-3"/></svg>
+                                            Invoke Codex
+                                        </>
+                                    )}
+                                </button>
+                                {!openaiStatus.isSet && (
+                                    <span className="text-sm text-yellow-400 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                        Set an OpenAI key below to enable Codex
+                                    </span>
+                                )}
+                            </div>
+                        </form>
+                    </div>
+
                     {/* Output Console */}
                     {output && (
                         <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-1">
                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-zinc-500/50 via-zinc-400/50 to-zinc-500/50" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-                            <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Output</h3>
+                            <div className="relative flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-bold text-zinc-100">Output</h3>
+                                <button
+                                    onClick={copyToClipboard}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 border border-white/[0.08] text-zinc-300 hover:text-white transition-all text-xs font-medium"
+                                >
+                                    {copied ? (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <span className="text-emerald-400">Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                            </svg>
+                                            Copy
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                             <pre className="relative bg-zinc-950/80 text-zinc-300 p-4 rounded-xl font-mono text-sm overflow-x-auto whitespace-pre-wrap scrollbar-dark border border-white/[0.05]">
                                 {output}
                             </pre>
