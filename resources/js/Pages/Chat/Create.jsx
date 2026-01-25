@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
 const PROVIDERS = [
@@ -92,25 +93,44 @@ export default function Create({ personas }) {
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 p-4 md:p-8">
+        <AuthenticatedLayout>
             <Head title="Initialize Protocol" />
 
-            <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Initialize Bridge</h1>
-                        <p className="text-zinc-500 text-sm mt-1">Configure parameters for new neural handshake.</p>
-                    </div>
-                    <Link href="/chat" className="p-2 rounded-full hover:bg-white/5 text-zinc-400 hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </Link>
+            <div className="relative min-h-screen text-zinc-100 p-4 md:p-8 overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 -z-10">
+                    <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.16),transparent_60%)] blur-2xl"></div>
+                    <div className="absolute top-20 right-[-8rem] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.14),transparent_60%)] blur-2xl"></div>
+                    <div className="absolute bottom-[-10rem] left-1/3 h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.12),transparent_60%)] blur-2xl"></div>
                 </div>
+                <div className="max-w-6xl mx-auto">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 border-b border-white/5 gap-6 butter-reveal">
+                        <div>
+                            <Link href="/chat" className="text-xs font-mono text-zinc-500 hover:text-white mb-2 block uppercase tracking-wide">
+                                &larr; Return to Bridge
+                            </Link>
+                            <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
+                                Initialize Bridge
+                            </h1>
+                            <p className="text-zinc-500 text-sm mt-1">
+                                Configure parameters for new neural handshake.
+                            </p>
+                        </div>
+                        <Link
+                            href="/chat"
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-2 text-xs font-semibold text-zinc-300 transition-all hover:border-white/20 hover:bg-zinc-900/70 hover:text-white"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="m15 18-6-6 6-6"/>
+                            </svg>
+                            Back to Sessions
+                        </Link>
+                    </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                    <form onSubmit={handleSubmit} className="space-y-8">
                     {/* Agent Configuration Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Agent A */}
-                        <div className="glass-panel rounded-2xl p-6 space-y-4">
+                        <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal">
                             <h2 className="text-lg font-bold text-indigo-400 uppercase tracking-wider mb-4">Agent Concept A</h2>
 
                             <div className="space-y-2">
@@ -184,7 +204,7 @@ export default function Create({ personas }) {
                         </div>
 
                         {/* Agent B */}
-                        <div className="glass-panel rounded-2xl p-6 space-y-4">
+                        <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal butter-reveal-delay-1">
                             <h2 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-4">Agent Concept B</h2>
 
                             <div className="space-y-2">
@@ -259,7 +279,7 @@ export default function Create({ personas }) {
                     </div>
 
                     {/* Initial Prompt */}
-                    <div className="glass-panel rounded-2xl p-6 space-y-2">
+                    <div className="glass-panel glass-butter rounded-2xl p-6 space-y-2 butter-reveal butter-reveal-delay-2">
                         <label className="text-xs font-bold uppercase tracking-wider text-emerald-400 ml-1">Initial Stimulus (Prompt)</label>
                         <textarea
                             value={data.starter_message}
@@ -271,7 +291,7 @@ export default function Create({ personas }) {
                     </div>
 
                     {/* Chat Control Settings */}
-                    <div className="glass-panel rounded-2xl p-6 space-y-4">
+                    <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal butter-reveal-delay-3">
                         <h2 className="text-lg font-bold text-yellow-400 uppercase tracking-wider mb-4">Chat Control Settings</h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -361,8 +381,9 @@ export default function Create({ personas }) {
                             </span>
                         </button>
                     </div>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

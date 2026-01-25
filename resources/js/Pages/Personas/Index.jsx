@@ -1,7 +1,14 @@
 import React from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 
 export default function Index({ personas }) {
+    const revealClasses = [
+        'butter-reveal',
+        'butter-reveal butter-reveal-delay-1',
+        'butter-reveal butter-reveal-delay-2',
+        'butter-reveal butter-reveal-delay-3',
+    ];
     const handleDelete = (id) => {
         if (confirm('Permanently delete this persona?')) {
             router.delete(`/personas/${id}`);
@@ -9,10 +16,11 @@ export default function Index({ personas }) {
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+        <AuthenticatedLayout>
             <Head title="Persona Registry" />
             
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+                <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end pb-8 border-b border-white/5 gap-6">
                     <div>
@@ -32,8 +40,11 @@ export default function Index({ personas }) {
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {personas.map(persona => (
-                        <div key={persona.id} className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15]">
+                    {personas.map((persona, index) => (
+                        <div
+                            key={persona.id}
+                            className={`group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter hover:bg-zinc-900/60 hover:border-white/[0.15] hover:shadow-[0_18px_50px_rgba(8,12,20,0.5)] ${revealClasses[index % revealClasses.length]}`}
+                        >
                             {/* Accent border at bottom */}
                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500/80 via-purple-500/80 to-pink-500/80" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
@@ -89,14 +100,15 @@ export default function Index({ personas }) {
                     ))}
                     
                     {/* Add New Card (Empty State) */}
-                    <Link href="/personas/create" className="group border-2 border-dashed border-zinc-800 hover:border-zinc-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-zinc-600 hover:text-zinc-400 transition-colors">
+                    <Link href="/personas/create" className="group border-2 border-dashed border-zinc-800 hover:border-zinc-700 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-zinc-600 hover:text-zinc-400 transition-colors butter-reveal butter-reveal-delay-3">
                         <div className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center group-hover:scale-110 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                         </div>
                         <span className="font-medium">Define New Persona</span>
                     </Link>
                 </div>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

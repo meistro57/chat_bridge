@@ -1,4 +1,5 @@
 import React from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
 export default function Create() {
@@ -17,10 +18,11 @@ export default function Create() {
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <AuthenticatedLayout>
             <Head title="Add API Key" />
             
-            <div className="w-full max-w-2xl space-y-8">
+            <div className="min-h-screen text-zinc-100 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <div className="w-full max-w-2xl space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Secure Storage</h1>
@@ -31,7 +33,7 @@ export default function Create() {
                     </Link>
                 </div>
 
-                <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
+                <div className="glass-panel glass-butter p-8 rounded-2xl relative overflow-hidden butter-reveal">
                     <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                         
                         <div className="space-y-2">
@@ -91,7 +93,8 @@ export default function Create() {
                         </div>
                     </form>
                 </div>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

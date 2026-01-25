@@ -2,6 +2,13 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [0.8.0] - 2026-01-24
+
+### 🧾 Documentation
+- Documented the current application version in README
+- Added `APP_VERSION` to environment templates and config
+- Included `APP_VERSION` in Docker environment defaults
+
 ## [Latest] - 2026-01-20
 
 ### 🎉 Major Features Added

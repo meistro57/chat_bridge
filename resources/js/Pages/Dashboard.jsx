@@ -1,3 +1,5 @@
+import { GlassCard } from '@/Components/ui/GlassCard';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Dashboard({ user }) {
@@ -117,12 +119,13 @@ export default function Dashboard({ user }) {
     }
 
     return (
-        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+        <AuthenticatedLayout>
             <Head title="Dashboard" />
 
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+                <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="pb-8">
+                <div className="pb-8 butter-reveal">
                     <h1 className="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 mb-2">
                         Chat Bridge
                     </h1>
@@ -137,50 +140,47 @@ export default function Dashboard({ user }) {
                         <Link
                             key={module.name}
                             href={module.href}
-                            className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-[1.02]"
+                            className="group block"
                         >
-                            {/* Accent border at bottom */}
-                            <div className={`absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r ${module.color} opacity-80`} />
+                            <GlassCard
+                                accent={module.accent}
+                                hover
+                                className="h-full p-8 glass-butter hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(8,12,20,0.55)]"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
 
-                            {/* Inner glow effect */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-
-                            <div className="relative mb-6">
-                                <div className={`relative h-14 w-14 rounded-xl bg-gradient-to-br ${module.color} p-[1px] shadow-[0_0_20px_rgba(255,255,255,0.06)] transition-transform group-hover:scale-110`}>
-                                    <div className="flex h-full w-full items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-xl">
-                                        <div className={`text-white/90`}>
-                                            {module.icon}
+                                <div className="relative mb-6">
+                                    <div className={`relative h-14 w-14 rounded-xl bg-gradient-to-br ${module.color} p-[1px] shadow-[0_0_30px_rgba(255,255,255,0.08)] transition-transform duration-500 ease-out group-hover:scale-110`}>
+                                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-zinc-900/80 backdrop-blur-2xl">
+                                            <div className="text-white/90">
+                                                {module.icon}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <h3 className="relative text-xl font-bold text-zinc-100 mb-2 group-hover:text-white transition-colors">
-                                {module.name}
-                            </h3>
+                                <h3 className="relative text-xl font-bold text-zinc-100 mb-2 group-hover:text-white transition-colors duration-500">
+                                    {module.name}
+                                </h3>
 
-                            <p className="relative text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors">
-                                {module.description}
-                            </p>
+                                <p className="relative text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors duration-500">
+                                    {module.description}
+                                </p>
 
-                            {/* Arrow indicator */}
-                            <div className="relative mt-4 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors">
-                                <span className="text-sm font-medium mr-2">Open</span>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
-                                    <line x1="5" y1="12" x2="19" y2="12"/>
-                                    <polyline points="12 5 19 12 12 19"/>
-                                </svg>
-                            </div>
+                                <div className="relative mt-4 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">
+                                    <span className="text-sm font-medium mr-2">Open</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform duration-500 ease-out">
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                        <polyline points="12 5 19 12 12 19"/>
+                                    </svg>
+                                </div>
+                            </GlassCard>
                         </Link>
                     ))}
                 </div>
 
                 {/* Quick Stats */}
-                <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden mt-12">
-                    {/* Accent border at bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
-
-                    {/* Inner glow effect */}
+                <GlassCard accent="cyan" className="mt-12 p-8 glass-butter butter-reveal-strong butter-reveal-delay-2">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
 
                     <h2 className="relative text-xl font-bold text-zinc-100 mb-6">System Status</h2>
@@ -204,8 +204,9 @@ export default function Dashboard({ user }) {
                             <div className="text-sm text-zinc-500">Framework Version</div>
                         </div>
                     </div>
+                </GlassCard>
                 </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

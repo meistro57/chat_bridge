@@ -1,4 +1,5 @@
 import React from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
 export default function Edit({ persona }) {
@@ -32,10 +33,11 @@ export default function Edit({ persona }) {
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <AuthenticatedLayout>
             <Head title={`Edit ${persona.name}`} />
             
-            <div className="w-full max-w-3xl space-y-8">
+            <div className="min-h-screen text-zinc-100 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
+                <div className="w-full max-w-3xl space-y-8">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Modify Configuration</h1>
@@ -46,7 +48,7 @@ export default function Edit({ persona }) {
                     </Link>
                 </div>
 
-                <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
+                <div className="glass-panel glass-butter p-8 rounded-2xl relative overflow-hidden butter-reveal">
                     <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                         {/* Identity Section */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -159,7 +161,8 @@ export default function Edit({ persona }) {
                         </div>
                     </form>
                 </div>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

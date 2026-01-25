@@ -144,7 +144,7 @@ export default function System({ systemInfo }) {
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
                     {/* System Information */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/80 via-cyan-500/80 to-blue-400/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">System Information</h3>
@@ -181,7 +181,7 @@ export default function System({ systemInfo }) {
                     </div>
 
                     {/* Codex + Boost Diagnostics */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-1">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500/80 via-purple-500/80 to-indigo-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Codex + Boost</h3>
@@ -217,7 +217,7 @@ export default function System({ systemInfo }) {
                     </div>
 
                     {/* Codex Invocation */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-2">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Invoke Codex Agent</h3>
@@ -264,7 +264,7 @@ export default function System({ systemInfo }) {
                     </div>
 
                     {/* Diagnostic Actions */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Diagnostic Actions</h3>
@@ -282,7 +282,7 @@ export default function System({ systemInfo }) {
                     </div>
 
                     {/* OpenAI Service Key */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500/80 via-blue-500/80 to-cyan-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Codex/Boost Service Key</h3>
@@ -338,7 +338,7 @@ export default function System({ systemInfo }) {
 
                     {/* Output Console */}
                     {output && (
-                        <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                        <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-1">
                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-zinc-500/50 via-zinc-400/50 to-zinc-500/50" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                             <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Output</h3>
@@ -355,7 +355,7 @@ export default function System({ systemInfo }) {
 
 function InfoCard({ label, value }) {
     return (
-        <div className="bg-zinc-900/40 backdrop-blur-sm rounded-xl p-4 border border-white/[0.06] transition-all hover:bg-zinc-900/50 hover:border-white/[0.1]">
+        <div className="bg-zinc-900/40 backdrop-blur-sm rounded-xl p-4 border border-white/[0.06] transition-all duration-500 ease-out hover:bg-zinc-900/50 hover:border-white/[0.1] hover:-translate-y-0.5">
             <div className="text-xs text-zinc-500 mb-1 font-medium uppercase tracking-wide">{label}</div>
             <div className="text-sm font-semibold text-zinc-200">{value}</div>
         </div>
@@ -394,10 +394,10 @@ function ActionButton({ action, onClick, disabled, active }) {
             onClick={onClick}
             disabled={disabled}
             className={`
-                relative p-4 rounded-xl border backdrop-blur-sm transition-all duration-300 overflow-hidden
+                relative p-4 rounded-xl border backdrop-blur-sm transition-all duration-500 ease-out overflow-hidden
                 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-gradient-to-r
                 ${colorClasses[action.color]}
-                ${active ? 'scale-95 opacity-50' : 'hover:scale-[1.02]'}
+                ${active ? 'scale-95 opacity-50' : 'hover:scale-[1.03] hover:shadow-[0_18px_40px_rgba(8,12,20,0.45)]'}
                 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                 disabled:hover:scale-100
             `}

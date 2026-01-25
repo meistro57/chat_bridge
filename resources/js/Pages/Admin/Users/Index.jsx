@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 export default function Index({ auth, users }) {
-    const { flash } = usePage().props;
+    const { flash = {} } = usePage().props;
 
     return (
         <AuthenticatedLayout
@@ -29,7 +29,7 @@ export default function Index({ auth, users }) {
                         </Link>
                     </div>
 
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl overflow-hidden rounded-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] glass-butter butter-reveal">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500/80 via-pink-500/80 to-purple-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <div className="relative p-6 text-zinc-100">

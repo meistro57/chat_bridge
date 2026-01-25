@@ -300,26 +300,50 @@ class SystemController extends Controller
 
         $output[] = 'Setting permissions on storage and bootstrap/cache...';
 
+        $storagePath = storage_path();
+        $cachePath = base_path('bootstrap/cache');
+        $useOpenPermissions = app()->environment(['local', 'testing']) || $this->isRunningInDocker();
+        $dirMode = $useOpenPermissions ? 0777 : 0755;
+        $fileMode = $useOpenPermissions ? 0666 : 0644;
+
         try {
-            chmod(storage_path(), 0755);
-            chmod(base_path('bootstrap/cache'), 0755);
+            $storageRoot = chmod($storagePath, $dirMode);
+            $cacheRoot = chmod($cachePath, $dirMode);
 
-            // Recursively set permissions
-            $this->setPermissionsRecursive(storage_path(), 0755, 0644);
-            $this->setPermissionsRecursive(base_path('bootstrap/cache'), 0755, 0644);
+            $storageResults = $this->setPermissionsRecursive($storagePath, $dirMode, $fileMode);
+            $cacheResults = $this->setPermissionsRecursive($cachePath, $dirMode, $fileMode);
 
-            $output[] = '✓ Permissions set successfully';
-            $output[] = '✓ Directories: 755';
-            $output[] = '✓ Files: 644';
+            $failedDirs = $storageResults['dir_failed'] + $cacheResults['dir_failed'];
+            $failedFiles = $storageResults['file_failed'] + $cacheResults['file_failed'];
+
+            if ($storageRoot && $cacheRoot && $failedDirs === 0 && $failedFiles === 0) {
+                $output[] = '✓ Permissions set successfully';
+                $output[] = '✓ Directories: '.decoct($dirMode);
+                $output[] = '✓ Files: '.decoct($fileMode);
+            } else {
+                $output[] = '✗ Failed to update some permissions';
+                $output[] = '→ Directories failed: '.$failedDirs;
+                $output[] = '→ Files failed: '.$failedFiles;
+            }
         } catch (\Exception $e) {
             $output[] = '✗ Failed to set permissions: '.$e->getMessage();
+        }
+
+        if ($this->isRunningInDocker() && (! is_writable($storagePath) || ! is_writable($cachePath))) {
+            $output[] = '→ Docker hint: run';
+            $output[] = '  docker compose exec -T app sh -lc "chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache"';
         }
 
         return implode("\n", $output);
     }
 
-    private function setPermissionsRecursive(string $path, int $dirMode, int $fileMode): void
+    /**
+     * @return array{dir_failed:int, file_failed:int}
+     */
+    private function setPermissionsRecursive(string $path, int $dirMode, int $fileMode): array
     {
+        $dirFailed = 0;
+        $fileFailed = 0;
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($path),
             \RecursiveIteratorIterator::SELF_FIRST
@@ -327,11 +351,34 @@ class SystemController extends Controller
 
         foreach ($iterator as $item) {
             if ($item->isDir()) {
-                @chmod($item->getPathname(), $dirMode);
+                if (! chmod($item->getPathname(), $dirMode)) {
+                    $dirFailed++;
+                }
             } else {
-                @chmod($item->getPathname(), $fileMode);
+                if (! chmod($item->getPathname(), $fileMode)) {
+                    $fileFailed++;
+                }
             }
         }
+
+        return [
+            'dir_failed' => $dirFailed,
+            'file_failed' => $fileFailed,
+        ];
+    }
+
+    private function isRunningInDocker(): bool
+    {
+        if (file_exists('/.dockerenv')) {
+            return true;
+        }
+
+        $cgroup = @file_get_contents('/proc/1/cgroup');
+        if ($cgroup === false) {
+            return false;
+        }
+
+        return str_contains($cgroup, 'docker') || str_contains($cgroup, 'kubepods');
     }
 
     private function clearAllCache(): string
@@ -551,11 +598,11 @@ class SystemController extends Controller
             );
 
             // Build context for Codex
-            $systemContext = "You are Codex, an AI diagnostics agent for a Laravel application called Chat Bridge. ";
-            $systemContext .= "Current environment: ".app()->environment().". ";
-            $systemContext .= "PHP version: ".PHP_VERSION.". ";
-            $systemContext .= "Laravel version: ".app()->version().". ";
-            $systemContext .= "Respond concisely with actionable insights.";
+            $systemContext = 'You are Codex, an AI diagnostics agent for a Laravel application called Chat Bridge. ';
+            $systemContext .= 'Current environment: '.app()->environment().'. ';
+            $systemContext .= 'PHP version: '.PHP_VERSION.'. ';
+            $systemContext .= 'Laravel version: '.app()->version().'. ';
+            $systemContext .= 'Respond concisely with actionable insights.';
 
             $messages = collect([
                 new MessageData('system', $systemContext),

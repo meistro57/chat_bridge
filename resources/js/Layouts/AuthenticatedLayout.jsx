@@ -7,19 +7,20 @@ import { useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const isDashboard = route().current('dashboard');
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
-            <nav className="border-b border-white/10 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-50">
+            <nav className="border-b border-white/10 bg-[#0E2535] backdrop-blur-md sticky top-0 z-50">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div className="flex h-16 justify-between">
+                    <div className="flex h-28 justify-between">
                         <div className="flex">
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
-                                    <ApplicationLogo className="block h-9 w-auto fill-current text-white" />
+                                    <ApplicationLogo className="block h-28 w-28 text-white" />
                                 </Link>
                             </div>
 
@@ -34,7 +35,16 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
-                        <div className="hidden sm:ms-6 sm:flex sm:items-center">
+                        <div className="hidden sm:ms-6 sm:flex sm:items-center gap-3">
+                            {!isDashboard && (
+                                <Link
+                                    href={route('dashboard')}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/40 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-all hover:border-white/20 hover:bg-zinc-900/70 hover:text-white"
+                                >
+                                    <span className="text-sm">←</span>
+                                    Back to Dashboard
+                                </Link>
+                            )}
                             <div className="relative ms-3">
                                 <Dropdown>
                                     <Dropdown.Trigger>
@@ -131,6 +141,15 @@ export default function AuthenticatedLayout({ header, children }) {
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
+                        {!isDashboard && (
+                            <ResponsiveNavLink
+                                href={route('dashboard')}
+                                active={false}
+                                className="text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                            >
+                                Back to Dashboard
+                            </ResponsiveNavLink>
+                        )}
                         <ResponsiveNavLink
                             href={route('dashboard')}
                             active={route().current('dashboard')}

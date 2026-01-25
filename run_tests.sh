@@ -36,6 +36,52 @@ SPARKLES="✨"
 CACHE_DIR=".test_cache"
 FAILED_TESTS_FILE="$CACHE_DIR/failed_tests.txt"
 COVERAGE_DIR="coverage"
+SERVICE_NAME=""
+USE_DOCKER=false
+
+# ============================================================================
+# Docker Helpers
+# ============================================================================
+
+detect_docker_service() {
+    if ! command -v docker &> /dev/null; then
+        return 1
+    fi
+
+    local services
+    services=$(docker compose ps --services --status=running 2>/dev/null)
+    if [[ -z "$services" ]]; then
+        return 1
+    fi
+
+    if echo "$services" | grep -q "^app$"; then
+        SERVICE_NAME="app"
+        return 0
+    fi
+
+    SERVICE_NAME=$(echo "$services" | grep -m1 -E "laravel|app|web")
+    if [[ -n "$SERVICE_NAME" ]]; then
+        return 0
+    fi
+
+    return 1
+}
+
+use_docker() {
+    if [[ "$USE_DOCKER" == true ]]; then
+        return 0
+    fi
+    return 1
+}
+
+run_in_app() {
+    local cmd="$1"
+    if use_docker; then
+        docker compose exec -T "$SERVICE_NAME" sh -lc "$cmd"
+    else
+        sh -lc "$cmd"
+    fi
+}
 
 # ============================================================================
 # Utility Functions
@@ -83,7 +129,7 @@ press_any_key() {
 }
 
 check_artisan_test() {
-    if ! php artisan list 2>/dev/null | grep -q "test "; then
+    if ! run_in_app 'php artisan list 2>/dev/null | grep -q "test "'; then
         print_error "Command 'artisan test' is missing!"
         print_info "This typically means dev dependencies are missing."
         print_info "Run 'composer install' to fix this."
@@ -110,7 +156,7 @@ run_all_tests() {
 
     # Run core application tests
     echo -e "${CYAN}${BOLD}Running Core Application Tests...${NC}\n"
-    if php artisan test --colors=always; then
+    if run_in_app "php artisan test --colors=always"; then
         print_success "Core application tests passed!"
     else
         print_error "Some core application tests failed!"
@@ -134,7 +180,7 @@ run_all_tests() {
                     if [[ -d "Modules/$module/Tests" ]]; then
                         echo -e "${BLUE}Testing module: $module${NC}"
 
-                        if php artisan test "Modules/$module/Tests" --colors=always 2>/dev/null; then
+                        if run_in_app "php artisan test \"Modules/$module/Tests\" --colors=always 2>/dev/null"; then
                             print_success "Module $module tests passed!"
                         else
                             print_error "Module $module tests failed!"
@@ -164,7 +210,7 @@ run_feature_tests() {
 
     print_info "Executing feature test suite..."
 
-    if php artisan test --testsuite=Feature --colors=always; then
+    if run_in_app "php artisan test --testsuite=Feature --colors=always"; then
         print_success "Feature tests passed!"
     else
         print_error "Some feature tests failed!"
@@ -180,7 +226,7 @@ run_unit_tests() {
 
     print_info "Executing unit test suite..."
 
-    if php artisan test --testsuite=Unit --colors=always; then
+    if run_in_app "php artisan test --testsuite=Unit --colors=always"; then
         print_success "Unit tests passed!"
     else
         print_error "Some unit tests failed!"
@@ -221,7 +267,7 @@ run_specific_test() {
         local selected_file="${files[$((choice-1))]}"
         print_info "Running: $selected_file"
 
-        if php artisan test "$selected_file" --colors=always; then
+        if run_in_app "php artisan test \"$selected_file\" --colors=always"; then
             print_success "Test passed!"
         else
             print_error "Test failed!"
@@ -237,7 +283,7 @@ run_with_coverage() {
     print_section "Running Tests with Coverage"
     if ! check_artisan_test; then press_any_key; return; fi
 
-    if ! command -v php &> /dev/null; then
+    if ! run_in_app "command -v php > /dev/null"; then
         print_error "PHP not found!"
         press_any_key
         return
@@ -248,7 +294,7 @@ run_with_coverage() {
 
     mkdir -p "$COVERAGE_DIR"
 
-    if XDEBUG_MODE=coverage php artisan test --coverage --min=70 --colors=always; then
+    if run_in_app "XDEBUG_MODE=coverage php artisan test --coverage --min=70 --colors=always"; then
         print_success "Tests passed with sufficient coverage!"
     else
         print_warning "Check coverage report for details"
@@ -263,7 +309,7 @@ run_parallel_tests() {
 
     print_info "Executing tests in parallel mode..."
 
-    if php artisan test --parallel --colors=always; then
+    if run_in_app "php artisan test --parallel --colors=always"; then
         print_success "All parallel tests passed!"
     else
         print_error "Some parallel tests failed!"
@@ -286,13 +332,13 @@ run_failed_tests() {
     print_info "Re-running previously failed tests..."
 
     # Check for order-by support or fallback
-    if php artisan test --help | grep -q "order-by"; then
+    if run_in_app "php artisan test --help | grep -q \"order-by\""; then
         CMD="php artisan test --order-by=defects --colors=always"
     else
-        CMD="php artisan test --colors=always" # Fallback
+        CMD="php artisan test --colors=always"
     fi
 
-    if $CMD; then
+    if run_in_app "$CMD"; then
         print_success "All previously failed tests now pass!"
         rm -f "$FAILED_TESTS_FILE"
     else
@@ -323,7 +369,7 @@ watch_tests() {
         clear
         print_section "Re-running Tests (File Changed)"
         if check_artisan_test; then
-            php artisan test --colors=always
+            run_in_app "php artisan test --colors=always"
         fi
         echo -e "\n${DIM}Waiting for changes...${NC}"
     done
@@ -332,31 +378,17 @@ watch_tests() {
 run_docker_tests() {
     print_section "Running Tests in Docker"
 
-    if ! command -v docker &> /dev/null; then
-        print_error "Docker not found!"
+    print_info "Running tests in Docker container..."
+    if ! detect_docker_service; then
+        print_error "Could not detect a running Docker app service."
         press_any_key
         return
     fi
-
-    print_info "Running tests in Docker container..."
-
-    # Check if app service exists
-    if ! docker compose ps --services | grep -q "^app$"; then
-        print_warning "Service 'app' not found in docker-compose.yml"
-        print_info "Assuming 'laravel.test' or similar..."
-        SERVICE_NAME=$(docker compose ps --services | grep -m1 "laravel\|app\|web")
-        if [ -z "$SERVICE_NAME" ]; then
-             print_error "Could not detect main application service."
-             press_any_key
-             return
-        fi
-    else
-        SERVICE_NAME="app"
-    fi
+    USE_DOCKER=true
     
     print_info "Using service: $SERVICE_NAME"
 
-    if docker compose exec "$SERVICE_NAME" php artisan test --colors=always; then
+    if run_in_app "php artisan test --colors=always"; then
         print_success "Docker tests passed!"
     else
         print_error "Docker tests failed!"
@@ -373,19 +405,19 @@ fix_code_style() {
     print_section "Fix Code Style Issues"
 
     # Check for Laravel Pint (Laravel's code style fixer)
-    if [[ -f "vendor/bin/pint" ]]; then
+    if run_in_app "test -f vendor/bin/pint"; then
         print_info "Running Laravel Pint..."
 
-        if ./vendor/bin/pint; then
+        if run_in_app "./vendor/bin/pint"; then
             print_success "Code style fixed!"
         else
             print_error "Failed to fix code style"
         fi
     # Check for PHP-CS-Fixer
-    elif command -v php-cs-fixer &> /dev/null; then
+    elif run_in_app "command -v php-cs-fixer > /dev/null"; then
         print_info "Running PHP-CS-Fixer..."
 
-        if php-cs-fixer fix; then
+        if run_in_app "php-cs-fixer fix"; then
             print_success "Code style fixed!"
         else
             print_error "Failed to fix code style"
@@ -403,17 +435,17 @@ run_static_analysis() {
     print_section "Running Static Analysis"
 
     # Check for PHPStan
-    if [[ -f "vendor/bin/phpstan" ]]; then
+    if run_in_app "test -f vendor/bin/phpstan"; then
         print_info "Running PHPStan..."
-        if ./vendor/bin/phpstan analyse; then
+        if run_in_app "./vendor/bin/phpstan analyse"; then
             print_success "No static analysis errors found!"
         else
             print_error "Static analysis found issues"
         fi
     # Check for Larastan
-    elif [[ -f "vendor/bin/larastan" ]]; then
+    elif run_in_app "test -f vendor/bin/larastan"; then
         print_info "Running Larastan..."
-        if ./vendor/bin/larastan analyse; then
+        if run_in_app "./vendor/bin/larastan analyse"; then
             print_success "No static analysis errors found!"
         else
             print_error "Static analysis found issues"
@@ -435,10 +467,10 @@ clean_environment() {
     print_section "Cleaning Test Environment"
 
     print_info "Clearing application cache..."
-    php artisan cache:clear
-    php artisan config:clear
-    php artisan route:clear
-    php artisan view:clear
+    run_in_app "php artisan cache:clear"
+    run_in_app "php artisan config:clear"
+    run_in_app "php artisan route:clear"
+    run_in_app "php artisan view:clear"
 
     if [[ -d "$COVERAGE_DIR" ]]; then
         print_info "Removing coverage reports..."
@@ -459,7 +491,13 @@ fix_permissions() {
     print_info "Setting secure permissions on storage and bootstrap/cache..."
 
     # Use more secure permissions (755 for directories, 644 for files)
-    if chmod -R 755 storage bootstrap/cache 2>/dev/null; then
+    if use_docker; then
+        if run_in_app "chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache"; then
+            print_success "Container permissions set to 777"
+        else
+            print_error "Failed to set container permissions"
+        fi
+    elif chmod -R 755 storage bootstrap/cache 2>/dev/null; then
         print_success "Directory permissions set to 755"
 
         # Make sure we can write to these directories
@@ -508,7 +546,7 @@ generate_coverage_html() {
 
     mkdir -p "$COVERAGE_DIR"
 
-    if XDEBUG_MODE=coverage php artisan test --coverage-html="$COVERAGE_DIR/html" --colors=always; then
+    if run_in_app "XDEBUG_MODE=coverage php artisan test --coverage-html=\"$COVERAGE_DIR/html\" --colors=always"; then
         print_success "Coverage report generated!"
         print_info "Open: ${CYAN}$COVERAGE_DIR/html/index.html${NC}"
     else
@@ -526,11 +564,11 @@ run_quick_check() {
 
     # Check PHP version
     echo -ne "${WHITE}PHP Version:${NC} "
-    php -v | head -n 1
+    run_in_app "php -v | head -n 1"
 
     # Check composer dependencies
     echo -ne "\n${WHITE}Composer Dependencies:${NC} "
-    if [[ -d "vendor" ]]; then
+    if run_in_app "test -d vendor"; then
         print_success "Installed"
     else
         print_error "Missing (run: composer install)"
@@ -538,7 +576,7 @@ run_quick_check() {
 
     # Check environment file
     echo -ne "${WHITE}Environment File:${NC} "
-    if [[ -f ".env" ]]; then
+    if run_in_app "test -f .env"; then
         print_success "Found"
     else
         print_error "Missing (copy .env.example to .env)"
@@ -546,7 +584,7 @@ run_quick_check() {
 
     # Check app key
     echo -ne "${WHITE}Application Key:${NC} "
-    if grep -q "APP_KEY=base64:" .env 2>/dev/null; then
+    if run_in_app "grep -q \"APP_KEY=base64:\" .env 2>/dev/null"; then
         print_success "Set"
     else
         print_warning "Missing (run: php artisan key:generate)"
@@ -554,7 +592,7 @@ run_quick_check() {
 
     # Check test database
     echo -ne "${WHITE}Test Database:${NC} "
-    if grep -q "DB_CONNECTION=sqlite" .env.testing 2>/dev/null || grep -q ":memory:" phpunit.xml; then
+    if run_in_app "grep -q \"DB_CONNECTION=sqlite\" .env.testing 2>/dev/null || grep -q \":memory:\" phpunit.xml"; then
         print_success "Configured (SQLite)"
     else
         print_warning "Check configuration"
@@ -562,7 +600,7 @@ run_quick_check() {
 
     # Check database connection
     echo -ne "${WHITE}Database Connection:${NC} "
-    if php artisan db:show 2>/dev/null | grep -q "Connection"; then
+    if run_in_app "php artisan db:show 2>/dev/null | grep -q \"Connection\""; then
         print_success "Connected"
     else
         print_warning "Check database settings"
@@ -570,7 +608,7 @@ run_quick_check() {
 
     # Check migrations
     echo -ne "${WHITE}Database Migrations:${NC} "
-    if php artisan migrate:status 2>/dev/null | grep -q "Ran"; then
+    if run_in_app "php artisan migrate:status 2>/dev/null | grep -q \"Ran\""; then
         print_success "Up to date"
     else
         print_warning "May need to run: php artisan migrate"
@@ -578,7 +616,7 @@ run_quick_check() {
 
     # Check AI Manager registration
     echo -ne "${WHITE}AI Manager Service:${NC} "
-    if php artisan tinker --execute="echo (app()->bound('ai') ? 'Registered' : 'Missing');" 2>/dev/null | grep -q "Registered"; then
+    if run_in_app "php artisan tinker --execute=\"echo (app()->bound('ai') ? 'Registered' : 'Missing');\" 2>/dev/null | grep -q \"Registered\""; then
         print_success "Registered"
     else
         print_error "Not registered (check AppServiceProvider)"
@@ -586,7 +624,13 @@ run_quick_check() {
 
     # Check permissions
     echo -ne "${WHITE}Storage Permissions:${NC} "
-    if [[ -w "storage" ]] && [[ -w "bootstrap/cache" ]]; then
+    if use_docker; then
+        if run_in_app "test -w /var/www/html/storage && test -w /var/www/html/bootstrap/cache"; then
+            print_success "Writable"
+        else
+            print_error "Not writable (run option 15 to fix)"
+        fi
+    elif [[ -w "storage" ]] && [[ -w "bootstrap/cache" ]]; then
         print_success "Writable"
     else
         print_error "Not writable (run option 15 to fix)"
@@ -595,19 +639,19 @@ run_quick_check() {
     # Run a quick test (Robust logic)
     echo -e "\n${WHITE}Running smoke test...${NC}"
 
-    if ! php artisan list 2>/dev/null | grep -q "test "; then
+    if ! run_in_app "php artisan list 2>/dev/null | grep -q \"test \""; then
         print_error "Command 'artisan test' NOT FOUND."
         print_info "You might need to run 'composer install' to get dev dependencies."
         print_warning "Check if 'nunomaduro/collision' is installed."
     else
         # Run in subshell to capture output without swallowing exit code
-        if php artisan test --testsuite=Unit --stop-on-failure --colors=always > /tmp/smoke_test.log 2>&1; then
+        if run_in_app "php artisan test --testsuite=Unit --stop-on-failure --colors=always > /tmp/smoke_test.log 2>&1"; then
             print_success "Basic tests working!"
         else
             print_error "Tests have issues"
-            tail -n 5 /tmp/smoke_test.log
+            run_in_app "tail -n 5 /tmp/smoke_test.log"
         fi
-        rm -f /tmp/smoke_test.log
+        run_in_app "rm -f /tmp/smoke_test.log"
     fi
 
     press_any_key
@@ -634,7 +678,7 @@ run_filter_test() {
 
     print_info "Running tests matching: $filter"
 
-    if php artisan test --filter="$filter" --colors=always; then
+    if run_in_app "php artisan test --filter=\"$filter\" --colors=always"; then
         print_success "Filtered tests passed!"
     else
         print_error "Filtered tests failed!"
@@ -660,7 +704,7 @@ validate_ai_services() {
     print_info "Checking AI driver registration..."
 
     # Check if AI manager is bound
-    if php artisan tinker --execute="
+    if run_in_app "php artisan tinker --execute=\"
         try {
             \$ai = app('ai');
             echo 'AI Manager: OK' . PHP_EOL;
@@ -678,7 +722,7 @@ validate_ai_services() {
         } catch (Exception \$e) {
             echo 'AI Manager: FAILED - ' . \$e->getMessage() . PHP_EOL;
         }
-    " 2>/dev/null; then
+    \" 2>/dev/null"; then
         print_success "AI services validated!"
     else
         print_error "AI service validation failed!"
@@ -693,7 +737,7 @@ check_database_setup() {
     print_info "Checking database configuration..."
 
     # Check if database is accessible
-    if ! php artisan db:show 2>&1 | grep -q "Connection"; then
+    if ! run_in_app "php artisan db:show 2>&1 | grep -q \"Connection\""; then
         print_error "Database connection failed!"
         print_info "Check your .env file database settings"
         press_any_key
@@ -704,14 +748,14 @@ check_database_setup() {
 
     # Check migrations
     print_info "Checking migrations status..."
-    if php artisan migrate:status 2>&1 | grep -q "Pending"; then
+    if run_in_app "php artisan migrate:status 2>&1 | grep -q \"Pending\""; then
         print_warning "You have pending migrations!"
         echo -ne "\n${WHITE}Run migrations now? (y/n): ${NC}"
         read -r run_migrations
 
         if [[ "$run_migrations" == "y" ]]; then
             print_info "Running migrations..."
-            if php artisan migrate --force; then
+            if run_in_app "php artisan migrate --force"; then
                 print_success "Migrations completed!"
             else
                 print_error "Migration failed!"
@@ -723,14 +767,14 @@ check_database_setup() {
 
     # Check if database is seeded
     print_info "Checking if database needs seeding..."
-    if php artisan tinker --execute="echo (\\App\\Models\\User::count() > 0) ? 'Seeded' : 'Empty';" 2>/dev/null | grep -q "Empty"; then
+    if run_in_app "php artisan tinker --execute=\"echo (\\\\App\\\\Models\\\\User::count() > 0) ? 'Seeded' : 'Empty';\" 2>/dev/null | grep -q \"Empty\""; then
         print_warning "Database appears empty"
         echo -ne "\n${WHITE}Run seeders now? (y/n): ${NC}"
         read -r run_seeders
 
         if [[ "$run_seeders" == "y" ]]; then
             print_info "Running database seeders..."
-            if php artisan db:seed --force; then
+            if run_in_app "php artisan db:seed --force"; then
                 print_success "Database seeded!"
             else
                 print_error "Seeding failed!"
@@ -747,18 +791,18 @@ optimize_application() {
     print_section "Optimizing Application"
 
     print_info "Clearing all caches..."
-    php artisan cache:clear
-    php artisan config:clear
-    php artisan route:clear
-    php artisan view:clear
+    run_in_app "php artisan cache:clear"
+    run_in_app "php artisan config:clear"
+    run_in_app "php artisan route:clear"
+    run_in_app "php artisan view:clear"
 
     print_info "Optimizing application for production..."
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
+    run_in_app "php artisan config:cache"
+    run_in_app "php artisan route:cache"
+    run_in_app "php artisan view:cache"
 
     print_info "Optimizing composer autoloader..."
-    composer dump-autoload --optimize
+    run_in_app "composer dump-autoload --optimize"
 
     print_success "Application optimized!"
     press_any_key
@@ -815,6 +859,11 @@ show_menu() {
 
 # Create cache directory
 mkdir -p "$CACHE_DIR"
+
+# Detect Docker service (if running)
+if detect_docker_service; then
+    USE_DOCKER=true
+fi
 
 # Main Loop
 while true; do

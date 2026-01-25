@@ -1,3 +1,4 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -5,10 +6,11 @@ export default function Index({ stats, recentActivity, personaStats }) {
     const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#f97316'];
 
     return (
-        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+        <AuthenticatedLayout>
             <Head title="Analytics & Query" />
 
-            <div className="max-w-7xl mx-auto space-y-8">
+            <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+                <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end pb-8 border-b border-white/5 gap-6">
                     <div>
@@ -28,7 +30,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500/80 via-cyan-500/80 to-blue-400/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <div className="relative text-sm text-zinc-500 mb-1">Total Conversations</div>
@@ -37,7 +39,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
                         </div>
                     </div>
 
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-1">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500/80 via-pink-500/80 to-fuchsia-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <div className="relative text-sm text-zinc-500 mb-1">Total Messages</div>
@@ -46,7 +48,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
                         </div>
                     </div>
 
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-2">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <div className="relative text-sm text-zinc-500 mb-1">Active</div>
@@ -55,7 +57,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
                         </div>
                     </div>
 
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-orange-500/80 via-amber-500/80 to-yellow-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <div className="relative text-sm text-zinc-500 mb-1">Completed</div>
@@ -68,7 +70,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
                 {/* Charts */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Recent Activity */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal-strong butter-reveal-delay-1">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500/80 via-blue-500/80 to-cyan-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h2 className="relative text-xl font-bold text-zinc-100 mb-4">Activity (Last 7 Days)</h2>
@@ -86,7 +88,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
                     </div>
 
                     {/* Persona Usage */}
-                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal-strong butter-reveal-delay-2">
                         <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-purple-500/80 via-pink-500/80 to-fuchsia-500/80" />
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h2 className="relative text-xl font-bold text-zinc-100 mb-4">Top Personas</h2>
@@ -105,14 +107,14 @@ export default function Index({ stats, recentActivity, personaStats }) {
                 </div>
 
                 {/* Quick Links */}
-                <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-8 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal-strong butter-reveal-delay-3">
                     <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-cyan-500/80 via-teal-500/80 to-emerald-500/80" />
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                     <h2 className="relative text-xl font-bold text-zinc-100 mb-4">Quick Actions</h2>
                     <div className="relative grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Link
                             href="/analytics/query"
-                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-indigo-500/30 transition-all group"
+                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-indigo-500/30 transition-all duration-500 ease-out group glass-butter"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
@@ -127,7 +129,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
 
                         <Link
                             href="/chat"
-                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-purple-500/30 transition-all group"
+                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-purple-500/30 transition-all duration-500 ease-out group glass-butter"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
@@ -142,7 +144,7 @@ export default function Index({ stats, recentActivity, personaStats }) {
 
                         <Link
                             href="/personas"
-                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-emerald-500/30 transition-all group"
+                            className="p-4 rounded-xl bg-zinc-900/40 backdrop-blur-sm hover:bg-zinc-800/60 border border-white/[0.06] hover:border-emerald-500/30 transition-all duration-500 ease-out group glass-butter"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
@@ -156,7 +158,8 @@ export default function Index({ stats, recentActivity, personaStats }) {
                         </Link>
                     </div>
                 </div>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

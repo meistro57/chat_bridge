@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 
 export default function Index({ apiKeys }) {
     const [testing, setTesting] = useState({});
+    const revealClasses = [
+        'butter-reveal',
+        'butter-reveal butter-reveal-delay-1',
+        'butter-reveal butter-reveal-delay-2',
+        'butter-reveal butter-reveal-delay-3',
+    ];
 
     const handleDelete = (id) => {
         if (confirm('Delete this API Key?')) {
@@ -38,10 +45,11 @@ export default function Index({ apiKeys }) {
     };
 
     return (
-        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+        <AuthenticatedLayout>
             <Head title="API Keys" />
             
-            <div className="max-w-5xl mx-auto space-y-8">
+            <div className="min-h-screen text-zinc-100 p-6 md:p-12">
+                <div className="max-w-5xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end pb-8 border-b border-white/5 gap-6">
                     <div>
@@ -61,8 +69,11 @@ export default function Index({ apiKeys }) {
 
                 {/* List */}
                 <div className="grid gap-4">
-                    {apiKeys.map(key => (
-                        <div key={key.id} className="group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-300 hover:bg-zinc-900/60 hover:border-white/[0.15]">
+                    {apiKeys.map((key, index) => (
+                        <div
+                            key={key.id}
+                            className={`group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 flex flex-col md:flex-row justify-between items-center gap-4 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter hover:bg-zinc-900/60 hover:border-white/[0.15] hover:shadow-[0_18px_50px_rgba(8,12,20,0.5)] ${revealClasses[index % revealClasses.length]}`}
+                        >
                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                             <div className="flex items-center gap-4 w-full md:w-auto">
@@ -144,14 +155,15 @@ export default function Index({ apiKeys }) {
                     ))}
 
                     {apiKeys.length === 0 && (
-                        <div className="relative text-center py-24 bg-zinc-900/50 backdrop-blur-2xl rounded-2xl border-2 border-dashed border-zinc-700 overflow-hidden">
+                        <div className="relative text-center py-24 bg-zinc-900/50 backdrop-blur-2xl rounded-2xl border-2 border-dashed border-zinc-700 overflow-hidden glass-butter butter-reveal">
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                             <p className="relative text-zinc-500 mb-4">No credentials stored locally.</p>
                             <Link href="/api-keys/create" className="relative text-indigo-400 hover:text-indigo-300">Register a Provider Key</Link>
                         </div>
                     )}
                 </div>
+                </div>
             </div>
-        </div>
+        </AuthenticatedLayout>
     );
 }

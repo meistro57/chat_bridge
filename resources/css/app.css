@@ -30,6 +30,11 @@
                shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)];
     }
 
+    /* Butter-smooth glass effect helper */
+    .glass-butter {
+        @apply backdrop-blur-3xl transition-[transform,box-shadow,background-color,border-color] duration-500 ease-out;
+    }
+
     /* Glass card with accent border at bottom */
     .glass-card-accent {
         @apply glass-card;
@@ -68,6 +73,7 @@
                hover:bg-zinc-900/60 hover:border-white/[0.12]
                hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] hover:scale-[1.01];
     }
+
 
     /* Input field dark theme */
     .input-dark {
@@ -111,6 +117,48 @@
 }
 
 @layer utilities {
+    @keyframes butter-reveal {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes butter-reveal-strong {
+        from {
+            opacity: 0;
+            transform: translateY(14px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .butter-reveal {
+        animation: butter-reveal 0.7s ease-out both;
+    }
+
+    .butter-reveal-strong {
+        animation: butter-reveal-strong 0.8s ease-out both;
+    }
+
+    .butter-reveal-delay-1 {
+        animation-delay: 120ms;
+    }
+
+    .butter-reveal-delay-2 {
+        animation-delay: 200ms;
+    }
+
+    .butter-reveal-delay-3 {
+        animation-delay: 320ms;
+    }
+
     /* Scrollbar dark theme */
     .scrollbar-dark::-webkit-scrollbar {
         width: 8px;

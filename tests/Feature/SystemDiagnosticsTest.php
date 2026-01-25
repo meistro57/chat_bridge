@@ -44,4 +44,21 @@ class SystemDiagnosticsTest extends TestCase
             )
         );
     }
+
+    public function test_admin_can_run_fix_permissions_action(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.system.diagnostic'), [
+            'action' => 'fix_permissions',
+        ]);
+
+        $response->assertOk();
+
+        $output = $response->json('output');
+        $this->assertIsString($output);
+        $this->assertStringContainsString('Setting permissions', $output);
+    }
 }

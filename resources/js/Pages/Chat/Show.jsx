@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 
 export default function Show({ conversation, stopSignal }) {
@@ -50,11 +51,12 @@ export default function Show({ conversation, stopSignal }) {
     };
 
     return (
-        <div className="min-h-screen text-zinc-200 flex flex-col h-screen overflow-hidden">
+        <AuthenticatedLayout>
             <Head title={`Session ${conversation.id.substring(0,8)}`} />
+            <div className="min-h-screen text-zinc-200 flex flex-col h-screen overflow-hidden">
             
             {/* Glass Header */}
-            <div className="glass-panel border-b border-white/5 p-4 z-10 sticky top-0 bg-[#09090b]/80 backdrop-blur-xl">
+            <div className="glass-panel glass-butter border-b border-white/5 p-4 z-10 sticky top-0 bg-[#09090b]/80 backdrop-blur-xl butter-reveal">
                 <div className="max-w-5xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <Link href="/chat" className="p-2 rounded-lg hover:bg-white/5 transition-colors text-zinc-400 hover:text-white">
@@ -111,7 +113,7 @@ export default function Show({ conversation, stopSignal }) {
                     
                     {/* Starter Message */}
                     <div className="flex justify-center mb-12">
-                        <div className="glass-panel px-6 py-4 rounded-2xl max-w-lg text-center">
+                        <div className="glass-panel glass-butter px-6 py-4 rounded-2xl max-w-lg text-center butter-reveal">
                             <div className="text-[10px] uppercase tracking-widest text-indigo-400 mb-2 font-bold">Initial Prompt</div>
                             <p className="text-zinc-300 text-lg font-light leading-relaxed">"{conversation.starter_message}"</p>
                         </div>
@@ -153,6 +155,7 @@ export default function Show({ conversation, stopSignal }) {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+        </AuthenticatedLayout>
     );
 }

@@ -1,17 +1,30 @@
 import React from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 export default function Chat({ personas, conversations, debug_info }) {
     const { auth } = usePage().props;
+    const revealClasses = [
+        'butter-reveal',
+        'butter-reveal butter-reveal-delay-1',
+        'butter-reveal butter-reveal-delay-2',
+        'butter-reveal butter-reveal-delay-3',
+    ];
     
     return (
-        <div className="min-h-screen text-zinc-100 p-6 md:p-12">
-            {debug_info && <div className="bg-red-500 text-white p-2 text-center absolute top-0 left-0 w-full z-50">{debug_info}</div>}
+        <AuthenticatedLayout>
             <Head title="Bridge Control" />
+            <div className="relative min-h-screen text-zinc-100 p-6 md:p-12 overflow-hidden">
+                <div className="pointer-events-none absolute inset-0 -z-10">
+                    <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.18),transparent_60%)] blur-2xl"></div>
+                    <div className="absolute top-32 right-[-8rem] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.16),transparent_60%)] blur-2xl"></div>
+                    <div className="absolute bottom-[-10rem] left-1/3 h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.14),transparent_60%)] blur-2xl"></div>
+                </div>
+                {debug_info && <div className="bg-red-500 text-white p-2 text-center absolute top-0 left-0 w-full z-50">{debug_info}</div>}
             
             <div className="max-w-7xl mx-auto space-y-12">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/5 pb-8 gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-end border-b border-white/5 pb-8 gap-6 butter-reveal">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
@@ -67,11 +80,11 @@ export default function Chat({ personas, conversations, debug_info }) {
                         </div>
                         
                         <div className="grid gap-4">
-                            {conversations.map((conv) => (
+                            {conversations.map((conv, index) => (
                                 <Link 
                                     key={conv.id} 
                                     href={`/chat/${conv.id}`}
-                                    className="group glass-panel rounded-2xl p-6 transition-all duration-300 hover:border-indigo-500/30 hover:shadow-[0_0_30px_rgba(99,102,241,0.1)] relative overflow-hidden"
+                                    className={`group glass-panel glass-butter rounded-2xl p-6 hover:border-indigo-500/30 hover:shadow-[0_0_30px_rgba(99,102,241,0.1)] relative overflow-hidden ${revealClasses[index % revealClasses.length]}`}
                                 >
                                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
@@ -114,7 +127,7 @@ export default function Chat({ personas, conversations, debug_info }) {
                             ))}
 
                             {conversations.length === 0 && (
-                                <div className="glass-panel p-12 text-center rounded-2xl border-dashed border-zinc-800">
+                                <div className="glass-panel glass-butter p-12 text-center rounded-2xl border-dashed border-zinc-800 butter-reveal">
                                     <p className="text-zinc-500 mb-4">No active bridges found.</p>
                                     <Link href="/chat/create" className="text-indigo-400 hover:text-indigo-300">Start a new session</Link>
                                 </div>
@@ -125,7 +138,7 @@ export default function Chat({ personas, conversations, debug_info }) {
                     {/* Right Column: Persona Library */}
                     <div>
                         <h2 className="text-2xl font-light tracking-wide text-zinc-400 mb-6">Persona Index</h2>
-                        <div className="glass-panel rounded-2xl p-1 h-[600px] overflow-hidden flex flex-col">
+                        <div className="glass-panel glass-butter rounded-2xl p-1 h-[600px] overflow-hidden flex flex-col butter-reveal butter-reveal-delay-1">
                             <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
                                 {personas.map((persona) => (
                                     <div key={persona.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
@@ -157,6 +170,7 @@ export default function Chat({ personas, conversations, debug_info }) {
 
                 </div>
             </div>
-        </div>
+            </div>
+        </AuthenticatedLayout>
     );
 }
