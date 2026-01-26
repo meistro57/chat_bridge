@@ -11,9 +11,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatController extends Controller
 {
@@ -161,7 +162,7 @@ class ChatController extends Controller
         return redirect()->route('chat.index')->with('success', 'Conversation deleted.');
     }
 
-    public function transcript(Conversation $conversation, TranscriptService $transcripts): BinaryFileResponse
+    public function transcript(Conversation $conversation, TranscriptService $transcripts): StreamedResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
@@ -169,6 +170,8 @@ class ChatController extends Controller
 
         $path = $transcripts->generate($conversation);
 
-        return response()->download(storage_path('app/'.$path));
+        return Storage::disk('local')->download($path, basename($path), [
+            'Content-Type' => 'text/markdown; charset=utf-8',
+        ]);
     }
 }

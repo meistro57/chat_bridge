@@ -1,6 +1,84 @@
 import React, { useEffect, useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+const MarkdownContent = ({ content }) => {
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            className="space-y-4"
+            components={{
+                h1: ({ children }) => <h1 className="text-xl font-semibold text-zinc-100">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-lg font-semibold text-zinc-100">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-base font-semibold text-zinc-100">{children}</h3>,
+                h4: ({ children }) => <h4 className="text-base font-semibold text-zinc-100">{children}</h4>,
+                h5: ({ children }) => <h5 className="text-base font-semibold text-zinc-100">{children}</h5>,
+                h6: ({ children }) => <h6 className="text-base font-semibold text-zinc-100">{children}</h6>,
+                p: ({ children }) => <p className="text-zinc-100">{children}</p>,
+                ul: ({ children }) => <ul className="list-disc space-y-2 pl-5 text-zinc-100">{children}</ul>,
+                ol: ({ children }) => <ol className="list-decimal space-y-2 pl-5 text-zinc-100">{children}</ol>,
+                li: ({ children }) => <li>{children}</li>,
+                a: ({ children, href }) => (
+                    <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-300 underline decoration-dotted underline-offset-4 hover:text-indigo-200"
+                    >
+                        {children}
+                    </a>
+                ),
+                code: ({ inline, className, children }) => {
+                    if (inline) {
+                        return (
+                            <code className="rounded bg-black/40 px-1.5 py-0.5 text-[0.95em] font-mono text-indigo-100">
+                                {children}
+                            </code>
+                        );
+                    }
+
+                    const language = className?.replace('language-', '') ?? '';
+
+                    return (
+                        <pre className="overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-zinc-100">
+                            {language && (
+                                <div className="mb-2 text-[10px] uppercase tracking-widest text-indigo-300">
+                                    {language}
+                                </div>
+                            )}
+                            <code className="font-mono">{children}</code>
+                        </pre>
+                    );
+                },
+                blockquote: ({ children }) => (
+                    <blockquote className="border-l-2 border-indigo-500/50 pl-4 text-zinc-200 italic">
+                        {children}
+                    </blockquote>
+                ),
+                hr: () => <hr className="border-white/10" />,
+                table: ({ children }) => (
+                    <div className="overflow-x-auto rounded-xl border border-white/10">
+                        <table className="min-w-full text-left text-sm text-zinc-100">{children}</table>
+                    </div>
+                ),
+                th: ({ children }) => (
+                    <th className="bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                        {children}
+                    </th>
+                ),
+                td: ({ children }) => <td className="border-t border-white/10 px-3 py-2">{children}</td>,
+            }}
+        >
+            {String(content ?? '')}
+        </ReactMarkdown>
+    );
+};
+
+const PlainTextContent = ({ content }) => (
+    <p className="text-zinc-100 whitespace-pre-wrap">{String(content ?? '')}</p>
+);
 
 export default function Show({ conversation, stopSignal }) {
     const [messages, setMessages] = useState(conversation.messages || []);
@@ -136,7 +214,7 @@ export default function Show({ conversation, stopSignal }) {
                                     ? 'bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/20 rounded-tr-sm text-indigo-100' 
                                     : 'bg-zinc-800/40 border border-white/5 rounded-tl-sm text-zinc-100'}
                             `}>
-                                {msg.content}
+                                <MarkdownContent content={msg.content} />
                             </div>
                         </div>
                     ))}
@@ -148,7 +226,7 @@ export default function Show({ conversation, stopSignal }) {
                                 {streamingSpeaker} is typing...
                             </div>
                             <div className="max-w-2xl p-6 rounded-2xl rounded-tl-sm bg-emerald-900/10 border border-emerald-500/20 text-emerald-100 text-lg leading-relaxed shadow-[0_0_15px_rgba(16,185,129,0.1)]">
-                                {streamingContent}
+                                <PlainTextContent content={streamingContent} />
                                 <span className="inline-block w-2 h-5 bg-emerald-400 ml-1 animate-blink">|</span>
                             </div>
                         </div>

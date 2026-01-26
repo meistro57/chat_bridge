@@ -8,6 +8,9 @@ use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class ChatControllerTest extends TestCase
@@ -62,5 +65,88 @@ class ChatControllerTest extends TestCase
             return $job->conversationId === $conversation->id
                 && $job->maxRounds === $payload['max_rounds'];
         });
+    }
+
+    public function test_transcript_downloads_markdown_from_private_storage(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
+            'starter_message' => 'Start the test.',
+            'status' => 'completed',
+            'max_rounds' => 1,
+            'stop_word_detection' => false,
+            'stop_words' => null,
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $conversation->messages()->create([
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => 'Transcript content.',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('chat.transcript', $conversation));
+
+        $expectedFilename = Str::slug($conversation->id).'.md';
+
+        $response->assertOk();
+        $response->assertDownload($expectedFilename);
+        Storage::disk('local')->assertExists('transcripts/'.$expectedFilename);
+    }
+
+    public function test_show_includes_markdown_message_content(): void
+    {
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
+            'starter_message' => 'Start the test.',
+            'status' => 'completed',
+            'max_rounds' => 1,
+            'stop_word_detection' => false,
+            'stop_words' => null,
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $markdown = "**Bold** and `code` with a list:\n- One\n- Two";
+
+        $conversation->messages()->create([
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => $markdown,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('chat.show', $conversation));
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Chat/Show')
+            ->has('conversation.messages', 1)
+            ->where('conversation.messages.0.content', $markdown)
+        );
     }
 }
