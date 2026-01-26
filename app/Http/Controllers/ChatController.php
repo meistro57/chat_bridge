@@ -2,18 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreChatRequest;
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
 use App\Models\Persona;
 use App\Services\AI\TranscriptService;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ChatController extends Controller
 {
-    public function index()
+    public function index(): InertiaResponse
     {
         Log::info('ChatController::index loading personas', [
             'user_id' => auth()->id(),
@@ -26,7 +30,7 @@ class ChatController extends Controller
         ]);
     }
 
-    public function search(Request $request)
+    public function search(Request $request): InertiaResponse
     {
         $query = $request->query('q');
         $messages = [];
@@ -48,30 +52,16 @@ class ChatController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(): InertiaResponse
     {
         return Inertia::render('Chat/Create', [
             'personas' => Persona::orderBy('name')->get(),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreChatRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'persona_a_id' => 'required|exists:personas,id',
-            'persona_b_id' => 'required|exists:personas,id',
-            'provider_a' => 'required|string',
-            'provider_b' => 'required|string',
-            'model_a' => 'required|string',
-            'model_b' => 'required|string',
-            'temp_a' => 'required|numeric|min:0|max:2',
-            'temp_b' => 'required|numeric|min:0|max:2',
-            'starter_message' => 'required|string',
-            'max_rounds' => 'required|integer|min:1|max:100',
-            'stop_word_detection' => 'boolean',
-            'stop_words' => 'array',
-            'stop_word_threshold' => 'numeric|min:0.1|max:1',
-        ]);
+        $validated = $request->validated();
 
         $personaA = Persona::findOrFail($validated['persona_a_id']);
         $personaB = Persona::findOrFail($validated['persona_b_id']);
@@ -116,24 +106,27 @@ class ChatController extends Controller
             'starter_message_length' => strlen($validated['starter_message']),
         ]);
 
-        dispatch(new RunChatSession($conversation->id));
+        dispatch(new RunChatSession($conversation->id, $conversation->max_rounds));
 
         return redirect()->route('chat.show', $conversation->id);
     }
 
-    public function show(Conversation $conversation)
+    public function show(Conversation $conversation): InertiaResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
         }
 
         return Inertia::render('Chat/Show', [
-            'conversation' => $conversation->load('messages.persona'),
+            'conversation' => $conversation->load([
+                'messages' => fn ($query) => $query->orderBy('id'),
+                'messages.persona',
+            ]),
             'stopSignal' => (bool) Cache::get("conversation.stop.{$conversation->id}"),
         ]);
     }
 
-    public function stop(Conversation $conversation)
+    public function stop(Conversation $conversation): RedirectResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
@@ -150,7 +143,7 @@ class ChatController extends Controller
         return back()->with('success', 'Stop signal sent.');
     }
 
-    public function destroy(Conversation $conversation)
+    public function destroy(Conversation $conversation): RedirectResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
@@ -168,7 +161,7 @@ class ChatController extends Controller
         return redirect()->route('chat.index')->with('success', 'Conversation deleted.');
     }
 
-    public function transcript(Conversation $conversation, TranscriptService $transcripts)
+    public function transcript(Conversation $conversation, TranscriptService $transcripts): BinaryFileResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);

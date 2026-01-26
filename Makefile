@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs shell clean migrate fresh init sync
+.PHONY: help build up down restart logs shell clean clean-volumes migrate fresh init sync
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -40,7 +40,11 @@ shell: ## Open shell in app container
 shell-db: ## Open PostgreSQL shell
 	docker compose exec postgres psql -U chatbridge -d chatbridge
 
-clean: ## Remove all containers, volumes, and images
+clean: ## Remove all containers (keeps volumes)
+	docker compose down --remove-orphans
+	docker compose rm -f
+
+clean-volumes: ## Remove all containers and volumes (destructive)
 	docker compose down -v --remove-orphans
 	docker compose rm -f
 

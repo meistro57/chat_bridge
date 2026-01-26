@@ -32,6 +32,21 @@ chown www-data:www-data /var/www/html/database/database.sqlite
 
 chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
 
+# Prepare Codex CLI home/config (uses OPENAI_API_KEY via app, but CLI prefers apikey auth mode)
+if [ -n "${CODEX_HOME}" ]; then
+    mkdir -p "${CODEX_HOME}"
+    if [ ! -f "${CODEX_HOME}/config.toml" ]; then
+        cat <<EOF > "${CODEX_HOME}/config.toml"
+preferred_auth_method = "apikey"
+cli_auth_credentials_store = "file"
+EOF
+    fi
+    if [ ! -d "${CODEX_HOME}/skills" ]; then
+        echo "⚠️  Codex skills directory not found at ${CODEX_HOME}/skills"
+    fi
+    chown -R www-data:www-data "${CODEX_HOME}"
+fi
+
 # Wait for PostgreSQL to be ready
 if [ "${DB_CONNECTION}" = "pgsql" ]; then
     echo "⏳ Waiting for PostgreSQL..."
@@ -68,6 +83,15 @@ if [ "${SKIP_MIGRATIONS:-false}" != "true" ]; then
     php artisan migrate --force
 else
     echo "⏭️  Skipping database migrations..."
+fi
+
+# Ensure seed data exists (skip when explicitly disabled)
+if [ "${SKIP_SEEDING:-false}" != "true" ]; then
+    echo "🌱 Seeding database..."
+    php artisan db:seed --force
+    echo "✅ Database seeding complete."
+else
+    echo "⏭️  Skipping database seeding..."
 fi
 
 # Clear and cache configuration

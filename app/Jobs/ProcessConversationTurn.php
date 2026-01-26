@@ -25,11 +25,12 @@ class ProcessConversationTurn implements ShouldQueue
         public int $maxRounds = 10
     ) {}
 
-    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts)
+    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts): void
     {
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
+        $maxRounds = $this->maxRounds > 0 ? $this->maxRounds : $conversation->max_rounds;
 
-        if ($conversation->status !== 'active' || $this->round > $this->maxRounds) {
+        if ($conversation->status !== 'active' || $this->round > $maxRounds) {
             $conversation->update(['status' => 'completed']);
             $transcripts->generate($conversation);
 
@@ -50,7 +51,8 @@ class ProcessConversationTurn implements ShouldQueue
         $history = $conversation->messages->map(fn ($m) => new MessageData($m->role, $m->content)
         )->take(-10);
 
-        $driver = $ai->driver($currentPersona->provider);
+        $settings = $conversation->settingsForPersona($currentPersona);
+        $driver = $ai->driverForProvider($settings['provider'], $settings['model']);
         $messages = collect();
         $messages->push(new MessageData('system', $currentPersona->system_prompt));
         foreach ($currentPersona->guidelines ?? [] as $guideline) {
@@ -59,7 +61,7 @@ class ProcessConversationTurn implements ShouldQueue
         $messages = $messages->concat($history);
 
         $fullResponse = '';
-        foreach ($driver->streamChat($messages, $currentPersona->temperature) as $chunk) {
+        foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
             $fullResponse .= $chunk;
             broadcast(new MessageChunkSent($conversation->id, $chunk, 'assistant', $currentPersona->name));
         }
@@ -72,7 +74,11 @@ class ProcessConversationTurn implements ShouldQueue
 
         broadcast(new MessageCompleted($message));
 
-        if ($stopWords->shouldStop($fullResponse)) {
+        if ($conversation->stop_word_detection && $stopWords->shouldStopWithThreshold(
+            $fullResponse,
+            $conversation->stop_words ?? [],
+            (float) $conversation->stop_word_threshold
+        )) {
             $conversation->update(['status' => 'completed']);
             $transcripts->generate($conversation);
 
@@ -80,7 +86,7 @@ class ProcessConversationTurn implements ShouldQueue
         }
 
         // Schedule next turn
-        dispatch(new self($this->conversationId, $this->round + 1, $this->maxRounds))
+        dispatch(new self($this->conversationId, $this->round + 1, $maxRounds))
             ->delay(now()->addSeconds(2));
     }
 }

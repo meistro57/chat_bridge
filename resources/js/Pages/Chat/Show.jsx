@@ -149,7 +149,7 @@ export default function Show({ conversation, stopSignal }) {
                             </div>
                             <div className="max-w-2xl p-6 rounded-2xl rounded-tl-sm bg-emerald-900/10 border border-emerald-500/20 text-emerald-100 text-lg leading-relaxed shadow-[0_0_15px_rgba(16,185,129,0.1)]">
                                 {streamingContent}
-                                <span className="inline-block w-2 H-5 bg-emerald-400 ml-1 animate-blink">|</span>
+                                <span className="inline-block w-2 h-5 bg-emerald-400 ml-1 animate-blink">|</span>
                             </div>
                         </div>
                     )}

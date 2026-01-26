@@ -35,6 +35,7 @@ services:
       - VITE_REVERB_SCHEME=http
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
+      - CODEX_HOME=/var/www/html/.codex
     ports:
       - "${APP_PORT:-8000}:80"
     command: sh -c "mkdir -p /var/log/supervisor && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
@@ -107,6 +108,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SKIP_MIGRATIONS=true
+      - SKIP_SEEDING=true
       - REVERB_HOST=reverb
       - REVERB_PORT=8080
       - REVERB_SCHEME=http

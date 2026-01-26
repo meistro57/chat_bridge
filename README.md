@@ -7,8 +7,8 @@
 [![Tests](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml/badge.svg)](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Tailwind](https://img.shields.io/badge/Tailwind-v4-38BDF8?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Tailwind](https://img.shields.io/badge/Tailwind-v3-38BDF8?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red)](https://github.com/meistro57/chat_bridge)
@@ -93,7 +93,7 @@ Codex is an **AI-powered diagnostic agent** that understands your Laravel applic
 </tr>
 </table>
 
-### 🎯 **10 Predefined Superpowers** (Inspired by [Superpowers Laravel](https://github.com/jpcaparas/superpowers-laravel))
+### 🎯 **10 Predefined Superpowers** (Skills sourced from [Superpowers Laravel](https://github.com/jpcaparas/superpowers-laravel))
 
 Choose from powerful preset actions or write your own custom prompts:
 
@@ -147,13 +147,11 @@ Schema optimization analysis
 2. Select a **Quick Action** from the dropdown (or write your own prompt)
 3. Click **"Invoke Codex"**
 4. Watch Codex **autonomously analyze** your application using:
-   - 📊 **Database queries** - Direct schema and data inspection
-   - 🔧 **Laravel Tinker** - Live PHP execution for diagnostics
    - 📝 **Log analysis** - Pattern recognition in errors
    - ⚙️ **Configuration checks** - Setting validation
-   - 🗄️ **Schema inspection** - Database structure analysis
+   - 🧠 **Codex CLI** - Non-interactive runs via `codex exec` with your service key
 
-**Codex uses real tools to gather real evidence, then provides actionable insights.**
+**Codex uses Codex CLI with local context (system info, error extracts, log tail) to provide actionable insights.**
 
 ---
 
@@ -248,7 +246,7 @@ Professional debugging suite:
 - 🔭 **Laravel Telescope** - Monitor everything
 - 🐛 **Laravel Debugbar** - Real-time profiling
 - 🧪 **System Diagnostics** - Health checks
-- 🤖 **Codex/Boost MCP** - Admin-managed service key with test/clear controls
+- 🤖 **Codex CLI + Boost MCP** - Admin-managed service key with test/clear controls
 - 📝 Enhanced logging system
 - 🔧 Maintenance automation
 - ✨ Code style fixer (Pint)
@@ -407,12 +405,12 @@ WebSocket Streaming
 ### **Frontend Magic**
 
 ⚛️ **UI Framework**
-- React 19 (Latest)
+- React 18
 - Inertia.js 2.0
 - TypeScript Support
 
 🎨 **Styling**
-- Tailwind CSS v4
+- Tailwind CSS v3
 - Custom Dark Theme
 - Glassmorphic Design
 - CSS-in-JS Compatible
@@ -483,6 +481,7 @@ A powerful web-based control panel with 8 diagnostic actions:
 - Set a single OpenAI service key for Codex/Boost diagnostics
 - Test key connectivity from the dashboard
 - Clear the stored key when rotating credentials
+ - Codex CLI is bundled in the app image and uses the same service key
 
 ### 🔭 **Laravel Telescope** (`/telescope`)
 
@@ -602,6 +601,8 @@ make setup
 # Qdrant: http://localhost:6333/dashboard
 ```
 
+**Data persistence:** Docker volumes are preserved by default. Use `make clean-volumes` only when you want to wipe the database and Qdrant data.
+
 ### Docker Services
 
 The Docker deployment includes:
@@ -635,7 +636,8 @@ make down         # Stop all services
 make logs         # View all logs
 make shell        # Open shell in app container
 make migrate      # Run migrations
-make clean        # Remove all containers and volumes
+make clean        # Remove all containers (keeps volumes)
+make clean-volumes # Remove all containers and volumes (destructive)
 ```
 
 For detailed Docker documentation, see **[DOCKER.md](DOCKER.md)**
@@ -674,7 +676,7 @@ php artisan view:cache
 ### 1. Login with Default Admin
 Visit `http://localhost:8000/login` (or `http://localhost:8002` for Docker) and use the default credentials:
 
-- **Username**: `admin` (accepts username without @ symbol)
+- **Email**: `admin@chatbridge.local`
 - **Password**: `password`
 
 This admin user is automatically created with full admin rights during installation via database seeder.
@@ -960,9 +962,9 @@ php artisan migrate --force
 
 ### 🌐 External Documentation
 - **[Laravel 12.x](https://laravel.com/docs/12.x)** - Framework documentation
-- **[React 19](https://react.dev/)** - UI library guide
+- **[React 18](https://react.dev/)** - UI library guide
 - **[Inertia.js](https://inertiajs.com/)** - SPA bridge documentation
-- **[Tailwind CSS v4](https://tailwindcss.com/)** - Styling framework
+- **[Tailwind CSS v3](https://tailwindcss.com/)** - Styling framework
 - **[Laravel Reverb](https://reverb.laravel.com/)** - WebSocket server
 - **[Qdrant](https://qdrant.tech/documentation/)** - Vector database
 - **[Laravel Telescope](https://laravel.com/docs/telescope)** - Debug tool

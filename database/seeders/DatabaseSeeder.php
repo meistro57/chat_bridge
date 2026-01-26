@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create default admin user
         User::updateOrCreate(
-            ['email' => 'admin'],
+            ['email' => 'admin@chatbridge.local'],
             [
                 'name' => 'Admin',
                 'password' => 'password',

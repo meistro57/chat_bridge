@@ -5,12 +5,14 @@ set -e
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLEAN_MODE=false
 QUICK_MODE=false
+WIPE_VOLUMES=false
 
 # Parse arguments
 for arg in "$@"; do
     case $arg in
         --clean) CLEAN_MODE=true ;;
         --quick) QUICK_MODE=true ;;
+        --clean-volumes|--wipe-volumes) WIPE_VOLUMES=true ;;
     esac
 done
 
@@ -39,7 +41,12 @@ fi
 # 4. STOP & REBUILD
 if [ "$QUICK_MODE" = "false" ]; then
     echo "🛑 Stopping containers..."
-    docker compose down --remove-orphans
+    if [ "$WIPE_VOLUMES" = "true" ]; then
+        echo "⚠️  Removing volumes (destructive)..."
+        docker compose down -v --remove-orphans
+    else
+        docker compose down --remove-orphans
+    fi
 
     echo "🔨 Rebuilding..."
     docker compose build
@@ -59,7 +66,7 @@ docker compose exec -T app php artisan optimize:clear
 docker compose exec -T app php artisan migrate --force
 
 echo "🌱 Checking seed data..."
-SEED_STATUS=$(docker compose exec -T app php -r "require 'vendor/autoload.php'; \$app=require 'bootstrap/app.php'; \$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); \$hasAdmin=\\App\\Models\\User::where('email', 'admin')->exists(); \$hasPersona=\\App\\Models\\Persona::query()->exists(); echo (\$hasAdmin && \$hasPersona) ? 'present' : 'missing';")
+SEED_STATUS=$(docker compose exec -T app php -r "require 'vendor/autoload.php'; \$app=require 'bootstrap/app.php'; \$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); \$hasAdmin=\\App\\Models\\User::where('email', 'admin@chatbridge.local')->exists(); \$hasPersona=\\App\\Models\\Persona::query()->exists(); echo (\$hasAdmin && \$hasPersona) ? 'present' : 'missing';")
 SEED_STATUS=$(echo "$SEED_STATUS" | tr -d '\r')
 
 if [ "$SEED_STATUS" = "missing" ]; then

@@ -24,12 +24,13 @@ class BridgeChatCommand extends Command
 
     protected $description = 'Start an AI vs AI conversation bridge';
 
-    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts, EmbeddingService $embeddings)
+    public function handle(AIManager $ai, StopWordService $stopWords, TranscriptService $transcripts, EmbeddingService $embeddings): int
     {
         info('🌉 Welcome to Chat Bridge (Laravel Edition)');
 
         $personaA = $this->selectPersona('Select Persona for Agent A');
         $personaB = $this->selectPersona('Select Persona for Agent B');
+        $provider = config('ai.default', 'openai');
 
         $starter = text(
             label: 'Conversation Starter',
@@ -40,14 +41,18 @@ class BridgeChatCommand extends Command
         $conversation = Conversation::create([
             'persona_a_id' => $personaA->id,
             'persona_b_id' => $personaB->id,
-            'provider_a' => $personaA->provider,
-            'provider_b' => $personaB->provider,
-            'model_a' => $personaA->model,
-            'model_b' => $personaB->model,
+            'provider_a' => $provider,
+            'provider_b' => $provider,
+            'model_a' => null,
+            'model_b' => null,
             'temp_a' => $personaA->temperature,
             'temp_b' => $personaB->temperature,
             'starter_message' => $starter,
             'status' => 'active',
+            'max_rounds' => (int) $this->option('max-rounds'),
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
         ]);
 
         $history = collect([
@@ -67,7 +72,8 @@ class BridgeChatCommand extends Command
             $this->newLine();
             info("Round $round: {$currentPersona->name} is thinking...");
 
-            $driver = $ai->driver($currentPersona->provider);
+            $settings = $conversation->settingsForPersona($currentPersona);
+            $driver = $ai->driverForProvider($settings['provider'], $settings['model']);
             $fullResponse = '';
 
             $messages = collect();
@@ -80,7 +86,7 @@ class BridgeChatCommand extends Command
             try {
                 $this->output->write("<options=bold;fg=green>{$currentPersona->name}:</> ");
 
-                foreach ($driver->streamChat($messages, $currentPersona->temperature) as $chunk) {
+                foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
                     $this->output->write($chunk);
                     $fullResponse .= $chunk;
 
@@ -134,6 +140,8 @@ class BridgeChatCommand extends Command
         info('✅ Conversation completed.');
         $transcripts->generate($conversation);
         info('📄 Transcript generated.');
+
+        return 0;
     }
 
     protected function selectPersona(string $label): Persona

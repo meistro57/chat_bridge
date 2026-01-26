@@ -79,6 +79,12 @@ COPY composer.json composer.lock ./
 # Install PHP dependencies
 RUN composer install --no-scripts --no-autoloader --prefer-dist --ignore-platform-reqs
 
+# Copy package files
+COPY package.json package-lock.json ./
+
+# Install Node dependencies needed at runtime (Codex CLI)
+RUN npm ci --omit=dev
+
 # Copy application files
 COPY . .
 
@@ -91,6 +97,12 @@ RUN composer dump-autoload --optimize
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
+
+# Install Codex Laravel skills package
+RUN mkdir -p /var/www/html/.codex \
+    && git clone --depth 1 https://github.com/jpcaparas/superpowers-laravel.git /var/www/html/.codex/superpowers-laravel \
+    && ln -s /var/www/html/.codex/superpowers-laravel/skills /var/www/html/.codex/skills \
+    && chown -R www-data:www-data /var/www/html/.codex
 
 # Copy configuration files
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf

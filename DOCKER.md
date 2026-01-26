@@ -10,7 +10,7 @@ The Docker deployment consists of the following services:
   - *Volume Mounted*: Local `./app` and `./database` are mounted for development convenience.
 - **queue**: Background queue worker for processing conversations
 - **reverb**: WebSocket server for real-time updates
-- **postgres**: PostgreSQL database for persistent data
+- **postgres**: PostgreSQL database for persistent data (stored in `./storage/postgres`)
 - **redis**: Redis for caching, sessions, and queue management
 - **qdrant**: Vector database for RAG functionality and AI memory
 
@@ -171,7 +171,8 @@ make shell         # Open shell in app container
 make migrate       # Run database migrations
 make init          # Initialize Qdrant
 make sync          # Sync messages to Qdrant
-make clean         # Remove all containers and volumes
+make clean         # Remove all containers (keeps volumes/data)
+make clean-volumes # Remove all containers and volumes (destructive, wipes DB)
 ```
 
 ### Using Docker Compose
@@ -193,6 +194,12 @@ docker compose up -d --scale queue=3
 ```
 
 ## Database Management
+
+### Persistence & Seeding
+
+- PostgreSQL data is persisted at `./storage/postgres` by default.
+- The app container runs database seeding on boot to ensure required data (including the default admin user) is present.
+- Use `make clean-volumes` only when you want a clean slate.
 
 ### Migrations
 
@@ -431,6 +438,9 @@ make migrate
 ```bash
 # Stop and remove everything
 make clean
+
+# Stop and remove everything (including volumes)
+make clean-volumes
 
 # Remove Docker images
 docker rmi $(docker images -q chat_bridge*)

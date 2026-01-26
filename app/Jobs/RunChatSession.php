@@ -36,7 +36,7 @@ class RunChatSession implements ShouldQueue
     public function handle(
         ConversationService $service,
         StopWordService $stopWords
-    ) {
+    ): void {
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
 
         if ($conversation->status !== 'active') {
@@ -48,9 +48,11 @@ class RunChatSession implements ShouldQueue
             return;
         }
 
+        $maxRounds = $this->maxRounds > 0 ? $this->maxRounds : $conversation->max_rounds;
+
         Log::info('Starting chat session', [
             'conversation_id' => $this->conversationId,
-            'max_rounds' => $this->maxRounds,
+            'max_rounds' => $maxRounds,
             'persona_a' => $conversation->personaA->name,
             'persona_b' => $conversation->personaB->name,
         ]);
@@ -60,7 +62,7 @@ class RunChatSession implements ShouldQueue
 
         try {
             // Loop until max rounds or stopped
-            while ($round < $this->maxRounds) {
+            while ($round < $maxRounds) {
                 // 1. Check for manual stop signal
                 if (Cache::get("conversation.stop.{$this->conversationId}")) {
                     Log::info("Conversation {$this->conversationId} stopped by user signal.");
@@ -89,7 +91,7 @@ class RunChatSession implements ShouldQueue
                 // 4. Generate & Stream
                 $fullResponse = '';
                 // Yield chunks from service
-                foreach ($service->generateTurn($currentPersona, $history) as $chunk) {
+                foreach ($service->generateTurn($conversation, $currentPersona, $history) as $chunk) {
                     $fullResponse .= $chunk;
 
                     broadcast(new MessageChunkSent(
@@ -117,7 +119,11 @@ class RunChatSession implements ShouldQueue
                 ]);
 
                 // 6. Check Stop Words
-                if ($stopWords->shouldStop($fullResponse)) {
+                if ($conversation->stop_word_detection && $stopWords->shouldStopWithThreshold(
+                    $fullResponse,
+                    $conversation->stop_words ?? [],
+                    (float) $conversation->stop_word_threshold
+                )) {
                     Log::info("Conversation {$this->conversationId} stopped by stop word.");
                     $service->completeConversation($conversation);
                     break;
@@ -127,7 +133,7 @@ class RunChatSession implements ShouldQueue
                 sleep(1);
             }
 
-            if ($round >= $this->maxRounds && $conversation->fresh()->status === 'active') {
+            if ($round >= $maxRounds && $conversation->fresh()->status === 'active') {
                 Log::info('Conversation reached max rounds', [
                     'conversation_id' => $this->conversationId,
                     'rounds' => $round,

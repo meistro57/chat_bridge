@@ -27,9 +27,10 @@ class ConversationService
      *
      * @return \Generator<string>
      */
-    public function generateTurn(Persona $persona, Collection $history): \Generator
+    public function generateTurn(Conversation $conversation, Persona $persona, Collection $history): \Generator
     {
-        $driver = $this->ai->driver($persona->provider);
+        $settings = $conversation->settingsForPersona($persona);
+        $driver = $this->ai->driverForProvider($settings['provider'], $settings['model']);
 
         $messages = collect();
         // System Prompt
@@ -64,7 +65,7 @@ class ConversationService
         $messages = $messages->concat($history);
 
         // Stream from driver
-        foreach ($driver->streamChat($messages, $persona->temperature) as $chunk) {
+        foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
             yield $chunk;
         }
     }

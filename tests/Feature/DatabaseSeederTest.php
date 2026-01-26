@@ -16,7 +16,7 @@ class DatabaseSeederTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertNotNull(User::where('email', 'admin')->first());
+        $this->assertNotNull(User::where('email', 'admin@chatbridge.local')->first());
         $this->assertTrue(Persona::query()->exists());
     }
 }

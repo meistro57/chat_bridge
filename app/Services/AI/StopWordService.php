@@ -35,4 +35,29 @@ class StopWordService
 
         return false;
     }
+
+    public function shouldStopWithThreshold(string $text, array $stopWords, float $threshold): bool
+    {
+        $normalized = array_values(array_filter(array_map(function ($word) {
+            $word = trim((string) $word);
+
+            return $word === '' ? null : strtolower($word);
+        }, $stopWords)));
+
+        if ($normalized === []) {
+            return false;
+        }
+
+        $threshold = max(0.1, min(1, $threshold));
+        $text = strtolower($text);
+        $matches = 0;
+
+        foreach ($normalized as $word) {
+            if (str_contains($text, $word)) {
+                $matches++;
+            }
+        }
+
+        return ($matches / count($normalized)) >= $threshold;
+    }
 }

@@ -3,16 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\AI\Data\MessageData;
-use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\System\EnvFileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\Process\Process;
 
 class SystemController extends Controller
 {
@@ -585,31 +585,17 @@ class SystemController extends Controller
             $prompt = 'Analyze the current system state and provide a brief health summary. List any potential issues or recommendations.';
         }
 
+        $context = $this->buildCodexContext();
+
         $output[] = '✓ Codex agent verified';
         $output[] = '✓ OpenAI key configured';
         $output[] = '';
         $output[] = '→ Prompt: '.$prompt;
+        $output[] = '→ Context: '.$context['summary'];
         $output[] = '';
 
         try {
-            $driver = new OpenAIDriver(
-                apiKey: $openaiKey,
-                model: config('services.openai.model', 'gpt-4o')
-            );
-
-            // Build context for Codex
-            $systemContext = 'You are Codex, an AI diagnostics agent for a Laravel application called Chat Bridge. ';
-            $systemContext .= 'Current environment: '.app()->environment().'. ';
-            $systemContext .= 'PHP version: '.PHP_VERSION.'. ';
-            $systemContext .= 'Laravel version: '.app()->version().'. ';
-            $systemContext .= 'Respond concisely with actionable insights.';
-
-            $messages = collect([
-                new MessageData('system', $systemContext),
-                new MessageData('user', $prompt),
-            ]);
-
-            $response = $driver->chat($messages, 0.7);
+            $response = $this->runCodexCli($openaiKey, $context['details'], $prompt);
 
             $output[] = '─────────────────────────────────────────';
             $output[] = 'CODEX RESPONSE:';
@@ -629,6 +615,147 @@ class SystemController extends Controller
         }
 
         return implode("\n", $output);
+    }
+
+    private function runCodexCli(string $openaiKey, string $context, string $prompt): string
+    {
+        $fullPrompt = <<<PROMPT
+CONTEXT:
+{$context}
+
+TASK:
+{$prompt}
+
+RULES:
+- Use the provided context and repository information.
+- If context is missing or insufficient, say so explicitly.
+- Avoid generic advice; be specific to the errors and files referenced.
+PROMPT;
+
+        $outputPath = storage_path('app/codex/last-message-'.Str::uuid().'.txt');
+        File::ensureDirectoryExists(dirname($outputPath));
+
+        $process = new Process(
+            $this->buildCodexCommand($fullPrompt, $outputPath),
+            base_path(),
+            $this->buildCodexEnvironment($openaiKey)
+        );
+        $process->setTimeout(300);
+        $process->run();
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException(trim($process->getErrorOutput()) ?: 'Codex CLI failed.');
+        }
+
+        if (File::exists($outputPath)) {
+            return trim((string) File::get($outputPath));
+        }
+
+        return trim($process->getOutput());
+    }
+
+    /**
+     * @return array<int,string>
+     */
+    protected function buildCodexCommand(string $fullPrompt, string $outputPath): array
+    {
+        return [
+            'npx',
+            '--no-install',
+            'codex',
+            'exec',
+            '--color',
+            'never',
+            '--output-last-message',
+            $outputPath,
+            $fullPrompt,
+        ];
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    protected function buildCodexEnvironment(string $openaiKey): array
+    {
+        return [
+            'CODEX_API_KEY' => $openaiKey,
+            'OPENAI_API_KEY' => $openaiKey,
+            'CODEX_HOME' => config('services.codex.home', env('CODEX_HOME', base_path('.codex'))),
+            'TERM' => 'dumb',
+            'NO_COLOR' => '1',
+            'COLUMNS' => '120',
+            'LINES' => '40',
+        ];
+    }
+
+    /**
+     * @return array{summary:string,details:string}
+     */
+    private function buildCodexContext(): array
+    {
+        $systemInfo = $this->getSystemInfo();
+        $recentErrors = $this->getRecentErrors();
+        $logTail = $this->getLogTail();
+
+        $summary = 'System info + extracted errors + recent log tail attached.';
+        $details = "SYSTEM INFO\n".json_encode($systemInfo, JSON_PRETTY_PRINT);
+        $details .= "\n\nRECENT ERRORS (EXTRACTED)\n".$recentErrors;
+        $details .= "\n\nRECENT LOG TAIL\n".$logTail;
+
+        return [
+            'summary' => $summary,
+            'details' => $details,
+        ];
+    }
+
+    private function getRecentErrors(int $limit = 20): string
+    {
+        $path = storage_path('logs/laravel.log');
+
+        if (! File::exists($path)) {
+            return 'laravel.log not found.';
+        }
+
+        $lines = collect(explode("\n", File::get($path)));
+        $errors = $lines->filter(function (string $line) {
+            return str_contains($line, '.ERROR:') || str_contains($line, 'ERROR:');
+        })->take(-$limit)->implode("\n");
+
+        if ($errors === '') {
+            return 'No recent error entries found.';
+        }
+
+        return $this->redactSecrets($errors);
+    }
+
+    private function getLogTail(int $lines = 200): string
+    {
+        $path = storage_path('logs/laravel.log');
+
+        if (! File::exists($path)) {
+            return 'laravel.log not found.';
+        }
+
+        $contents = File::get($path);
+        $tail = collect(explode("\n", $contents))
+            ->take(-$lines)
+            ->implode("\n");
+
+        return $this->redactSecrets($tail);
+    }
+
+    private function redactSecrets(string $text): string
+    {
+        $patterns = [
+            '/sk-[A-Za-z0-9]{20,}/',
+            '/(OPENAI_API_KEY=)[^\s]+/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            $text = preg_replace($pattern, '[redacted]', $text) ?? $text;
+        }
+
+        return Str::limit($text, 12000, "\n[truncated]");
     }
 
     private function getBoostConfig(): array
