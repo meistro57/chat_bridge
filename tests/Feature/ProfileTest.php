@@ -21,6 +21,17 @@ class ProfileTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_unverified_user_can_view_profile_page(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response->assertOk();
+    }
+
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();

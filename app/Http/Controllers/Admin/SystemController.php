@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\AI\Data\MessageData;
+use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\System\EnvFileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

@@ -46,6 +46,8 @@ yarn-error.log
 # Database
 /database/database.sqlite
 *.sqlite
+storage/postgres
+storage/postgres/**
 
 # Misc
 .editorconfig

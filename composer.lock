@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "04a0c8f8705ce45668c28f700b1758c5",
+    "content-hash": "7997370d925df8ad5ead001658764ce2",
     "packages": [
         {
             "name": "brick/math",
@@ -1363,33 +1363,33 @@
         },
         {
             "name": "laravel/boost",
-            "version": "v1.8.10",
+            "version": "v2.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravel/boost.git",
-                "reference": "aad8b2a423b0a886c2ce7ee92abbfde69992ff32"
+                "reference": "4bbcc99c4b05fab18a848e65c8af9ad4173360dd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravel/boost/zipball/aad8b2a423b0a886c2ce7ee92abbfde69992ff32",
-                "reference": "aad8b2a423b0a886c2ce7ee92abbfde69992ff32",
+                "url": "https://api.github.com/repos/laravel/boost/zipball/4bbcc99c4b05fab18a848e65c8af9ad4173360dd",
+                "reference": "4bbcc99c4b05fab18a848e65c8af9ad4173360dd",
                 "shasum": ""
             },
             "require": {
                 "guzzlehttp/guzzle": "^7.9",
-                "illuminate/console": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/contracts": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/routing": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/support": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/console": "^11.45.3|^12.41.1",
+                "illuminate/contracts": "^11.45.3|^12.41.1",
+                "illuminate/routing": "^11.45.3|^12.41.1",
+                "illuminate/support": "^11.45.3|^12.41.1",
                 "laravel/mcp": "^0.5.1",
-                "laravel/prompts": "0.1.25|^0.3.6",
+                "laravel/prompts": "^0.3.10",
                 "laravel/roster": "^0.2.9",
-                "php": "^8.1"
+                "php": "^8.2"
             },
             "require-dev": {
-                "laravel/pint": "^1.20.0",
+                "laravel/pint": "^1.27.0",
                 "mockery/mockery": "^1.6.12",
-                "orchestra/testbench": "^8.36.0|^9.15.0|^10.6",
+                "orchestra/testbench": "^9.15.0|^10.6",
                 "pestphp/pest": "^2.36.0|^3.8.4|^4.1.5",
                 "phpstan/phpstan": "^2.1.27",
                 "rector/rector": "^2.1"
@@ -1425,7 +1425,7 @@
                 "issues": "https://github.com/laravel/boost/issues",
                 "source": "https://github.com/laravel/boost"
             },
-            "time": "2026-01-14T14:51:16+00:00"
+            "time": "2026-01-27T11:20:21+00:00"
         },
         {
             "name": "laravel/framework",
@@ -10274,97 +10274,6 @@
             "time": "2025-11-20T02:55:25+00:00"
         },
         {
-            "name": "nunomaduro/larastan",
-            "version": "v3.9.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/larastan/larastan.git",
-                "reference": "4b92d9627f779fd32bdc16f53f8ce88c50446ff5"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/larastan/larastan/zipball/4b92d9627f779fd32bdc16f53f8ce88c50446ff5",
-                "reference": "4b92d9627f779fd32bdc16f53f8ce88c50446ff5",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "iamcal/sql-parser": "^0.6.0",
-                "illuminate/console": "^11.44.2 || ^12.4.1",
-                "illuminate/container": "^11.44.2 || ^12.4.1",
-                "illuminate/contracts": "^11.44.2 || ^12.4.1",
-                "illuminate/database": "^11.44.2 || ^12.4.1",
-                "illuminate/http": "^11.44.2 || ^12.4.1",
-                "illuminate/pipeline": "^11.44.2 || ^12.4.1",
-                "illuminate/support": "^11.44.2 || ^12.4.1",
-                "php": "^8.2",
-                "phpstan/phpstan": "^2.1.32"
-            },
-            "require-dev": {
-                "doctrine/coding-standard": "^13",
-                "laravel/framework": "^11.44.2 || ^12.7.2",
-                "mockery/mockery": "^1.6.12",
-                "nikic/php-parser": "^5.4",
-                "orchestra/canvas": "^v9.2.2 || ^10.0.1",
-                "orchestra/testbench-core": "^9.12.0 || ^10.1",
-                "phpstan/phpstan-deprecation-rules": "^2.0.1",
-                "phpunit/phpunit": "^10.5.35 || ^11.5.15"
-            },
-            "suggest": {
-                "orchestra/testbench": "Using Larastan for analysing a package needs Testbench",
-                "phpmyadmin/sql-parser": "Install to enable Larastan's optional phpMyAdmin-based SQL parser automatically"
-            },
-            "type": "phpstan-extension",
-            "extra": {
-                "phpstan": {
-                    "includes": [
-                        "extension.neon"
-                    ]
-                },
-                "branch-alias": {
-                    "dev-master": "3.0-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Larastan\\Larastan\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Can Vural",
-                    "email": "can9119@gmail.com"
-                }
-            ],
-            "description": "Larastan - Discover bugs in your code without running it. A phpstan/phpstan extension for Laravel",
-            "keywords": [
-                "PHPStan",
-                "code analyse",
-                "code analysis",
-                "larastan",
-                "laravel",
-                "package",
-                "php",
-                "static analysis"
-            ],
-            "support": {
-                "issues": "https://github.com/larastan/larastan/issues",
-                "source": "https://github.com/larastan/larastan/tree/v3.9.1"
-            },
-            "funding": [
-                {
-                    "url": "https://github.com/canvural",
-                    "type": "github"
-                }
-            ],
-            "abandoned": "larastan/larastan",
-            "time": "2026-01-21T09:15:17+00:00"
-        },
-        {
             "name": "phar-io/manifest",
             "version": "2.0.4",
             "source": {
@@ -12754,13 +12663,13 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "platform-overrides": {
         "php": "8.3"
     },

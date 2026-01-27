@@ -642,6 +642,10 @@ make clean-volumes # Remove all containers and volumes (destructive)
 
 For detailed Docker documentation, see **[DOCKER.md](DOCKER.md)**
 
+Docker troubleshooting highlights:
+- If Docker builds fail with `permission denied` on `storage/postgres`, see the new troubleshooting section in `DOCKER.md`.
+- After changing PHP dependencies (`composer.json` / `composer.lock`), rebuild images: `docker compose build app queue reverb && docker compose up -d app queue reverb`.
+
 For RAG functionality guide, see **[RAG_GUIDE.md](RAG_GUIDE.md)**
 
 ---

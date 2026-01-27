@@ -95,10 +95,15 @@ else
 fi
 
 # Clear and cache configuration
-echo "⚙️  Optimizing application..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+if [ "${APP_ENV}" = "production" ]; then
+    echo "⚙️  Optimizing application for production..."
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+else
+    echo "⚙️  Clearing cached configuration for non-production environment..."
+    php artisan optimize:clear
+fi
 
 # Initialize Qdrant if enabled
 if [ "${QDRANT_ENABLED}" = "true" ]; then

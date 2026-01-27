@@ -313,6 +313,35 @@ docker compose logs
 docker compose restart [service]
 ```
 
+### Docker Build Fails With "permission denied" on `storage/postgres`
+
+The PostgreSQL data directory can end up owned by `root`, which causes Docker
+to fail while sending the build context (for example: `open ./storage/postgres:
+permission denied`).
+
+This repository now excludes that directory from the build context via
+`.dockerignore`. If you still see this error:
+
+```bash
+# Ensure the data directory is ignored by Docker builds
+grep -n "storage/postgres" .dockerignore
+
+# Rebuild after updating .dockerignore or data permissions
+docker compose build --no-cache
+```
+
+If needed, fix ownership on the host machine before rebuilding.
+
+### Composer Changes Not Reflected In Containers
+
+The Docker services do not mount `composer.json` / `composer.lock`. After
+changing PHP dependencies, you must rebuild the images:
+
+```bash
+docker compose build app queue reverb
+docker compose up -d app queue reverb
+```
+
 ### Database Connection Issues
 
 ```bash

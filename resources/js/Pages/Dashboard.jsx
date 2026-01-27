@@ -102,6 +102,37 @@ export default function Dashboard({ user }) {
                 accent: 'violet',
             },
             {
+                name: 'MCP Utilities',
+                description: 'Explore MCP health, stats, and endpoints',
+                href: '/admin/mcp-utilities',
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 7h16"/>
+                        <path d="M4 12h16"/>
+                        <path d="M4 17h10"/>
+                        <path d="M17 17h3"/>
+                        <path d="M7 4v3"/>
+                        <path d="M12 9v3"/>
+                        <path d="M19 14v3"/>
+                    </svg>
+                ),
+                color: 'from-indigo-500 to-cyan-500',
+                accent: 'indigo',
+            },
+            {
+                name: 'Boost Dashboard',
+                description: 'Showcase Boost configuration and surface area',
+                href: '/admin/boost',
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3 4 7v6c0 5 3.5 9.5 8 11 4.5-1.5 8-6 8-11V7l-8-4Z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                ),
+                color: 'from-emerald-500 to-teal-500',
+                accent: 'emerald',
+            },
+            {
                 name: 'Telescope',
                 description: 'Debug and monitor application activity',
                 href: '/telescope',
@@ -114,7 +145,36 @@ export default function Dashboard({ user }) {
                 ),
                 color: 'from-fuchsia-500 to-pink-500',
                 accent: 'pink',
-            }
+            },
+            {
+                name: 'Backup DB',
+                description: 'Create a PostgreSQL backup from Docker',
+                href: '/admin/database/backup',
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                ),
+                color: 'from-emerald-500 to-teal-500',
+                accent: 'emerald',
+            },
+            {
+                name: 'Restore DB',
+                description: 'Restore a PostgreSQL backup into Docker',
+                href: '/admin/database/restore',
+                icon: (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 9V5a2 2 0 0 0-2-2h-4"/>
+                        <path d="M3 15v4a2 2 0 0 0 2 2h4"/>
+                        <path d="M21 3l-7 7"/>
+                        <path d="M3 21l7-7"/>
+                    </svg>
+                ),
+                color: 'from-orange-500 to-red-500',
+                accent: 'orange',
+            },
         );
     }
 

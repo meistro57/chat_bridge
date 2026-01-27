@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\BoostDashboardController;
+use App\Http\Controllers\Admin\DatabaseController;
+use App\Http\Controllers\Admin\McpUtilitiesController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\ProfileController;
@@ -21,6 +24,13 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 })->middleware(['auth', 'verified']);
 
+Route::middleware(['auth'])->group(function () {
+    // Profile routes (must be accessible even when email becomes unverified)
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
         return \Inertia\Inertia::render('Dashboard', [
@@ -35,12 +45,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/system/openai-key', [\App\Http\Controllers\Admin\SystemController::class, 'updateOpenAiKey'])->name('system.openai-key');
         Route::post('/system/openai-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testOpenAiKey'])->name('system.openai-key.test');
         Route::post('/system/openai-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearOpenAiKey'])->name('system.openai-key.clear');
+        Route::get('/database/backup', [DatabaseController::class, 'backup'])->name('database.backup');
+        Route::get('/database/restore', [DatabaseController::class, 'restore'])->name('database.restore');
+        Route::post('/database/restore', [DatabaseController::class, 'restoreRun'])->name('database.restore.run');
+        Route::delete('/database/backups', [DatabaseController::class, 'delete'])->name('database.backups.delete');
+        Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
+        Route::get('/mcp-utilities', [McpUtilitiesController::class, 'index'])->name('mcp.utilities');
     });
-
-    // Profile routes
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Persona routes
     Route::resource('personas', PersonaController::class);

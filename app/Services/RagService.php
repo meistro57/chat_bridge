@@ -91,7 +91,7 @@ class RagService
             // Ensure message has an embedding
             if (empty($message->embedding)) {
                 Log::warning('Message has no embedding, generating...', ['message_id' => $message->id]);
-                $embedding = $this->embeddingService->generate($message->content);
+                $embedding = $this->embeddingService->getEmbedding($message->content);
 
                 if (! $embedding) {
                     Log::error('Failed to generate embedding for message', ['message_id' => $message->id]);
@@ -161,7 +161,7 @@ class RagService
     ): Collection {
         try {
             // Generate embedding for the query
-            $queryEmbedding = $this->embeddingService->generate($query);
+            $queryEmbedding = $this->embeddingService->getEmbedding($query);
 
             if (! $queryEmbedding) {
                 Log::error('Failed to generate embedding for query');

@@ -10,17 +10,34 @@ use Inertia\Inertia;
 class ApiKeyController extends Controller
 {
     /**
+     * Providers that do not require an API key.
+     *
+     * @var array<int, string>
+     */
+    private const NO_KEY_PROVIDERS = ['ollama', 'lmstudio'];
+
+    private function providerRequiresKey(string $provider): bool
+    {
+        return ! in_array($provider, self::NO_KEY_PROVIDERS, true);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
     {
         return Inertia::render('ApiKeys/Index', [
             'apiKeys' => auth()->user()->apiKeys()->orderBy('provider')->latest()->get()->map(function ($key) {
+                $rawKey = (string) ($key->key ?? '');
+                $maskedKey = $rawKey === ''
+                    ? '(none)'
+                    : substr($rawKey, 0, 8).'...'.substr($rawKey, -4);
+
                 return [
                     'id' => $key->id,
                     'provider' => $key->provider,
                     'label' => $key->label,
-                    'masked_key' => substr($key->key, 0, 8).'...'.substr($key->key, -4),
+                    'masked_key' => $maskedKey,
                     'is_active' => (bool) $key->is_active,
                     'is_validated' => (bool) $key->is_validated,
                     'last_validated_at' => $key->last_validated_at,
@@ -46,9 +63,15 @@ class ApiKeyController extends Controller
     {
         $validated = $request->validate([
             'provider' => 'required|string',
-            'key' => 'required|string',
+            'key' => 'required_unless:provider,ollama,lmstudio|string',
             'label' => 'nullable|string',
         ]);
+
+        $provider = (string) $validated['provider'];
+
+        if (! array_key_exists('key', $validated)) {
+            $validated['key'] = '';
+        }
 
         auth()->user()->apiKeys()->create($validated);
 

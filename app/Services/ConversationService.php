@@ -65,8 +65,18 @@ class ConversationService
         $messages = $messages->concat($history);
 
         // Stream from driver
+        $streamYieldedContent = false;
         foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
+            $streamYieldedContent = true;
             yield $chunk;
+        }
+
+        if (! $streamYieldedContent) {
+            $fallbackResponse = $driver->chat($messages, $settings['temperature']);
+
+            if ($fallbackResponse !== '') {
+                yield $fallbackResponse;
+            }
         }
     }
 
