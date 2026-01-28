@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
 class Transmission extends Model
@@ -37,34 +39,26 @@ class Transmission extends Model
         'status' => 'string',
     ];
 
-    /**
-     * Relationship with User
-     */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Generate a short unique identifier for the transmission
-     */
-    public function getShortIdAttribute()
+    public function getShortIdAttribute(): string
     {
         return Str::limit(hash('crc32', $this->id.$this->created_at), 8, '');
     }
 
     /**
-     * Scope a query to only include pending transmissions
+     * @param  Builder<Transmission>  $query
+     * @return Builder<Transmission>
      */
-    public function scopePending($query)
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('status', 'pending');
     }
 
-    /**
-     * Mark the transmission as sent
-     */
-    public function markAsSent()
+    public function markAsSent(): void
     {
         $this->update([
             'status' => 'sent',
@@ -73,10 +67,7 @@ class Transmission extends Model
         ]);
     }
 
-    /**
-     * Mark the transmission as failed
-     */
-    public function markAsFailed($errorMessage)
+    public function markAsFailed(string $errorMessage): void
     {
         $this->update([
             'status' => 'failed',
