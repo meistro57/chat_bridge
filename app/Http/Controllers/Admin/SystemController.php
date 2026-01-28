@@ -682,7 +682,7 @@ PROMPT;
         return [
             'CODEX_API_KEY' => $openaiKey,
             'OPENAI_API_KEY' => $openaiKey,
-            'CODEX_HOME' => config('services.codex.home', env('CODEX_HOME', base_path('.codex'))),
+            'CODEX_HOME' => config('services.codex.home'),
             'TERM' => 'dumb',
             'NO_COLOR' => '1',
             'COLUMNS' => '120',

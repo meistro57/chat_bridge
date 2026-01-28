@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -49,17 +49,17 @@ class User extends Authenticatable
         ];
     }
 
-    public function personas()
+    public function personas(): HasMany
     {
         return $this->hasMany(Persona::class);
     }
 
-    public function conversations()
+    public function conversations(): HasMany
     {
         return $this->hasMany(Conversation::class);
     }
 
-    public function apiKeys()
+    public function apiKeys(): HasMany
     {
         return $this->hasMany(ApiKey::class);
     }

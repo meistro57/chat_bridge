@@ -82,4 +82,8 @@ return [
         'enabled' => env('QDRANT_ENABLED', true),
     ],
 
+    'chat_bridge' => [
+        'token' => env('CHAT_BRIDGE_TOKEN'),
+    ],
+
 ];
