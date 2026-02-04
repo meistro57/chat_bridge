@@ -84,13 +84,18 @@ class RunChatSession implements ShouldQueue
                     ? $conversation->personaA
                     : $conversation->personaB;
 
-                // 3. Prepare History
+                // 3. Prepare History with persona names
                 $history = $conversation->messages()
+                    ->with('persona')
                     ->latest()
                     ->take(10)
                     ->get()
                     ->sortBy('id')
-                    ->map(fn ($m) => new MessageData($m->role, $m->content));
+                    ->map(fn ($m) => new MessageData(
+                        $m->role,
+                        $m->content,
+                        $m->role === 'assistant' ? $m->persona?->name : null
+                    ));
 
                 // 4. Generate & Stream
                 $fullResponse = '';

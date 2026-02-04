@@ -141,17 +141,27 @@ export default function Chat({ personas, conversations, debug_info }) {
                         <div className="glass-panel glass-butter rounded-2xl p-1 h-[600px] overflow-hidden flex flex-col butter-reveal butter-reveal-delay-1">
                             <div className="overflow-y-auto p-4 space-y-2 custom-scrollbar flex-1">
                                 {personas.map((persona) => (
-                                    <div key={persona.id} className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-default">
+                                    <Link
+                                        key={persona.id}
+                                        href={route('personas.edit', persona.id)}
+                                        className="group flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer hover:shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:border hover:border-indigo-500/20"
+                                    >
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-white transition-colors">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                             </div>
                                             <div>
-                                                <div className="text-zinc-200 font-medium">{persona.name}</div>
+                                                <div className="text-zinc-200 font-medium group-hover:text-indigo-300 transition-colors">{persona.name}</div>
                                                 <div className="text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-indigo-400 transition-colors">Temp {persona.temperature}</div>
                                             </div>
                                         </div>
-                                    </div>
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                        </div>
+                                    </Link>
                                 ))}
                                 {personas.length === 0 && (
                                     <div className="text-center py-8 text-zinc-600 text-sm">No personas instantiated.</div>

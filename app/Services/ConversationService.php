@@ -37,6 +37,18 @@ class ConversationService
         // System Prompt
         $messages->push(new MessageData('system', $persona->system_prompt));
 
+        // Add conversation context for multi-turn awareness
+        $conversationContext = "IMPORTANT: This is an ongoing multi-turn conversation simulation. You MUST respond to each message.\n\n" .
+            "Your task:\n" .
+            "1. Read the most recent message from the other participant\n" .
+            "2. Provide a substantive response from YOUR professional perspective\n" .
+            "3. Engage with their points - agree, disagree, add context, or raise new concerns\n" .
+            "4. Keep the dialogue active and interesting\n\n" .
+            "Even if the previous message seems complete, find an angle to respond from your expertise. " .
+            "Share your thoughts, concerns, alternative approaches, or practical considerations. " .
+            "NEVER leave a message unanswered.";
+        $messages->push(new MessageData('system', $conversationContext));
+
         // Guidelines
         foreach ($persona->guidelines ?? [] as $guideline) {
             $messages->push(new MessageData('system', "Guideline: $guideline"));

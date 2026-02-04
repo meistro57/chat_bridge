@@ -97,7 +97,15 @@ class OpenAIDriver implements AIDriverInterface
     {
         $payload = [
             'model' => $this->model,
-            'messages' => $messages->map->toArray()->all(),
+            'messages' => $messages->map(function ($m) {
+                $msgArray = $m->toArray();
+                // Prepend speaker name to assistant messages for clarity
+                if ($m->name && $m->role === 'assistant') {
+                    $msgArray['content'] = "[{$m->name}]: {$msgArray['content']}";
+                    unset($msgArray['name']); // Remove name field, use content prefix instead
+                }
+                return $msgArray;
+            })->all(),
         ];
 
         if ($temperature !== null) {

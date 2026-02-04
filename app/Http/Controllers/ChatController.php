@@ -123,6 +123,8 @@ class ChatController extends Controller
             'conversation' => $conversation->load([
                 'messages' => fn ($query) => $query->orderBy('id'),
                 'messages.persona',
+                'personaA',
+                'personaB',
             ]),
             'stopSignal' => (bool) Cache::get("conversation.stop.{$conversation->id}"),
         ]);

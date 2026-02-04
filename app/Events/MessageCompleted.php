@@ -39,6 +39,10 @@ class MessageCompleted implements ShouldBroadcastNow
                 'role' => $this->message->role,
                 'content' => $this->message->content,
                 'created_at' => $this->message->created_at?->toISOString(),
+                'persona' => $this->message->persona ? [
+                    'id' => $this->message->persona->id,
+                    'name' => $this->message->persona->name,
+                ] : null,
             ],
             'personaName' => $this->message->persona?->name,
             'content_length' => strlen($this->message->content ?? ''),

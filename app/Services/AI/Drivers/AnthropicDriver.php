@@ -113,12 +113,14 @@ class AnthropicDriver implements AIDriverInterface
 
         return array_filter([
             'model' => $this->model,
-            'messages' => $filteredMessages->map(fn ($m) => [
+            'messages' => $filteredMessages->map(fn ($m) => array_filter([
                 'role' => $m->role === 'assistant' ? 'assistant' : 'user',
-                'content' => $m->content,
-            ])->all(),
+                'content' => $m->name && $m->role === 'assistant'
+                    ? "[{$m->name}]: {$m->content}"
+                    : $m->content,
+            ]))->all(),
             'system' => $system,
-            'max_tokens' => 1024,
+            'max_tokens' => 8192,
             'temperature' => $temperature,
         ]);
     }

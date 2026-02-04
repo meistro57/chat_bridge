@@ -105,11 +105,18 @@ export default function Show({ conversation, stopSignal }) {
             const personaName = e?.personaName ?? streamingSpeakerRef.current ?? null;
 
             setMessages(prev => {
+                // Check if message already exists to prevent duplicates
+                const messageExists = prev.some(msg => msg.id === e.message.id);
+                if (messageExists) {
+                    return prev;
+                }
+
                 return [
                     ...prev,
                     {
                         ...e.message,
                         content,
+                        // Use persona from message data, or construct from personaName as fallback
                         persona: e.message?.persona ?? (personaName ? { name: personaName } : null),
                     },
                 ];
@@ -223,36 +230,124 @@ export default function Show({ conversation, stopSignal }) {
                     </div>
 
                     {/* Messages */}
-                    {messages.map((msg, idx) => (
-                        <div key={msg.id || idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} group`}>
-                            <div className="flex items-center gap-2 mb-2 px-1">
-                                <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.role === 'user' ? 'text-indigo-400' : 'text-purple-400'}`}>
-                                    {msg.persona?.name || msg.role}
-                                </span>
-                                <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {new Date(msg.created_at).toLocaleTimeString()}
-                                </span>
+                    {messages.map((msg, idx) => {
+                        const isUser = msg.role === 'user';
+                        const isPersonaA = msg.persona_id === conversation.persona_a_id;
+                        const isPersonaB = msg.persona_id === conversation.persona_b_id;
+
+                        // Calculate response time (seconds from previous message)
+                        const responseTime = idx > 0 && msg.created_at && messages[idx - 1].created_at
+                            ? Math.abs(new Date(msg.created_at) - new Date(messages[idx - 1].created_at)) / 1000
+                            : null;
+
+                        // Determine colors and metadata based on persona
+                        let colorClasses = '';
+                        let labelColor = '';
+                        let badgeColor = '';
+                        let agent = '';
+                        let provider = '';
+
+                        if (isUser) {
+                            colorClasses = 'bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/20 rounded-tr-sm text-indigo-100 backdrop-blur-md';
+                            labelColor = 'text-indigo-400';
+                            badgeColor = 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30';
+                            agent = 'User';
+                        } else if (isPersonaA) {
+                            colorClasses = 'bg-gradient-to-br from-purple-900/30 to-violet-900/30 border border-purple-500/20 rounded-tl-sm text-purple-50 backdrop-blur-md';
+                            labelColor = 'text-purple-400';
+                            badgeColor = 'bg-purple-500/20 text-purple-300 border-purple-500/30';
+                            agent = 'Agent A';
+                            provider = conversation.provider_a;
+                        } else if (isPersonaB) {
+                            colorClasses = 'bg-gradient-to-br from-emerald-900/30 to-teal-900/30 border border-emerald-500/20 rounded-tl-sm text-emerald-50 backdrop-blur-md';
+                            labelColor = 'text-emerald-400';
+                            badgeColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+                            agent = 'Agent B';
+                            provider = conversation.provider_b;
+                        } else {
+                            colorClasses = 'bg-zinc-800/40 border border-white/5 rounded-tl-sm text-zinc-100 backdrop-blur-md';
+                            labelColor = 'text-zinc-400';
+                            badgeColor = 'bg-zinc-700/20 text-zinc-400 border-zinc-600/30';
+                            agent = 'Assistant';
+                        }
+
+                        const personaName = msg.persona?.name || agent;
+
+                        return (
+                            <div key={msg.id || idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} group`}>
+                                {/* Card Header */}
+                                <div className="flex flex-col gap-1 mb-2 px-1 max-w-2xl w-full">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-sm font-bold uppercase tracking-wider ${labelColor}`}>
+                                                {agent}
+                                            </span>
+                                            <span className={`text-xs font-medium ${labelColor} opacity-80`}>
+                                                {personaName}
+                                            </span>
+                                        </div>
+                                        <span className="text-[10px] text-zinc-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {new Date(msg.created_at).toLocaleTimeString()}
+                                        </span>
+                                    </div>
+
+                                    {/* Metadata Badges */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {provider && (
+                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border ${badgeColor}`}>
+                                                {provider}
+                                            </span>
+                                        )}
+                                        {responseTime !== null && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-800/50 text-zinc-400 border border-zinc-700/50">
+                                                {responseTime < 60
+                                                    ? `${responseTime.toFixed(1)}s`
+                                                    : `${Math.floor(responseTime / 60)}m ${Math.floor(responseTime % 60)}s`}
+                                            </span>
+                                        )}
+                                        {msg.tokens_used && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-800/50 text-zinc-400 border border-zinc-700/50">
+                                                {msg.tokens_used.toLocaleString()} tokens
+                                            </span>
+                                        )}
+                                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-800/50 text-zinc-400 border border-zinc-700/50">
+                                            {msg.content.length.toLocaleString()} chars
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Card Content */}
+                                <div className={`max-w-2xl p-6 rounded-2xl text-lg leading-relaxed shadow-lg ${colorClasses}`}>
+                                    <MarkdownContent content={msg.content} />
+                                </div>
                             </div>
-                            <div className={`
-                                max-w-2xl p-6 rounded-2xl text-lg leading-relaxed shadow-lg backdrop-blur-sm
-                                ${msg.role === 'user' 
-                                    ? 'bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-indigo-500/20 rounded-tr-sm text-indigo-100' 
-                                    : 'bg-zinc-800/40 border border-white/5 rounded-tl-sm text-zinc-100'}
-                            `}>
-                                <MarkdownContent content={msg.content} />
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     {/* Streaming Indicator */}
                     {streamingSpeaker && (
                         <div className="flex flex-col items-start animate-pulse">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mb-2 px-1">
-                                {streamingSpeaker} is typing...
+                            <div className="flex flex-col gap-1 mb-2 px-1 max-w-2xl w-full">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold uppercase tracking-wider text-cyan-400">
+                                        Streaming
+                                    </span>
+                                    <span className="text-xs font-medium text-cyan-400 opacity-80">
+                                        {streamingSpeaker}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                                        Live
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-zinc-800/50 text-zinc-400 border border-zinc-700/50">
+                                        {streamingContent.length.toLocaleString()} chars
+                                    </span>
+                                </div>
                             </div>
-                            <div className="max-w-2xl p-6 rounded-2xl rounded-tl-sm bg-emerald-900/10 border border-emerald-500/20 text-emerald-100 text-lg leading-relaxed shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                            <div className="max-w-2xl p-6 rounded-2xl rounded-tl-sm bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-cyan-500/30 text-cyan-50 text-lg leading-relaxed shadow-[0_0_20px_rgba(6,182,212,0.15)] backdrop-blur-md">
                                 <MarkdownContent content={streamingContent} />
-                                <span className="inline-block w-2 h-5 bg-emerald-400 ml-1 animate-blink">|</span>
+                                <span className="inline-block w-2 h-5 bg-cyan-400 ml-1 animate-blink">|</span>
                             </div>
                         </div>
                     )}

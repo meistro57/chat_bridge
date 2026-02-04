@@ -32,6 +32,7 @@ Thumbs.db
 .phpunit.result.cache
 .test_cache
 coverage
+storage/framework/testing
 
 # Documentation
 README.md
