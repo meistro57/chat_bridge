@@ -14,23 +14,50 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $query = User::withCount(['personas', 'conversations', 'apiKeys']);
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->input('role'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+
+        $users = $query->latest()
+            ->get()
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'is_active' => $user->is_active,
+                'personas_count' => $user->personas_count,
+                'conversations_count' => $user->conversations_count,
+                'api_keys_count' => $user->api_keys_count,
+                'created_at' => $user->created_at,
+            ]);
+
+        $stats = [
+            'total_users' => User::count(),
+            'active_users' => User::where('is_active', true)->count(),
+            'admin_users' => User::where('role', 'admin')->count(),
+            'recent_users' => User::where('created_at', '>=', now()->subDays(7))->count(),
+        ];
+
         return Inertia::render('Admin/Users/Index', [
-            'users' => User::withCount(['personas', 'conversations', 'apiKeys'])
-                ->latest()
-                ->get()
-                ->map(fn ($user) => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                    'is_active' => $user->is_active,
-                    'personas_count' => $user->personas_count,
-                    'conversations_count' => $user->conversations_count,
-                    'api_keys_count' => $user->api_keys_count,
-                    'created_at' => $user->created_at,
-                ]),
+            'users' => $users,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'role', 'status']),
         ]);
     }
 

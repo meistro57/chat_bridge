@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Events\MessageChunkSent;
 use App\Events\MessageCompleted;
 use App\Models\Conversation;
+use App\Notifications\ConversationCompletedNotification;
+use App\Notifications\ConversationFailedNotification;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\StopWordService;
 use App\Services\ConversationService;
@@ -142,12 +144,16 @@ class RunChatSession implements ShouldQueue
             }
 
             $duration = microtime(true) - $startTime;
+            $totalMessages = $conversation->messages()->count();
+
             Log::info('Chat session completed', [
                 'conversation_id' => $this->conversationId,
                 'total_rounds' => $round,
                 'duration_seconds' => round($duration, 2),
-                'total_messages' => $conversation->messages()->count(),
+                'total_messages' => $totalMessages,
             ]);
+
+            $this->notifyCompletion($conversation, $totalMessages, $round);
         } catch (\Throwable $e) {
             Log::error("Job failed for conversation {$this->conversationId}", [
                 'error' => $e->getMessage(),
@@ -157,6 +163,9 @@ class RunChatSession implements ShouldQueue
             ]);
             $conversation->update(['status' => 'failed']);
             broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+
+            $this->notifyFailure($conversation, $e->getMessage());
+
             throw $e;
         }
     }
@@ -170,6 +179,39 @@ class RunChatSession implements ShouldQueue
         if ($conversation) {
             $conversation->update(['status' => 'failed']);
             broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+
+            $this->notifyFailure($conversation, $exception->getMessage());
+        }
+    }
+
+    /**
+     * Send a completion notification to the conversation owner if they opted in.
+     */
+    protected function notifyCompletion(Conversation $conversation, int $totalMessages, int $totalRounds): void
+    {
+        $user = $conversation->user;
+
+        if ($user && $user->wantsNotification('conversation_completed')) {
+            $user->notify(new ConversationCompletedNotification(
+                $conversation,
+                $totalMessages,
+                $totalRounds
+            ));
+        }
+    }
+
+    /**
+     * Send a failure notification to the conversation owner if they opted in.
+     */
+    protected function notifyFailure(Conversation $conversation, string $errorMessage): void
+    {
+        $user = $conversation->user;
+
+        if ($user && $user->wantsNotification('conversation_failed')) {
+            $user->notify(new ConversationFailedNotification(
+                $conversation,
+                $errorMessage
+            ));
         }
     }
 }
