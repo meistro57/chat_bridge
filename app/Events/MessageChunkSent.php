@@ -30,4 +30,14 @@ class MessageChunkSent implements ShouldBroadcastNow
     {
         return 'message.chunk';
     }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'conversationId' => $this->conversationId,
+            'chunk' => $this->chunk,
+            'role' => $this->role,
+            'personaName' => $this->personaName,
+        ];
+    }
 }

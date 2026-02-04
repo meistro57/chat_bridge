@@ -9,6 +9,7 @@ use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\EmbeddingService;
 use App\Services\AI\TranscriptService;
+use App\Services\Broadcast\SafeBroadcaster;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -150,6 +151,12 @@ class ConversationService
         $conversation->update(['status' => 'completed']);
         $this->transcripts->generate($conversation);
 
-        broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+        app(SafeBroadcaster::class)->broadcast(
+            new \App\Events\ConversationStatusUpdated($conversation),
+            [
+                'conversation_id' => $conversation->id,
+                'phase' => 'status',
+            ]
+        );
     }
 }

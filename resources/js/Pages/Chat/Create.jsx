@@ -27,10 +27,12 @@ export default function Create({ personas }) {
         stop_word_detection: false,
         stop_words: '',
         stop_word_threshold: 0.8,
+        notifications_enabled: true,
     });
 
     transform((payload) => ({
         ...payload,
+        notifications_enabled: Boolean(payload.notifications_enabled),
         stop_words: payload.stop_word_detection && payload.stop_words
             ? payload.stop_words.split(',').map((word) => word.trim()).filter((word) => word.length > 0)
             : [],
@@ -315,6 +317,19 @@ export default function Create({ personas }) {
                                     <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Enable Stop Word Detection</span>
                                 </label>
                                 <p className="text-xs text-zinc-600 ml-7">Automatically stop when specific words are detected</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.notifications_enabled}
+                                        onChange={e => setData('notifications_enabled', e.target.checked)}
+                                        className="w-5 h-5 rounded bg-zinc-900/50 border-white/10"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Email Notifications</span>
+                                </label>
+                                <p className="text-xs text-zinc-600 ml-7">Send email alerts when the conversation completes or fails</p>
                             </div>
                         </div>
 

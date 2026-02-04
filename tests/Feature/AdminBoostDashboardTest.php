@@ -17,6 +17,8 @@ class AdminBoostDashboardTest extends TestCase
             'role' => 'admin',
         ]);
 
+        config(['services.qdrant.enabled' => false]);
+
         $response = $this->actingAs($admin)->get(route('admin.boost.dashboard'));
 
         $response->assertOk();
@@ -28,7 +30,7 @@ class AdminBoostDashboardTest extends TestCase
                 ->has('agents')
                 ->has('editors')
                 ->has('mcp_mode')
-                ->has('vector_search')
+                ->where('vector_search', false)
                 ->has('error')
             )
         );

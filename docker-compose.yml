@@ -12,6 +12,7 @@ services:
       - ./bootstrap:/var/www/html/bootstrap
       - ./.env:/var/www/html/.env
       - ./database:/var/www/html/database
+      - ./tests:/var/www/html/tests
       - ./app:/var/www/html/app
       - ./resources:/var/www/html/resources
       - ./routes:/var/www/html/routes

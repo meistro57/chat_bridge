@@ -9,6 +9,8 @@ use App\Notifications\ConversationCompletedNotification;
 use App\Notifications\ConversationFailedNotification;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\StopWordService;
+use App\Services\AI\StreamingChunker;
+use App\Services\Broadcast\SafeBroadcaster;
 use App\Services\ConversationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -93,24 +95,65 @@ class RunChatSession implements ShouldQueue
                 // 4. Generate & Stream
                 $fullResponse = '';
                 // Yield chunks from service
+                $chunker = app(StreamingChunker::class);
+                $broadcaster = app(SafeBroadcaster::class);
+                $maxChunkSize = (int) config('ai.stream_chunk_size', 1500);
+                $chunkCount = 0;
+
                 foreach ($service->generateTurn($conversation, $currentPersona, $history) as $chunk) {
                     $fullResponse .= $chunk;
 
-                    broadcast(new MessageChunkSent(
-                        conversationId: $conversation->id,
-                        chunk: $chunk,
-                        role: 'assistant',
-                        personaName: $currentPersona->name
-                    ));
+                    foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                        $chunkCount++;
+                        $broadcaster->broadcast(
+                            new MessageChunkSent(
+                                conversationId: $conversation->id,
+                                chunk: $piece,
+                                role: 'assistant',
+                                personaName: $currentPersona->name
+                            ),
+                            [
+                                'conversation_id' => $conversation->id,
+                                'phase' => 'chunk',
+                            ]
+                        );
+                    }
 
                     if (Cache::get("conversation.stop.{$this->conversationId}")) {
                         break;
                     }
                 }
 
+                if (trim($fullResponse) === '') {
+                    Log::warning('Turn produced empty response', [
+                        'conversation_id' => $this->conversationId,
+                        'round' => $round + 1,
+                        'persona' => $currentPersona->name,
+                        'chunk_count' => $chunkCount,
+                    ]);
+
+                    $conversation->update(['status' => 'failed']);
+                    $broadcaster->broadcast(
+                        new \App\Events\ConversationStatusUpdated($conversation),
+                        [
+                            'conversation_id' => $conversation->id,
+                            'phase' => 'status',
+                        ]
+                    );
+                    $this->notifyFailure($conversation, 'Empty response from provider.');
+
+                    break;
+                }
+
                 // 5. Save & Finalize Turn
                 $message = $service->saveTurn($conversation, $currentPersona, $fullResponse);
-                broadcast(new MessageCompleted($message));
+                $broadcaster->broadcast(
+                    new MessageCompleted($message),
+                    [
+                        'conversation_id' => $conversation->id,
+                        'phase' => 'completed',
+                    ]
+                );
 
                 Log::info('Turn completed', [
                     'conversation_id' => $this->conversationId,
@@ -118,6 +161,7 @@ class RunChatSession implements ShouldQueue
                     'persona' => $currentPersona->name,
                     'message_length' => strlen($fullResponse),
                     'tokens_used' => $message->tokens_used ?? 0,
+                    'chunk_count' => $chunkCount,
                 ]);
 
                 // 6. Check Stop Words
@@ -162,7 +206,13 @@ class RunChatSession implements ShouldQueue
                 'round' => $round,
             ]);
             $conversation->update(['status' => 'failed']);
-            broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+            app(SafeBroadcaster::class)->broadcast(
+                new \App\Events\ConversationStatusUpdated($conversation),
+                [
+                    'conversation_id' => $conversation->id,
+                    'phase' => 'status',
+                ]
+            );
 
             $this->notifyFailure($conversation, $e->getMessage());
 
@@ -178,7 +228,13 @@ class RunChatSession implements ShouldQueue
         $conversation = Conversation::find($this->conversationId);
         if ($conversation) {
             $conversation->update(['status' => 'failed']);
-            broadcast(new \App\Events\ConversationStatusUpdated($conversation));
+            app(SafeBroadcaster::class)->broadcast(
+                new \App\Events\ConversationStatusUpdated($conversation),
+                [
+                    'conversation_id' => $conversation->id,
+                    'phase' => 'status',
+                ]
+            );
 
             $this->notifyFailure($conversation, $exception->getMessage());
         }
@@ -191,7 +247,7 @@ class RunChatSession implements ShouldQueue
     {
         $user = $conversation->user;
 
-        if ($user && $user->wantsNotification('conversation_completed')) {
+        if ($user && $this->notificationsEnabled($conversation) && $user->wantsNotification('conversation_completed')) {
             $user->notify(new ConversationCompletedNotification(
                 $conversation,
                 $totalMessages,
@@ -207,11 +263,22 @@ class RunChatSession implements ShouldQueue
     {
         $user = $conversation->user;
 
-        if ($user && $user->wantsNotification('conversation_failed')) {
+        if ($user && $this->notificationsEnabled($conversation) && $user->wantsNotification('conversation_failed')) {
             $user->notify(new ConversationFailedNotification(
                 $conversation,
                 $errorMessage
             ));
         }
+    }
+
+    protected function notificationsEnabled(Conversation $conversation): bool
+    {
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+
+        if (! array_key_exists('notifications_enabled', $metadata)) {
+            return true;
+        }
+
+        return (bool) $metadata['notifications_enabled'];
     }
 }

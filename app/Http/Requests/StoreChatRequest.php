@@ -36,7 +36,15 @@ class StoreChatRequest extends FormRequest
             'stop_words' => ['required_if:stop_word_detection,true', 'array'],
             'stop_words.*' => ['string'],
             'stop_word_threshold' => ['required_if:stop_word_detection,true', 'numeric', 'min:0.1', 'max:1'],
+            'notifications_enabled' => ['boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'notifications_enabled' => $this->boolean('notifications_enabled', true),
+        ]);
     }
 
     /**

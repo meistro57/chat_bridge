@@ -2,6 +2,21 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-02-04
+
+### 🧪 Stability
+- Guarded broadcasts against oversized payloads and added streaming chunking helpers
+- Increased Reverb payload limits for local deployments
+- Improved message streaming reliability on the conversation view
+
+### 🔔 Notifications
+- Added per-conversation email alert toggle on chat creation
+- Display email alert state in session view
+
+### 🧰 Admin & Diagnostics
+- Added analytics search page and tests
+- Improved Codex invocation handling for non-git environments
+
 ## [0.8.0] - 2026-01-24
 
 ### 🧾 Documentation

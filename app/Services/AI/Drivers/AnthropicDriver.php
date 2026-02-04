@@ -5,6 +5,7 @@ namespace App\Services\AI\Drivers;
 use App\Services\AI\Contracts\AIDriverInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AnthropicDriver implements AIDriverInterface
 {
@@ -31,10 +32,19 @@ class AnthropicDriver implements AIDriverInterface
             throw new \Exception('Anthropic API Error: '.$errorMessage);
         }
 
-        $content = $response->json('content.0.text');
+        $payload = $response->json();
+        $content = $this->extractContent($payload);
 
         if ($content === null) {
-            throw new \Exception('Anthropic returned unexpected response format. Response: '.json_encode($response->json()));
+            throw new \Exception('Anthropic returned unexpected response format. Response: '.json_encode($payload));
+        }
+
+        if ($content === '') {
+            Log::warning('Anthropic returned empty content.', [
+                'model' => $payload['model'] ?? null,
+                'id' => $payload['id'] ?? null,
+                'stop_reason' => $payload['stop_reason'] ?? null,
+            ]);
         }
 
         return $content;
@@ -125,5 +135,42 @@ class AnthropicDriver implements AIDriverInterface
         }
 
         return trim($buffer);
+    }
+
+    protected function extractContent(?array $payload): ?string
+    {
+        if ($payload === null) {
+            return null;
+        }
+
+        $contentBlocks = $payload['content'] ?? null;
+
+        if (is_string($contentBlocks)) {
+            return $contentBlocks;
+        }
+
+        if (is_array($contentBlocks)) {
+            if ($contentBlocks === []) {
+                return '';
+            }
+
+            $texts = [];
+            foreach ($contentBlocks as $block) {
+                if (is_array($block) && ($block['type'] ?? null) === 'text') {
+                    $texts[] = (string) ($block['text'] ?? '');
+                }
+            }
+
+            if ($texts !== []) {
+                return implode('', $texts);
+            }
+        }
+
+        $legacy = data_get($payload, 'content.0.text');
+        if (is_string($legacy)) {
+            return $legacy;
+        }
+
+        return null;
     }
 }

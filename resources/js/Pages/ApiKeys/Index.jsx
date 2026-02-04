@@ -85,11 +85,11 @@ export default function Index({ apiKeys }) {
                         >
                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/80 via-teal-500/80 to-cyan-500/80" />
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-                            <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="flex items-center gap-4 w-full md:w-auto flex-1 min-w-0">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center border border-white/10 ${key.is_active ? 'bg-indigo-500/10 text-indigo-400' : 'bg-red-500/10 text-red-500'}`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
                                 </div>
-                                <div>
+                                <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <h3 className="font-bold text-lg text-zinc-100">{key.label || key.provider.toUpperCase()}</h3>
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${key.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
@@ -122,14 +122,14 @@ export default function Index({ apiKeys }) {
                                         )}
                                     </div>
                                     {key.validation_error && (
-                                        <div className="mt-2 text-xs text-red-400 bg-red-500/5 border border-red-500/10 rounded px-2 py-1">
+                                        <div className="mt-2 text-xs text-red-400 bg-red-500/5 border border-red-500/10 rounded px-2 py-1 break-words whitespace-pre-wrap">
                                             {key.validation_error}
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex gap-2 w-full md:w-auto justify-end">
+                            <div className="flex gap-2 w-full md:w-auto justify-end shrink-0">
                                 <button
                                     onClick={() => handleTest(key.id)}
                                     disabled={testing[key.id]}

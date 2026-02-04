@@ -39,6 +39,7 @@ class ChatControllerTest extends TestCase
             'stop_word_detection' => true,
             'stop_words' => ['goodbye', 'halt'],
             'stop_word_threshold' => 0.5,
+            'notifications_enabled' => false,
         ];
 
         $response = $this->actingAs($user)->post(route('chat.store'), $payload);
@@ -54,6 +55,7 @@ class ChatControllerTest extends TestCase
         $this->assertSame($payload['stop_words'], $conversation->stop_words);
         $this->assertTrue($conversation->stop_word_detection);
         $this->assertEquals($payload['stop_word_threshold'], $conversation->stop_word_threshold);
+        $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
 
         $this->assertDatabaseHas('messages', [
             'conversation_id' => $conversation->id,

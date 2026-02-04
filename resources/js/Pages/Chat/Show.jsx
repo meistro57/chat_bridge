@@ -87,19 +87,37 @@ export default function Show({ conversation, stopSignal }) {
     const [status, setStatus] = useState(conversation.status);
     const [isStopping, setIsStopping] = useState(stopSignal);
     const scrollRef = useRef(null);
+    const streamingContentRef = useRef('');
+    const streamingSpeakerRef = useRef(null);
 
     useEffect(() => {
         const channel = window.Echo.private(`conversation.${conversation.id}`);
         
         channel.listen('.message.chunk', (e) => {
             setStreamingSpeaker(e.personaName);
+            streamingSpeakerRef.current = e.personaName;
             setStreamingContent(prev => prev + e.chunk);
+            streamingContentRef.current = `${streamingContentRef.current}${e.chunk}`;
         });
 
         channel.listen('.message.completed', (e) => {
-            setMessages(prev => [...prev, e.message]);
+            const content = e?.message?.content ?? streamingContentRef.current;
+            const personaName = e?.personaName ?? streamingSpeakerRef.current ?? null;
+
+            setMessages(prev => {
+                return [
+                    ...prev,
+                    {
+                        ...e.message,
+                        content,
+                        persona: e.message?.persona ?? (personaName ? { name: personaName } : null),
+                    },
+                ];
+            });
             setStreamingContent('');
             setStreamingSpeaker(null);
+            streamingContentRef.current = '';
+            streamingSpeakerRef.current = null;
         });
 
         channel.listen('.conversation.status.updated', (e) => {
@@ -154,6 +172,13 @@ export default function Show({ conversation, stopSignal }) {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${
+                            (conversation.metadata?.notifications_enabled ?? true)
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                        }`}>
+                            {(conversation.metadata?.notifications_enabled ?? true) ? 'Email Alerts On' : 'Email Alerts Off'}
+                        </div>
                         <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border ${
                             status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-zinc-800 border-zinc-700 text-zinc-400'
                         }`}>

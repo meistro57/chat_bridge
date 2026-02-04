@@ -93,6 +93,7 @@ class ChatController extends Controller
             'metadata' => [
                 'persona_a_name' => $personaA->name,
                 'persona_b_name' => $personaB->name,
+                'notifications_enabled' => $request->boolean('notifications_enabled', true),
             ],
         ]);
 

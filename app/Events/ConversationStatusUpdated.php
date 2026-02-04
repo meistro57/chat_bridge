@@ -28,4 +28,15 @@ class ConversationStatusUpdated implements ShouldBroadcastNow
     {
         return 'conversation.status.updated';
     }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'conversation' => [
+                'id' => $this->conversation->id,
+                'status' => $this->conversation->status,
+                'updated_at' => $this->conversation->updated_at?->toISOString(),
+            ],
+        ];
+    }
 }

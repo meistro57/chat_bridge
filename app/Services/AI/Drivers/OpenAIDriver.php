@@ -5,6 +5,7 @@ namespace App\Services\AI\Drivers;
 use App\Services\AI\Contracts\AIDriverInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OpenAIDriver implements AIDriverInterface
 {
@@ -16,12 +17,15 @@ class OpenAIDriver implements AIDriverInterface
 
     public function chat(Collection $messages, float $temperature = 0.7): string
     {
-        $response = Http::withToken($this->apiKey)
-            ->post("{$this->baseUrl}/chat/completions", [
-                'model' => $this->model,
-                'messages' => $messages->map->toArray()->all(),
-                'temperature' => $temperature,
-            ]);
+        $response = $this->sendChatRequest($messages, $temperature, false);
+        if ($response->failed()) {
+            if ($this->isTemperatureUnsupported($response->body())) {
+                Log::warning('OpenAI temperature unsupported, retrying without temperature.', [
+                    'model' => $this->model,
+                ]);
+                $response = $this->sendChatRequest($messages, null, false);
+            }
+        }
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body());
@@ -39,14 +43,19 @@ class OpenAIDriver implements AIDriverInterface
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
     {
-        $response = Http::withToken($this->apiKey)
-            ->withOptions(['stream' => true])
-            ->post("{$this->baseUrl}/chat/completions", [
-                'model' => $this->model,
-                'messages' => $messages->map->toArray()->all(),
-                'temperature' => $temperature,
-                'stream' => true,
-            ]);
+        $response = $this->sendChatRequest($messages, $temperature, true);
+        if ($response->failed()) {
+            if ($this->isTemperatureUnsupported($response->body())) {
+                Log::warning('OpenAI temperature unsupported, retrying stream without temperature.', [
+                    'model' => $this->model,
+                ]);
+                $response = $this->sendChatRequest($messages, null, true);
+            }
+        }
+
+        if ($response->failed()) {
+            throw new \Exception('OpenAI API Error: '.$response->body());
+        }
 
         $body = $response->toPsrResponse()->getBody();
 
@@ -82,5 +91,52 @@ class OpenAIDriver implements AIDriverInterface
         }
 
         return trim($buffer);
+    }
+
+    private function sendChatRequest(Collection $messages, ?float $temperature, bool $stream)
+    {
+        $payload = [
+            'model' => $this->model,
+            'messages' => $messages->map->toArray()->all(),
+        ];
+
+        if ($temperature !== null) {
+            $payload['temperature'] = $temperature;
+        }
+
+        if ($stream) {
+            $payload['stream'] = true;
+        }
+
+        $client = Http::withToken($this->apiKey);
+
+        if ($stream) {
+            $client = $client->withOptions(['stream' => true]);
+        }
+
+        return $client->post("{$this->baseUrl}/chat/completions", $payload);
+    }
+
+    private function isTemperatureUnsupported(string $body): bool
+    {
+        if ($body === '') {
+            return false;
+        }
+
+        $decoded = json_decode($body, true);
+        if (is_array($decoded)) {
+            $error = $decoded['error'] ?? [];
+            $param = $error['param'] ?? null;
+            if ($param === 'temperature') {
+                return true;
+            }
+
+            $message = $error['message'] ?? '';
+            if (is_string($message) && str_contains(strtolower($message), 'temperature')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

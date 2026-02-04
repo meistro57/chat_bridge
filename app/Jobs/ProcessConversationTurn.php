@@ -8,7 +8,9 @@ use App\Models\Conversation;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\StopWordService;
+use App\Services\AI\StreamingChunker;
 use App\Services\AI\TranscriptService;
+use App\Services\Broadcast\SafeBroadcaster;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -60,11 +62,98 @@ class ProcessConversationTurn implements ShouldQueue
         }
         $messages = $messages->concat($history);
 
+        $maxChunkSize = (int) config('ai.stream_chunk_size', 1500);
+        $chunker = app(StreamingChunker::class);
+        $broadcaster = app(SafeBroadcaster::class);
+        $startAt = microtime(true);
+        $firstChunkAt = null;
+        $chunkCount = 0;
+        $responseLength = 0;
+
+        \Log::info('Conversation turn started', [
+            'conversation_id' => $conversation->id,
+            'round' => $this->round,
+            'persona' => $currentPersona->name,
+            'provider' => $settings['provider'],
+            'model' => $settings['model'],
+            'temperature' => $settings['temperature'],
+            'history_count' => $history->count(),
+        ]);
+
         $fullResponse = '';
-        foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
-            $fullResponse .= $chunk;
-            broadcast(new MessageChunkSent($conversation->id, $chunk, 'assistant', $currentPersona->name));
+        try {
+            foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
+                if ($firstChunkAt === null) {
+                    $firstChunkAt = microtime(true);
+                }
+
+                $fullResponse .= $chunk;
+                $responseLength += strlen($chunk);
+
+                foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                    $chunkCount++;
+                    $broadcaster->broadcast(
+                        new MessageChunkSent($conversation->id, $piece, 'assistant', $currentPersona->name),
+                        [
+                            'conversation_id' => $conversation->id,
+                            'phase' => 'chunk',
+                        ]
+                    );
+                }
+            }
+        } catch (\Throwable $exception) {
+            \Log::error('Conversation turn failed', [
+                'conversation_id' => $conversation->id,
+                'round' => $this->round,
+                'persona' => $currentPersona->name,
+                'provider' => $settings['provider'],
+                'model' => $settings['model'],
+                'exception' => $exception->getMessage(),
+                'exception_class' => $exception::class,
+            ]);
+
+            throw $exception;
         }
+
+        $durationMs = (int) round((microtime(true) - $startAt) * 1000);
+        $firstChunkMs = $firstChunkAt ? (int) round(($firstChunkAt - $startAt) * 1000) : null;
+
+        if (trim($fullResponse) === '') {
+            \Log::warning('Conversation turn empty response', [
+                'conversation_id' => $conversation->id,
+                'round' => $this->round,
+                'persona' => $currentPersona->name,
+                'provider' => $settings['provider'],
+                'model' => $settings['model'],
+                'chunk_count' => $chunkCount,
+                'response_length' => $responseLength,
+                'duration_ms' => $durationMs,
+                'first_chunk_ms' => $firstChunkMs,
+            ]);
+
+            $conversation->update(['status' => 'failed']);
+            $broadcaster->broadcast(
+                new \App\Events\ConversationStatusUpdated($conversation),
+                [
+                    'conversation_id' => $conversation->id,
+                    'phase' => 'status',
+                ]
+            );
+
+            return;
+        }
+
+        \Log::info('Conversation turn completed', [
+            'conversation_id' => $conversation->id,
+            'round' => $this->round,
+            'persona' => $currentPersona->name,
+            'provider' => $settings['provider'],
+            'model' => $settings['model'],
+            'chunk_count' => $chunkCount,
+            'response_length' => $responseLength,
+            'duration_ms' => $durationMs,
+            'first_chunk_ms' => $firstChunkMs,
+        ]);
 
         $message = $conversation->messages()->create([
             'persona_id' => $currentPersona->id,
@@ -72,7 +161,13 @@ class ProcessConversationTurn implements ShouldQueue
             'content' => $fullResponse,
         ]);
 
-        broadcast(new MessageCompleted($message));
+        $broadcaster->broadcast(
+            new MessageCompleted($message),
+            [
+                'conversation_id' => $conversation->id,
+                'phase' => 'completed',
+            ]
+        );
 
         if ($conversation->stop_word_detection && $stopWords->shouldStopWithThreshold(
             $fullResponse,

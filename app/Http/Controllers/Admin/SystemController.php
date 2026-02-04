@@ -666,6 +666,7 @@ PROMPT;
             '--no-install',
             'codex',
             'exec',
+            '--skip-git-repo-check',
             '--color',
             'never',
             '--output-last-message',

@@ -72,6 +72,9 @@ class BoostDashboardController extends Controller
 
         $agents = $this->stringListFrom($decoded['agents'] ?? []);
         $editors = $this->stringListFrom($decoded['editors'] ?? []);
+        $vectorSearch = is_bool($decoded['vector_search'] ?? null)
+            ? $decoded['vector_search']
+            : (bool) config('services.qdrant.enabled', false);
 
         return [
             'present' => true,
@@ -79,7 +82,7 @@ class BoostDashboardController extends Controller
             'agents' => $agents,
             'editors' => $editors,
             'mcp_mode' => is_string($decoded['mcp_mode'] ?? null) ? $decoded['mcp_mode'] : null,
-            'vector_search' => is_bool($decoded['vector_search'] ?? null) ? $decoded['vector_search'] : null,
+            'vector_search' => $vectorSearch,
             'error' => null,
         ];
     }

@@ -935,6 +935,22 @@ Check Reverb is running:
 php artisan reverb:start
 ```
 
+### Broadcast Payload Too Large
+If messages vanish or you see payload size errors, lower streaming chunk size or raise Reverb limits:
+```bash
+# Lower broadcast chunk size (safer for large personas)
+AI_STREAM_CHUNK_SIZE=600
+
+# Increase Reverb request/message limits (local Reverb only)
+REVERB_MAX_REQUEST_SIZE=25000
+REVERB_APP_MAX_MESSAGE_SIZE=25000
+```
+
+Then restart the services:
+```bash
+php artisan queue:restart
+```
+
 ### Build Errors
 Clear cache and rebuild:
 ```bash

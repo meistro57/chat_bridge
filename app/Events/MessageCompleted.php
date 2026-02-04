@@ -28,4 +28,20 @@ class MessageCompleted implements ShouldBroadcastNow
     {
         return 'message.completed';
     }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'message' => [
+                'id' => $this->message->id,
+                'conversation_id' => $this->message->conversation_id,
+                'persona_id' => $this->message->persona_id,
+                'role' => $this->message->role,
+                'content' => $this->message->content,
+                'created_at' => $this->message->created_at?->toISOString(),
+            ],
+            'personaName' => $this->message->persona?->name,
+            'content_length' => strlen($this->message->content ?? ''),
+        ];
+    }
 }
