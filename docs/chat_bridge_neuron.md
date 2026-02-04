@@ -39,7 +39,7 @@ The integration provides a dedicated API endpoint for AI agents to converse with
    CHAT_BRIDGE_TOKEN=your-secret-token-here
    ```
 
-   > ℹ️ If `CHAT_BRIDGE_TOKEN` is empty, the middleware currently allows requests through for local development convenience. Set it in production to enforce authentication.
+> ℹ️ The `X-CHAT-BRIDGE-TOKEN` header is always required. If `CHAT_BRIDGE_TOKEN` is set, the header must match it. If it is unset, any non-empty header is accepted (useful for local/dev).
 
 ## Usage
 

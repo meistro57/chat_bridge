@@ -23,7 +23,7 @@ class ChatBridgeApiTest extends TestCase
     public function test_respond_endpoint_creates_thread_and_messages()
     {
         // Setup Auth
-        putenv('CHAT_BRIDGE_TOKEN=secret123');
+        config(['services.chat_bridge.token' => 'secret123']);
 
         // Mock Agent
         $this->mock(ChatBridgeAgent::class, function (MockInterface $mock) {
@@ -70,12 +70,12 @@ class ChatBridgeApiTest extends TestCase
         ]);
 
         // Clean environment
-        putenv('CHAT_BRIDGE_TOKEN');
+        config(['services.chat_bridge.token' => null]);
     }
 
     public function test_respond_endpoint_unauthorized_without_token()
     {
-        putenv('CHAT_BRIDGE_TOKEN=secret123');
+        config(['services.chat_bridge.token' => 'secret123']);
 
         $response = $this->postJson('/api/chat-bridge/respond', [
             'bridge_thread_id' => 'abc',
