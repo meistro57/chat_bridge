@@ -20,9 +20,11 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'bio',
         'password',
         'role',
         'is_active',
+        'notification_preferences',
     ];
 
     /**
@@ -46,6 +48,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'notification_preferences' => 'json',
         ];
     }
 
@@ -67,5 +70,28 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * Get the user's notification preferences with defaults.
+     *
+     * @return array{conversation_completed: bool, conversation_failed: bool}
+     */
+    public function getNotificationPrefs(): array
+    {
+        $defaults = [
+            'conversation_completed' => true,
+            'conversation_failed' => true,
+        ];
+
+        return array_merge($defaults, $this->notification_preferences ?? []);
+    }
+
+    /**
+     * Check if a specific notification type is enabled.
+     */
+    public function wantsNotification(string $type): bool
+    {
+        return (bool) ($this->getNotificationPrefs()[$type] ?? true);
     }
 }

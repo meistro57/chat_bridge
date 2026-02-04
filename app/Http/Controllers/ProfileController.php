@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Message;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,9 +19,24 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
+        $conversationIds = $user->conversations()->pluck('id');
+
+        $stats = [
+            'total_conversations' => $user->conversations()->count(),
+            'total_personas' => $user->personas()->count(),
+            'total_api_keys' => $user->apiKeys()->count(),
+            'total_messages' => Message::whereIn('conversation_id', $conversationIds)->count(),
+            'total_tokens' => (int) Message::whereIn('conversation_id', $conversationIds)->sum('tokens_used'),
+            'completed_conversations' => $user->conversations()->where('status', 'completed')->count(),
+        ];
+
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
+            'stats' => $stats,
+            'notificationPreferences' => $user->getNotificationPrefs(),
         ]);
     }
 
@@ -36,6 +52,23 @@ class ProfileController extends Controller
         }
 
         $request->user()->save();
+
+        return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Update the user's notification preferences.
+     */
+    public function updateNotifications(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'conversation_completed' => ['required', 'boolean'],
+            'conversation_failed' => ['required', 'boolean'],
+        ]);
+
+        $request->user()->update([
+            'notification_preferences' => $validated,
+        ]);
 
         return Redirect::route('profile.edit');
     }
