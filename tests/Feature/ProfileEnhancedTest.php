@@ -7,6 +7,8 @@ use App\Models\Message;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -170,5 +172,80 @@ class ProfileEnhancedTest extends TestCase
 
         $this->assertFalse($user->wantsNotification('conversation_completed'));
         $this->assertTrue($user->wantsNotification('conversation_failed'));
+    }
+
+    public function test_user_can_upload_avatar(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->patch(route('profile.avatar.update'), [
+            'avatar' => UploadedFile::fake()->create('avatar.jpg', 200, 'image/jpeg'),
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect('/profile');
+
+        $user->refresh();
+        $this->assertNotNull($user->avatar);
+        Storage::disk('public')->assertExists($user->avatar);
+    }
+
+    public function test_user_can_update_avatar_and_old_file_is_removed(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['avatar' => 'avatars/old-avatar.jpg']);
+        Storage::disk('public')->put('avatars/old-avatar.jpg', 'old');
+
+        $response = $this->actingAs($user)->patch(route('profile.avatar.update'), [
+            'avatar' => UploadedFile::fake()->create('new-avatar.jpg', 200, 'image/jpeg'),
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect('/profile');
+
+        $user->refresh();
+        Storage::disk('public')->assertMissing('avatars/old-avatar.jpg');
+        Storage::disk('public')->assertExists($user->avatar);
+    }
+
+    public function test_user_can_delete_avatar(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create(['avatar' => 'avatars/to-delete.jpg']);
+        Storage::disk('public')->put('avatars/to-delete.jpg', 'avatar');
+
+        $response = $this->actingAs($user)->delete(route('profile.avatar.destroy'));
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect('/profile');
+
+        $user->refresh();
+        $this->assertNull($user->avatar);
+        Storage::disk('public')->assertMissing('avatars/to-delete.jpg');
+    }
+
+    public function test_avatar_must_be_an_image(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->patch(route('profile.avatar.update'), [
+            'avatar' => UploadedFile::fake()->create('not-an-image.pdf', 10, 'application/pdf'),
+        ]);
+
+        $response->assertSessionHasErrors('avatar');
+    }
+
+    public function test_avatar_has_max_size(): void
+    {
+        Storage::fake('public');
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->patch(route('profile.avatar.update'), [
+            'avatar' => UploadedFile::fake()->create('large.jpg', 3000, 'image/jpeg'),
+        ]);
+
+        $response->assertSessionHasErrors('avatar');
     }
 }

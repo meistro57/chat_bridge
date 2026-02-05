@@ -32,6 +32,23 @@ export default function Dashboard({ user }) {
             accent: 'purple',
         },
         {
+            name: 'Templates',
+            description: 'Create reusable conversation starting points',
+            href: '/templates',
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 6h13"/>
+                    <path d="M8 12h13"/>
+                    <path d="M8 18h13"/>
+                    <path d="M3 6h.01"/>
+                    <path d="M3 12h.01"/>
+                    <path d="M3 18h.01"/>
+                </svg>
+            ),
+            color: 'from-indigo-500 to-violet-500',
+            accent: 'indigo',
+        },
+        {
             name: 'API Keys',
             description: 'Manage and validate your AI provider credentials',
             href: '/api-keys',

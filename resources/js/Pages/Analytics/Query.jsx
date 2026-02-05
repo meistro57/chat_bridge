@@ -22,12 +22,19 @@ export default function Query({ results, filters, personas }) {
                             </h1>
                             <p className="text-zinc-500 mt-2">Filter by keyword, persona, time range, and status.</p>
                         </div>
-                        <Link
-                            href={route('analytics.export', activeFilters)}
-                            className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
-                        >
-                            Export CSV
-                        </Link>
+                        <form method="post" action={route('analytics.export')} className="flex items-center gap-2">
+                            <input type="hidden" name="_token" value={document.querySelector('meta[name=\"csrf-token\"]')?.content} />
+                            {Object.entries(activeFilters).map(([key, value]) => (
+                                value ? <input key={key} type="hidden" name={key} value={value} /> : null
+                            ))}
+                            <input type="hidden" name="format" value="csv" />
+                            <button
+                                type="submit"
+                                className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                            >
+                                Export CSV
+                            </button>
+                        </form>
                     </div>
 
                     <Form action={route('analytics.query')} method="get" className="glass-panel glass-butter rounded-2xl border border-white/10 p-6">

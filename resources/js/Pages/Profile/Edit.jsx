@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import NotificationPreferencesForm from './Partials/NotificationPreferencesForm';
+import UpdateAvatarForm from './Partials/UpdateAvatarForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import UsageStatsCard from './Partials/UsageStatsCard';
@@ -22,6 +23,10 @@ export default function Edit({ mustVerifyEmail, status, stats, notificationPrefe
                 <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
                     {/* Usage Statistics */}
                     <UsageStatsCard stats={stats} />
+
+                    <GlassCard accent="indigo" className="sm:p-8">
+                        <UpdateAvatarForm className="max-w-2xl" />
+                    </GlassCard>
 
                     <GlassCard accent="indigo" className="sm:p-8">
                         <UpdateProfileInformationForm

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -21,6 +22,7 @@ class User extends Authenticatable
         'name',
         'email',
         'bio',
+        'avatar',
         'password',
         'role',
         'is_active',
@@ -35,6 +37,13 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    protected $appends = [
+        'avatar_url',
     ];
 
     /**
@@ -67,6 +76,11 @@ class User extends Authenticatable
         return $this->hasMany(ApiKey::class);
     }
 
+    public function conversationTemplates(): HasMany
+    {
+        return $this->hasMany(ConversationTemplate::class);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
@@ -93,5 +107,14 @@ class User extends Authenticatable
     public function wantsNotification(string $type): bool
     {
         return (bool) ($this->getNotificationPrefs()[$type] ?? true);
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (! $this->avatar) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar);
     }
 }

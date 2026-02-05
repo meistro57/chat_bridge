@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreChatRequest;
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
+use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Services\AI\TranscriptService;
 use Illuminate\Http\RedirectResponse;
@@ -53,10 +54,24 @@ class ChatController extends Controller
         ]);
     }
 
-    public function create(): InertiaResponse
+    public function create(Request $request): InertiaResponse
     {
+        $template = null;
+
+        if ($request->filled('template')) {
+            $template = ConversationTemplate::query()
+                ->where('id', $request->input('template'))
+                ->where(function ($query) use ($request) {
+                    $query->where('is_public', true)
+                        ->orWhere('user_id', $request->user()->id);
+                })
+                ->with(['personaA:id,name', 'personaB:id,name'])
+                ->firstOrFail();
+        }
+
         return Inertia::render('Chat/Create', [
             'personas' => Persona::orderBy('name')->get(),
+            'template' => $template,
         ]);
     }
 

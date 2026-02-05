@@ -29,6 +29,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications'])->name('profile.notifications');
+    Route::patch('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.avatar.update');
+    Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
@@ -57,6 +59,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Persona routes
     Route::resource('personas', PersonaController::class);
 
+    // Template routes
+    Route::resource('templates', \App\Http\Controllers\ConversationTemplateController::class);
+    Route::post('/templates/{template}/use', [\App\Http\Controllers\ConversationTemplateController::class, 'use'])->name('templates.use');
+    Route::post('/templates/{template}/clone', [\App\Http\Controllers\ConversationTemplateController::class, 'clone'])->name('templates.clone');
+
     // API Keys routes
     Route::resource('api-keys', \App\Http\Controllers\ApiKeyController::class);
     Route::post('/api-keys/{apiKey}/test', [\App\Http\Controllers\ApiKeyController::class, 'test'])->name('api-keys.test');
@@ -64,7 +71,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Analytics routes
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/query', [\App\Http\Controllers\AnalyticsController::class, 'query'])->name('analytics.query');
-    Route::get('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'export'])->name('analytics.export');
+    Route::get('/analytics/metrics', [\App\Http\Controllers\AnalyticsController::class, 'metrics'])->name('analytics.metrics');
+    Route::post('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'export'])->name('analytics.export');
 
     // Chat routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');

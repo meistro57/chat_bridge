@@ -2,66 +2,61 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Conversation;
+use App\Exports\ConversationsExport;
 use App\Models\Message;
-use App\Models\Persona;
+use App\Services\AnalyticsService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
+use Maatwebsite\Excel\Excel;
 
 class AnalyticsController extends Controller
 {
-    public function index()
+    public function __construct(private readonly AnalyticsService $analyticsService) {}
+
+    public function index(): Response
     {
         $user = auth()->user();
 
-        // Get statistics
-        $stats = [
-            'total_conversations' => $user->conversations()->count(),
-            'total_messages' => Message::whereHas('conversation', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->count(),
-            'active_conversations' => $user->conversations()->where('status', 'active')->count(),
-            'completed_conversations' => $user->conversations()->where('status', 'completed')->count(),
-        ];
-
-        // Get recent activity (last 7 days)
-        $recentActivity = Message::whereHas('conversation', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })
-            ->where('created_at', '>=', now()->subDays(7))
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as count'))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
-
-        // Get persona usage stats
-        $personaStats = Message::whereHas('conversation', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })
-            ->whereNotNull('persona_id')
-            ->select('persona_id', DB::raw('COUNT(*) as message_count'))
-            ->groupBy('persona_id')
-            ->with('persona')
-            ->orderByDesc('message_count')
-            ->limit(10)
-            ->get()
-            ->map(function ($stat) {
-                return [
-                    'persona_name' => $stat->persona->name ?? 'Unknown',
-                    'count' => $stat->message_count,
-                ];
-            });
+        $overview = $this->analyticsService->getOverviewStats($user);
+        $metrics = $this->analyticsService->getConversationMetrics($user);
+        $tokenUsageByProvider = $this->analyticsService->getTokenUsageByProvider($user);
+        $providerUsage = $this->analyticsService->getProviderUsage($user);
+        $personaStats = $this->analyticsService->getPersonaPopularity($user);
+        $trendData = $this->analyticsService->getTrendData($user, 30);
+        $recentConversations = $this->analyticsService->getRecentConversations($user);
+        $costEstimation = $this->analyticsService->getCostEstimation($user);
 
         return Inertia::render('Analytics/Index', [
-            'stats' => $stats,
-            'recentActivity' => $recentActivity,
+            'overview' => $overview,
+            'metrics' => $metrics,
+            'tokenUsageByProvider' => $tokenUsageByProvider,
+            'providerUsage' => $providerUsage,
             'personaStats' => $personaStats,
-            'personas' => Persona::orderBy('name')->get(['id', 'name']),
+            'trendData' => $trendData,
+            'recentConversations' => $recentConversations,
+            'costByProvider' => $costEstimation['by_provider'],
         ]);
     }
 
-    public function query(Request $request)
+    public function metrics(): JsonResponse
+    {
+        $user = auth()->user();
+
+        return response()->json([
+            'overview' => $this->analyticsService->getOverviewStats($user),
+            'metrics' => $this->analyticsService->getConversationMetrics($user),
+            'tokenUsageByProvider' => $this->analyticsService->getTokenUsageByProvider($user),
+            'providerUsage' => $this->analyticsService->getProviderUsage($user),
+            'personaStats' => $this->analyticsService->getPersonaPopularity($user),
+            'trendData' => $this->analyticsService->getTrendData($user, 30),
+            'recentConversations' => $this->analyticsService->getRecentConversations($user),
+            'costByProvider' => $this->analyticsService->getCostEstimation($user)['by_provider'],
+        ]);
+    }
+
+    public function query(Request $request): Response
     {
         $user = auth()->user();
 
@@ -69,13 +64,11 @@ class AnalyticsController extends Controller
             $q->where('user_id', $user->id);
         })->with(['conversation', 'persona']);
 
-        // Filter by keyword
         if ($request->filled('keyword')) {
             $keyword = $request->input('keyword');
             $query->where('content', 'like', "%{$keyword}%");
         }
 
-        // Filter by date range
         if ($request->filled('date_from')) {
             $query->where('created_at', '>=', $request->input('date_from'));
         }
@@ -83,89 +76,48 @@ class AnalyticsController extends Controller
             $query->where('created_at', '<=', $request->input('date_to').' 23:59:59');
         }
 
-        // Filter by persona
         if ($request->filled('persona_id')) {
             $query->where('persona_id', $request->input('persona_id'));
         }
 
-        // Filter by role
         if ($request->filled('role')) {
             $query->where('role', $request->input('role'));
         }
 
-        // Filter by conversation status
         if ($request->filled('status')) {
             $query->whereHas('conversation', function ($q) use ($request) {
                 $q->where('status', $request->input('status'));
             });
         }
 
-        // Order
         $query->orderBy('created_at', $request->input('sort_order', 'desc'));
 
-        // Paginate
         $results = $query->paginate($request->input('per_page', 20))
             ->withQueryString();
 
         return Inertia::render('Analytics/Query', [
             'results' => $results,
-            'filters' => $request->only(['keyword', 'date_from', 'date_to', 'persona_id', 'role', 'status', 'sort_order', 'per_page']),
-            'personas' => Persona::orderBy('name')->get(['id', 'name']),
+            'filters' => $request->only(['keyword', 'date_from', 'date_to', 'persona_id', 'role', 'status', 'sort_order', 'per_page', 'format']),
+            'personas' => $this->analyticsService->getPersonas($user),
         ]);
     }
 
     public function export(Request $request)
     {
-        $user = auth()->user();
+        $format = $request->input('format', 'csv');
+        $extension = $format === 'xlsx' ? 'xlsx' : 'csv';
+        $writerType = $format === 'xlsx' ? Excel::XLSX : Excel::CSV;
+        $filename = 'chat-analytics-export-'.now()->format('Y-m-d-His').'.'.$extension;
 
-        $query = Message::whereHas('conversation', function ($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->with(['conversation', 'persona']);
+        $export = new ConversationsExport(auth()->user(), $request->only([
+            'keyword',
+            'date_from',
+            'date_to',
+            'persona_id',
+            'role',
+            'status',
+        ]));
 
-        // Apply same filters as query method
-        if ($request->filled('keyword')) {
-            $keyword = $request->input('keyword');
-            $query->where('content', 'like', "%{$keyword}%");
-        }
-        if ($request->filled('date_from')) {
-            $query->where('created_at', '>=', $request->input('date_from'));
-        }
-        if ($request->filled('date_to')) {
-            $query->where('created_at', '<=', $request->input('date_to').' 23:59:59');
-        }
-        if ($request->filled('persona_id')) {
-            $query->where('persona_id', $request->input('persona_id'));
-        }
-        if ($request->filled('role')) {
-            $query->where('role', $request->input('role'));
-        }
-
-        $messages = $query->orderBy('created_at', 'desc')->limit(1000)->get();
-
-        // Create CSV
-        $filename = 'chat-export-'.now()->format('Y-m-d-His').'.csv';
-        $filepath = storage_path('app/'.$filename);
-
-        $file = fopen($filepath, 'w');
-
-        // Headers
-        fputcsv($file, ['Date', 'Time', 'Conversation ID', 'Persona', 'Role', 'Content', 'Tokens Used']);
-
-        // Data
-        foreach ($messages as $message) {
-            fputcsv($file, [
-                $message->created_at->format('Y-m-d'),
-                $message->created_at->format('H:i:s'),
-                $message->conversation_id,
-                $message->persona->name ?? 'N/A',
-                $message->role,
-                $message->content,
-                $message->tokens_used ?? 0,
-            ]);
-        }
-
-        fclose($file);
-
-        return response()->download($filepath, $filename)->deleteFileAfterSend();
+        return $export->download($filename, $writerType);
     }
 }

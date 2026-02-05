@@ -10,7 +10,7 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 |---------|--------|------------|-------------|
 | **v1.0** | ✅ Complete | 100% | ✅ Completed |
 | **v1.1** | 🚧 In Progress | **~80%** | Q1 2026 |
-| **v1.2** | 📋 Planned | 0% | Q2 2026 |
+| **v1.2** | 🚧 In Progress | **~25%** | Q2 2026 |
 | **v1.3** | 📋 Planned | 0% | Q3 2026 |
 | **v2.0** | 🔮 Future | 0% | Q4 2026 |
 
@@ -61,10 +61,10 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 ---
 
 #### 2. Enhanced Profile Management
-**Status**: ⚠️ **MOSTLY COMPLETE** (80%)
+**Status**: ✅ **COMPLETED** (100%)
 **Completed**: February 2026
 
-- [ ] User avatar upload **← REMAINING**
+- [x] User avatar upload
 - [x] Profile customization (bio, preferences)
 - [x] Notification preferences
 - [x] API usage statistics
@@ -74,11 +74,7 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 **Migration**: `2026_02_04_143842_add_bio_and_notification_preferences_to_users_table.php`
 **Tests**: `ProfileEnhancedTest.php`
 
-**Remaining Work**:
-- Add `avatar` field to users table
-- File upload handling in ProfileController
-- Avatar upload UI component
-- Image storage & optimization
+**Remaining Work**: None
 
 ---
 
@@ -110,13 +106,15 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 #### 4. Conversation Analytics
 **Estimated Effort**: 3-4 days
 
-- [ ] Dashboard with usage statistics
-- [ ] Conversation metrics (avg length, completion rate)
-- [ ] Token usage tracking per provider
-- [ ] Cost estimation per conversation
-- [ ] Persona popularity analytics
-- [ ] Export analytics to Excel/CSV
-- [ ] Charts and visualizations (Recharts)
+**Status**: ✅ **COMPLETED** (February 2026)
+
+- [x] Dashboard with usage statistics
+- [x] Conversation metrics (avg length, completion rate)
+- [x] Token usage tracking per provider
+- [x] Cost estimation per conversation
+- [x] Persona popularity analytics
+- [x] Export analytics to Excel/CSV
+- [x] Charts and visualizations (Recharts)
 
 **Tech Stack**: Recharts, Laravel Excel
 
@@ -139,11 +137,13 @@ This roadmap outlines the planned features, improvements, and milestones for Cha
 #### 6. Conversation Templates
 **Estimated Effort**: 2 days
 
-- [ ] Create reusable conversation templates
-- [ ] Template library (public/private)
-- [ ] Template categories
-- [ ] Quick-start from template
-- [ ] Template sharing between users
+**Status**: ✅ **COMPLETED** (February 2026)
+
+- [x] Create reusable conversation templates
+- [x] Template library (public/private)
+- [x] Template categories
+- [x] Quick-start from template
+- [x] Template sharing between users
 
 **Dependencies**: None
 

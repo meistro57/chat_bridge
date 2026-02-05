@@ -29,6 +29,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PersonaSeeder::class,
             RolesJsonSeeder::class,
+            SampleAvatarSeeder::class,
+            ConversationTemplateSeeder::class,
         ]);
     }
 }

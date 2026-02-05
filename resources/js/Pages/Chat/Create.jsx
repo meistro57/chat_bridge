@@ -12,18 +12,18 @@ const PROVIDERS = [
     { id: 'lmstudio', name: 'LM Studio (Local)' },
 ];
 
-export default function Create({ personas }) {
+export default function Create({ personas, template }) {
     const { data, setData, post, processing, errors, transform } = useForm({
-        persona_a_id: '',
-        persona_b_id: '',
+        persona_a_id: template?.persona_a_id ?? '',
+        persona_b_id: template?.persona_b_id ?? '',
         provider_a: '',
         provider_b: '',
         model_a: '',
         model_b: '',
         temp_a: 0.7,
         temp_b: 0.7,
-        starter_message: '',
-        max_rounds: 10,
+        starter_message: template?.starter_message ?? '',
+        max_rounds: template?.max_rounds ?? 10,
         stop_word_detection: false,
         stop_words: '',
         stop_word_threshold: 0.8,
@@ -125,6 +125,34 @@ export default function Create({ personas }) {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-8">
+                    {template && (
+                        <div className="glass-panel glass-butter rounded-2xl p-5 border border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 butter-reveal">
+                            <div>
+                                <p className="text-xs uppercase tracking-widest text-zinc-400">Template Loaded</p>
+                                <h3 className="text-lg font-semibold text-zinc-100">{template.name}</h3>
+                                {template.description && (
+                                    <p className="text-sm text-zinc-400 mt-1">{template.description}</p>
+                                )}
+                            </div>
+                            <Link
+                                href={route('templates.index')}
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-2 text-xs font-semibold text-zinc-300 transition-all hover:border-white/20 hover:bg-zinc-900/70 hover:text-white"
+                            >
+                                Browse Templates
+                            </Link>
+                        </div>
+                    )}
+
+                    {!template && (
+                        <div className="flex justify-end">
+                            <Link
+                                href={route('templates.index')}
+                                className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-xs font-semibold text-indigo-200 transition-all hover:bg-indigo-500/20"
+                            >
+                                Start from Template
+                            </Link>
+                        </div>
+                    )}
                     {/* Agent Configuration Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Agent A */}
