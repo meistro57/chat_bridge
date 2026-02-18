@@ -73,7 +73,7 @@ class AnalyticsService
                 ->where('conversations.user_id', $user->id)
                 ->whereNotNull('messages.persona_id')
                 ->select([
-                    'messages.id as message_id',
+                    'messages.id',
                     'messages.tokens_used',
                     'messages.persona_id',
                     'conversations.persona_a_id',
@@ -85,7 +85,7 @@ class AnalyticsService
                 ])
                 ->orderBy('messages.id');
 
-            $query->chunkById(500, function (Collection $chunk) use (&$byProvider, &$totalCost) {
+            $query->chunk(500, function (Collection $chunk) use (&$byProvider, &$totalCost) {
                 foreach ($chunk as $row) {
                     $tokens = (int) ($row->tokens_used ?? 0);
                     if ($tokens <= 0) {
@@ -102,7 +102,7 @@ class AnalyticsService
                     $totalCost += $cost;
                     $byProvider[$provider] = ($byProvider[$provider] ?? 0) + $cost;
                 }
-            }, 'message_id');
+            });
 
             $providerBreakdown = collect($byProvider)
                 ->map(fn ($cost, $provider) => [
