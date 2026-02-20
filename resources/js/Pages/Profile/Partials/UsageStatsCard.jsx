@@ -12,6 +12,16 @@ function StatItem({ label, value, gradient }) {
 }
 
 export default function UsageStatsCard({ stats }) {
+    const resolvedStats = {
+        total_conversations: 0,
+        completed_conversations: 0,
+        total_messages: 0,
+        total_tokens: 0,
+        total_personas: 0,
+        total_api_keys: 0,
+        ...(stats ?? {}),
+    };
+
     return (
         <GlassCard accent="blue">
             <section>
@@ -27,32 +37,32 @@ export default function UsageStatsCard({ stats }) {
                 <div className="mt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
                     <StatItem
                         label="Conversations"
-                        value={stats.total_conversations}
+                        value={resolvedStats.total_conversations}
                         gradient="from-blue-500 to-cyan-500"
                     />
                     <StatItem
                         label="Completed"
-                        value={stats.completed_conversations}
+                        value={resolvedStats.completed_conversations}
                         gradient="from-emerald-500 to-teal-500"
                     />
                     <StatItem
                         label="Messages"
-                        value={stats.total_messages}
+                        value={resolvedStats.total_messages}
                         gradient="from-purple-500 to-pink-500"
                     />
                     <StatItem
                         label="Tokens Used"
-                        value={stats.total_tokens}
+                        value={resolvedStats.total_tokens}
                         gradient="from-orange-500 to-amber-500"
                     />
                     <StatItem
                         label="Personas"
-                        value={stats.total_personas}
+                        value={resolvedStats.total_personas}
                         gradient="from-violet-500 to-purple-500"
                     />
                     <StatItem
                         label="API Keys"
-                        value={stats.total_api_keys}
+                        value={resolvedStats.total_api_keys}
                         gradient="from-cyan-500 to-blue-500"
                     />
                 </div>
