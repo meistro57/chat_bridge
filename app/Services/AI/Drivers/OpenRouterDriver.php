@@ -2,6 +2,7 @@
 
 namespace App\Services\AI\Drivers;
 
+use App\Services\AI\Data\AIResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -25,7 +26,7 @@ class OpenRouterDriver extends OpenAIDriver
         ]);
     }
 
-    public function chat(Collection $messages, float $temperature = 0.7): string
+    public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
         \Log::info('OpenRouter Chat Request', [
             'model' => $this->model,
@@ -79,19 +80,27 @@ class OpenRouterDriver extends OpenAIDriver
                 throw new \Exception($errorMessage, $response->status());
             }
 
-            $responseJson = $response->json();
-            $content = $responseJson['choices'][0]['message']['content'] ?? '';
+            $data = $response->json();
+            $content = $data['choices'][0]['message']['content'] ?? '';
 
             \Log::info('OpenRouter Chat Response', [
                 'content_length' => strlen($content),
-                'tokens_used' => $responseJson['usage']['total_tokens'] ?? 0,
+                'tokens_used' => $data['usage']['total_tokens'] ?? 0,
             ]);
 
             if (empty($content)) {
                 throw new \Exception('No content returned from OpenRouter API');
             }
 
-            return $content;
+            $usage = $data['usage'] ?? [];
+            $this->lastTokenUsage = $usage['total_tokens'] ?? null;
+
+            return new AIResponse(
+                content: $content,
+                promptTokens: $usage['prompt_tokens'] ?? null,
+                completionTokens: $usage['completion_tokens'] ?? null,
+                totalTokens: $usage['total_tokens'] ?? null
+            );
         } catch (\Exception $e) {
             \Log::error('OpenRouter Chat Exception', [
                 'error_type' => get_class($e),
@@ -138,5 +147,15 @@ class OpenRouterDriver extends OpenAIDriver
                 }
             }
         }
+    }
+
+    public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
+    {
+        throw new \Exception(get_class($this).' does not support tool calling yet');
+    }
+
+    public function supportsTools(): bool
+    {
+        return false;
     }
 }

@@ -2,7 +2,45 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
-## [Unreleased] - 2026-02-04
+## [Unreleased] - 2026-02-20
+
+### 🛠️ **MCP Tool Calling (Function Calling)**
+- **Agentic AI personas** - AI can now autonomously call MCP tools during conversations
+- **5 MCP tools available** to all AI personas:
+  - `search_conversations` - Search past messages by keyword
+  - `get_contextual_memory` - Vector similarity search for related messages
+  - `get_recent_chats` - Retrieve recent conversation summaries
+  - `get_conversation` - Load specific conversation with full history
+  - `get_mcp_stats` - Database statistics
+- **Multi-provider support** - Works with OpenAI, Anthropic, and Gemini drivers
+- **Intelligent agentic loop** - AI calls tools, processes results, and continues autonomously (max 5 iterations)
+- **Tool execution logging** - All tool calls logged for transparency and debugging
+- **Configuration** - `AI_TOOLS_ENABLED` and `AI_MAX_TOOL_ITERATIONS` in config
+- **Architecture updates**:
+  - `ToolDefinition` class for cross-provider tool schemas
+  - `McpTools` registry with all available tools
+  - `ToolExecutor` service for safe tool execution
+  - Updated `AIDriverInterface` with `chatWithTools()` and `supportsTools()`
+  - Modified `ConversationService` with agentic tool calling loop
+
+### 📊 **Analytics Enhancements**
+- Enhanced analytics charts with gradients, glows, and animations
+- Provider usage donut chart with interactive legend and percentages
+- Conversations over time with gradient fills and glowing data points
+- Top personas bar chart with purple-pink gradients
+- Tokens by provider with color-coded gradients and smart Y-axis formatting
+- Fixed cost calculation - token usage now properly tracked and displayed
+- Backfilled historical messages with estimated token counts
+- Added missing model pricing for `gpt-4o-2024-11-20` and `claude-haiku-4-5-20251001`
+
+### 🎛️ **Boost Dashboard Enhancements**
+- Added live statistics section with real-time database counts
+- Auto-refresh every 30 seconds with manual refresh button
+- Live stats: conversations, messages, personas, users, embeddings
+- MCP health indicator with pulsing status dot
+- "Updated Xs ago" timestamp display
+- Quick action links to related admin pages
+- New `/admin/boost/stats` JSON endpoint for AJAX updates
 
 ### 🧪 Stability
 - Guarded broadcasts against oversized payloads and added streaming chunking helpers

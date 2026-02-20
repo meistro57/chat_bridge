@@ -3,18 +3,22 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
+use App\Services\AI\Data\AIResponse;
+use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 class GeminiDriver implements AIDriverInterface
 {
+    protected ?int $lastTokenUsage = null;
+
     public function __construct(
         protected string $apiKey,
         protected string $model = 'gemini-1.5-flash',
         protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
     ) {}
 
-    public function chat(Collection $messages, float $temperature = 0.7): string
+    public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
         $payload = $this->preparePayload($messages, $temperature);
 
@@ -24,18 +28,32 @@ class GeminiDriver implements AIDriverInterface
             throw new \Exception('Gemini API Error: '.$response->body());
         }
 
-        $content = $response->json('candidates.0.content.parts.0.text');
+        $data = $response->json();
+        $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
         if ($content === null) {
-            $responseData = $response->json();
-            throw new \Exception('Gemini API returned an unexpected response structure. Response: '.json_encode($responseData));
+            throw new \Exception('Gemini API returned an unexpected response structure. Response: '.json_encode($data));
         }
 
-        return $content;
+        // Extract token usage if available
+        $usage = $data['usageMetadata'] ?? [];
+        $promptTokens = $usage['promptTokenCount'] ?? null;
+        $completionTokens = $usage['candidatesTokenCount'] ?? null;
+        $totalTokens = $usage['totalTokenCount'] ?? null;
+        $this->lastTokenUsage = $totalTokens;
+
+        return new AIResponse(
+            content: $content,
+            promptTokens: $promptTokens,
+            completionTokens: $completionTokens,
+            totalTokens: $totalTokens
+        );
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
     {
+        $this->lastTokenUsage = null;
+
         $payload = $this->preparePayload($messages, $temperature);
 
         $response = Http::withOptions(['stream' => true])
@@ -50,12 +68,90 @@ class GeminiDriver implements AIDriverInterface
                 $data = substr($line, 6);
                 $json = json_decode($data, true);
 
+                // Capture token usage if present
+                if (isset($json['usageMetadata']['totalTokenCount'])) {
+                    $this->lastTokenUsage = $json['usageMetadata']['totalTokenCount'];
+                }
+
                 $content = $json['candidates'][0]['content']['parts'][0]['text'] ?? '';
                 if ($content) {
                     yield $content;
                 }
             }
         }
+    }
+
+    public function getLastTokenUsage(): ?int
+    {
+        return $this->lastTokenUsage;
+    }
+
+    public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
+    {
+        $payload = $this->preparePayload($messages, $temperature);
+        $payload['tools'] = [
+            [
+                'function_declarations' => $tools->map(fn (ToolDefinition $tool) => $tool->toGeminiSchema())->all(),
+            ],
+        ];
+
+        $response = Http::post("{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}", $payload);
+
+        if ($response->failed()) {
+            throw new \Exception('Gemini API Error: '.$response->body());
+        }
+
+        $data = $response->json();
+
+        // Extract token usage
+        $usage = $data['usageMetadata'] ?? [];
+        $promptTokens = $usage['promptTokenCount'] ?? null;
+        $completionTokens = $usage['candidatesTokenCount'] ?? null;
+        $totalTokens = $usage['totalTokenCount'] ?? null;
+        $this->lastTokenUsage = $totalTokens;
+
+        // Check for function calls
+        $toolCalls = [];
+        $parts = $data['candidates'][0]['content']['parts'] ?? [];
+
+        foreach ($parts as $part) {
+            if (isset($part['functionCall'])) {
+                $toolCalls[] = [
+                    'id' => uniqid('call_'),
+                    'name' => $part['functionCall']['name'] ?? '',
+                    'arguments' => $part['functionCall']['args'] ?? [],
+                ];
+            }
+        }
+
+        // If there are tool calls, return them
+        if (! empty($toolCalls)) {
+            return [
+                'response' => null,
+                'tool_calls' => $toolCalls,
+            ];
+        }
+
+        // Otherwise extract text content
+        $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        if ($content === null) {
+            throw new \Exception('Gemini API returned unexpected response: '.json_encode($data));
+        }
+
+        return [
+            'response' => new AIResponse(
+                content: $content,
+                promptTokens: $promptTokens,
+                completionTokens: $completionTokens,
+                totalTokens: $totalTokens
+            ),
+            'tool_calls' => [],
+        ];
+    }
+
+    public function supportsTools(): bool
+    {
+        return true;
     }
 
     protected function preparePayload(Collection $messages, float $temperature): array

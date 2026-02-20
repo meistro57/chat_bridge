@@ -3,17 +3,20 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
+use App\Services\AI\Data\AIResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
 class OllamaDriver implements AIDriverInterface
 {
+    protected ?int $lastTokenUsage = null;
+
     public function __construct(
         protected string $model = 'llama3.1',
         protected string $baseUrl = 'http://localhost:11434'
     ) {}
 
-    public function chat(Collection $messages, float $temperature = 0.7): string
+    public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
         $response = Http::post("{$this->baseUrl}/api/chat", [
             'model' => $this->model,
@@ -28,18 +31,31 @@ class OllamaDriver implements AIDriverInterface
             throw new \Exception('Ollama API Error: '.$response->body());
         }
 
-        $content = $response->json('message.content');
+        $data = $response->json();
+        $content = $data['message']['content'] ?? null;
 
         if ($content === null) {
-            $responseData = $response->json();
-            throw new \Exception('Ollama API returned an unexpected response structure. Response: '.json_encode($responseData));
+            throw new \Exception('Ollama API returned an unexpected response structure. Response: '.json_encode($data));
         }
 
-        return $content;
+        // Ollama returns token counts in eval_count and prompt_eval_count
+        $promptTokens = $data['prompt_eval_count'] ?? null;
+        $completionTokens = $data['eval_count'] ?? null;
+        $totalTokens = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+        $this->lastTokenUsage = $totalTokens;
+
+        return new AIResponse(
+            content: $content,
+            promptTokens: $promptTokens,
+            completionTokens: $completionTokens,
+            totalTokens: $totalTokens
+        );
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
     {
+        $this->lastTokenUsage = null;
+
         $response = Http::withOptions(['stream' => true])
             ->timeout(300)
             ->post("{$this->baseUrl}/api/chat", [
@@ -60,16 +76,35 @@ class OllamaDriver implements AIDriverInterface
             }
 
             $json = json_decode($line, true);
-            $content = $json['message']['content'] ?? '';
 
+            // Capture token usage when done
+            if (($json['done'] ?? false) === true) {
+                $promptTokens = $json['prompt_eval_count'] ?? null;
+                $completionTokens = $json['eval_count'] ?? null;
+                $this->lastTokenUsage = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+                break;
+            }
+
+            $content = $json['message']['content'] ?? '';
             if ($content) {
                 yield $content;
             }
-
-            if (($json['done'] ?? false) === true) {
-                break;
-            }
         }
+    }
+
+    public function getLastTokenUsage(): ?int
+    {
+        return $this->lastTokenUsage;
+    }
+
+    public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
+    {
+        throw new \Exception(get_class($this).' does not support tool calling yet');
+    }
+
+    public function supportsTools(): bool
+    {
+        return false;
     }
 
     protected function readLine($stream): string

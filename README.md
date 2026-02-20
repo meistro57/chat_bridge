@@ -229,6 +229,18 @@ Contextual AI with memory:
 <tr>
 <td width="50%">
 
+### 🛠️ **MCP Tool Calling**
+AI personas with superpowers:
+- 🔍 **search_conversations** - Find past messages by keyword
+- 🧠 **get_contextual_memory** - Vector similarity search
+- 📋 **get_recent_chats** - Retrieve recent conversations
+- 💬 **get_conversation** - Load full conversation history
+- 🤖 **Agentic loop** - AI autonomously calls tools as needed
+- ⚙️ **Provider support** - OpenAI, Anthropic, Gemini
+
+</td>
+<td width="50%">
+
 ### 📊 **Analytics Suite**
 Deep insights into conversations:
 - 📈 7-day activity trends (charts)

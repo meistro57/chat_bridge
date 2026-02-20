@@ -25,10 +25,26 @@ export default function Index({
     recentConversations,
     costByProvider,
 }) {
-    const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#ef4444', '#f97316'];
+    const PROVIDER_COLORS = {
+        openai: { fill: '#10B981', gradient: 'from-emerald-400 to-teal-500' },
+        anthropic: { fill: '#F59E0B', gradient: 'from-amber-400 to-orange-500' },
+        gemini: { fill: '#3B82F6', gradient: 'from-blue-400 to-cyan-500' },
+        google: { fill: '#3B82F6', gradient: 'from-blue-400 to-cyan-500' },
+        deepseek: { fill: '#8B5CF6', gradient: 'from-purple-400 to-fuchsia-500' },
+        openrouter: { fill: '#EC4899', gradient: 'from-pink-400 to-rose-500' },
+        ollama: { fill: '#06B6D4', gradient: 'from-cyan-400 to-sky-500' },
+        lmstudio: { fill: '#6366F1', gradient: 'from-indigo-400 to-violet-500' },
+        mock: { fill: '#9CA3AF', gradient: 'from-gray-400 to-slate-500' },
+    };
+
+    const getProviderColor = (provider) => {
+        const normalized = provider?.toLowerCase() || '';
+        return PROVIDER_COLORS[normalized] || { fill: '#6366F1', gradient: 'from-indigo-400 to-purple-500' };
+    };
 
     const formatNumber = (value) => new Intl.NumberFormat().format(value ?? 0);
     const formatCurrency = (value) => `$${(value ?? 0).toFixed(2)}`;
+    const formatPercent = (value, total) => total > 0 ? `${((value / total) * 100).toFixed(1)}%` : '0%';
 
     const completionRate = metrics?.completion_rate ? (metrics.completion_rate * 100).toFixed(1) : '0.0';
     const averageLength = metrics?.average_length ?? 0;
@@ -125,11 +141,49 @@ export default function Index({
                                 {trends.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={300}>
                                         <LineChart data={trends}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                            <XAxis dataKey="date" stroke="#9ca3af" />
-                                            <YAxis stroke="#9ca3af" />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
-                                            <Line type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2} />
+                                            <defs>
+                                                <linearGradient id="conversationGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.8}/>
+                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                                </linearGradient>
+                                                <filter id="glow">
+                                                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                                    <feMerge>
+                                                        <feMergeNode in="coloredBlur"/>
+                                                        <feMergeNode in="SourceGraphic"/>
+                                                    </feMerge>
+                                                </filter>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                                            <XAxis
+                                                dataKey="date"
+                                                stroke="#9ca3af"
+                                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                                tickFormatter={(value) => {
+                                                    const date = new Date(value);
+                                                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                                                }}
+                                            />
+                                            <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: '#1f2937',
+                                                    border: '1px solid #4f46e5',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                                                }}
+                                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                                                formatter={(value) => [`${value} conversations`, 'Count']}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="count"
+                                                stroke="#6366f1"
+                                                strokeWidth={3}
+                                                dot={{ fill: '#6366f1', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                                                activeDot={{ r: 6, fill: '#6366f1', stroke: '#fff', strokeWidth: 2, filter: 'url(#glow)' }}
+                                                fill="url(#conversationGradient)"
+                                            />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 ) : (
@@ -146,11 +200,45 @@ export default function Index({
                                 {personas.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={personas}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                            <XAxis dataKey="persona_name" stroke="#9ca3af" angle={-45} textAnchor="end" height={100} />
-                                            <YAxis stroke="#9ca3af" />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
-                                            <Bar dataKey="count" fill="#8b5cf6" />
+                                            <defs>
+                                                <linearGradient id="personaGradient" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#a855f7" stopOpacity={1}/>
+                                                    <stop offset="100%" stopColor="#ec4899" stopOpacity={0.7}/>
+                                                </linearGradient>
+                                                <filter id="personaGlow">
+                                                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                                    <feMerge>
+                                                        <feMergeNode in="coloredBlur"/>
+                                                        <feMergeNode in="SourceGraphic"/>
+                                                    </feMerge>
+                                                </filter>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                                            <XAxis
+                                                dataKey="persona_name"
+                                                stroke="#9ca3af"
+                                                angle={-45}
+                                                textAnchor="end"
+                                                height={100}
+                                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                            />
+                                            <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: '#1f2937',
+                                                    border: '1px solid #a855f7',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2)'
+                                                }}
+                                                cursor={{ fill: 'rgba(168, 85, 247, 0.1)' }}
+                                                formatter={(value) => [`${value} messages`, 'Count']}
+                                            />
+                                            <Bar
+                                                dataKey="count"
+                                                fill="url(#personaGradient)"
+                                                radius={[8, 8, 0, 0]}
+                                                filter="url(#personaGlow)"
+                                            />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 ) : (
@@ -167,16 +255,79 @@ export default function Index({
                             <h2 className="relative text-xl font-bold text-zinc-100 mb-4">Provider Usage</h2>
                             <div className="relative">
                                 {providerCounts.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <PieChart>
-                                            <Pie data={providerCounts} dataKey="count" nameKey="provider" outerRadius={110}>
-                                                {providerCounts.map((entry, index) => (
-                                                    <Cell key={`cell-${entry.provider}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                    <div className="flex items-center gap-6">
+                                        <div className="flex-shrink-0">
+                                            <ResponsiveContainer width={240} height={240}>
+                                                <PieChart>
+                                                    <defs>
+                                                        {providerCounts.map((entry, index) => {
+                                                            const colors = getProviderColor(entry.provider);
+                                                            return (
+                                                                <linearGradient key={`gradient-${index}`} id={`gradient-${entry.provider}`} x1="0" y1="0" x2="0" y2="1">
+                                                                    <stop offset="0%" stopColor={colors.fill} stopOpacity={1} />
+                                                                    <stop offset="100%" stopColor={colors.fill} stopOpacity={0.6} />
+                                                                </linearGradient>
+                                                            );
+                                                        })}
+                                                    </defs>
+                                                    <Pie
+                                                        data={providerCounts}
+                                                        dataKey="count"
+                                                        nameKey="provider"
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        outerRadius={90}
+                                                        innerRadius={50}
+                                                        paddingAngle={2}
+                                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                                        labelLine={false}
+                                                    >
+                                                        {providerCounts.map((entry, index) => (
+                                                            <Cell
+                                                                key={`cell-${entry.provider}`}
+                                                                fill={`url(#gradient-${entry.provider})`}
+                                                                stroke="rgba(0,0,0,0.3)"
+                                                                strokeWidth={2}
+                                                            />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        contentStyle={{
+                                                            backgroundColor: '#1f2937',
+                                                            border: '1px solid #374151',
+                                                            borderRadius: '8px',
+                                                            padding: '8px 12px'
+                                                        }}
+                                                        formatter={(value, name) => [
+                                                            `${formatNumber(value)} conversations`,
+                                                            name
+                                                        ]}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                        <div className="flex-1 space-y-3">
+                                            {providerCounts.map((entry, index) => {
+                                                const colors = getProviderColor(entry.provider);
+                                                const total = providerCounts.reduce((sum, p) => sum + p.count, 0);
+                                                return (
+                                                    <div key={entry.provider} className="flex items-center gap-3">
+                                                        <div
+                                                            className={`w-3 h-3 rounded-full bg-gradient-to-br ${colors.gradient} shadow-lg`}
+                                                            style={{ boxShadow: `0 0 10px ${colors.fill}40` }}
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="flex justify-between items-baseline">
+                                                                <span className="text-sm font-medium text-zinc-200 capitalize">{entry.provider}</span>
+                                                                <span className="text-xs text-zinc-500 ml-2">{formatPercent(entry.count, total)}</span>
+                                                            </div>
+                                                            <div className="text-xs text-zinc-400">{formatNumber(entry.count)} conversations</div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="text-sm text-zinc-500">No provider data available.</div>
                                 )}
@@ -191,11 +342,59 @@ export default function Index({
                                 {providerTokens.length > 0 ? (
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={providerTokens}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                            <XAxis dataKey="provider" stroke="#9ca3af" />
-                                            <YAxis stroke="#9ca3af" />
-                                            <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }} />
-                                            <Bar dataKey="tokens" fill="#f59e0b" />
+                                            <defs>
+                                                {providerTokens.map((entry, index) => {
+                                                    const colors = getProviderColor(entry.provider);
+                                                    return (
+                                                        <linearGradient key={`tokenGradient-${index}`} id={`tokenGradient-${entry.provider}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stopColor={colors.fill} stopOpacity={1}/>
+                                                            <stop offset="100%" stopColor={colors.fill} stopOpacity={0.6}/>
+                                                        </linearGradient>
+                                                    );
+                                                })}
+                                                <filter id="tokenGlow">
+                                                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                                                    <feMerge>
+                                                        <feMergeNode in="coloredBlur"/>
+                                                        <feMergeNode in="SourceGraphic"/>
+                                                    </feMerge>
+                                                </filter>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.3} />
+                                            <XAxis
+                                                dataKey="provider"
+                                                stroke="#9ca3af"
+                                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                                tickFormatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                                            />
+                                            <YAxis
+                                                stroke="#9ca3af"
+                                                tick={{ fill: '#9ca3af', fontSize: 11 }}
+                                                tickFormatter={(value) => {
+                                                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                                                    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+                                                    return value;
+                                                }}
+                                            />
+                                            <Tooltip
+                                                contentStyle={{
+                                                    backgroundColor: '#1f2937',
+                                                    border: '1px solid #f59e0b',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+                                                }}
+                                                cursor={{ fill: 'rgba(245, 158, 11, 0.1)' }}
+                                                formatter={(value) => [formatNumber(value) + ' tokens', 'Usage']}
+                                            />
+                                            <Bar
+                                                dataKey="tokens"
+                                                radius={[8, 8, 0, 0]}
+                                                filter="url(#tokenGlow)"
+                                            >
+                                                {providerTokens.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={`url(#tokenGradient-${entry.provider})`} />
+                                                ))}
+                                            </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 ) : (

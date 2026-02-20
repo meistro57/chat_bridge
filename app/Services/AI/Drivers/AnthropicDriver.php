@@ -3,12 +3,16 @@
 namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
+use App\Services\AI\Data\AIResponse;
+use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class AnthropicDriver implements AIDriverInterface
 {
+    protected ?int $lastTokenUsage = null;
+
     public function __construct(
         protected string $apiKey,
         protected string $model = 'claude-sonnet-4-5-20250929',
@@ -16,7 +20,7 @@ class AnthropicDriver implements AIDriverInterface
         protected string $baseUrl = 'https://api.anthropic.com/v1'
     ) {}
 
-    public function chat(Collection $messages, float $temperature = 0.7): string
+    public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
         $payload = $this->preparePayload($messages, $temperature);
 
@@ -32,26 +36,39 @@ class AnthropicDriver implements AIDriverInterface
             throw new \Exception('Anthropic API Error: '.$errorMessage);
         }
 
-        $payload = $response->json();
-        $content = $this->extractContent($payload);
+        $data = $response->json();
+        $content = $this->extractContent($data);
 
         if ($content === null) {
-            throw new \Exception('Anthropic returned unexpected response format. Response: '.json_encode($payload));
+            throw new \Exception('Anthropic returned unexpected response format. Response: '.json_encode($data));
         }
 
         if ($content === '') {
             Log::warning('Anthropic returned empty content.', [
-                'model' => $payload['model'] ?? null,
-                'id' => $payload['id'] ?? null,
-                'stop_reason' => $payload['stop_reason'] ?? null,
+                'model' => $data['model'] ?? null,
+                'id' => $data['id'] ?? null,
+                'stop_reason' => $data['stop_reason'] ?? null,
             ]);
         }
 
-        return $content;
+        $usage = $data['usage'] ?? [];
+        $promptTokens = $usage['input_tokens'] ?? null;
+        $completionTokens = $usage['output_tokens'] ?? null;
+        $totalTokens = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+        $this->lastTokenUsage = $totalTokens;
+
+        return new AIResponse(
+            content: $content,
+            promptTokens: $promptTokens,
+            completionTokens: $completionTokens,
+            totalTokens: $totalTokens
+        );
     }
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
     {
+        $this->lastTokenUsage = null;
+
         $payload = $this->preparePayload($messages, $temperature);
         $payload['stream'] = true;
 
@@ -87,6 +104,14 @@ class AnthropicDriver implements AIDriverInterface
 
                 $json = json_decode($data, true);
 
+                // Capture token usage from message_delta event
+                if ($event === 'message_delta' && isset($json['usage'])) {
+                    $usage = $json['usage'];
+                    $inputTokens = $usage['input_tokens'] ?? 0;
+                    $outputTokens = $usage['output_tokens'] ?? 0;
+                    $this->lastTokenUsage = $inputTokens + $outputTokens;
+                }
+
                 if ($event === 'content_block_delta') {
                     $content = $json['delta']['text'] ?? '';
                     if ($content) {
@@ -99,6 +124,80 @@ class AnthropicDriver implements AIDriverInterface
                 }
             }
         }
+    }
+
+    public function getLastTokenUsage(): ?int
+    {
+        return $this->lastTokenUsage;
+    }
+
+    public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
+    {
+        $payload = $this->preparePayload($messages, $temperature);
+        $payload['tools'] = $tools->map(fn (ToolDefinition $tool) => $tool->toAnthropicSchema())->all();
+
+        $response = Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+            'anthropic-version' => $this->version,
+            'content-type' => 'application/json',
+        ])->post("{$this->baseUrl}/messages", $payload);
+
+        if ($response->failed()) {
+            $errorBody = $response->json();
+            $errorMessage = $errorBody['error']['message'] ?? $response->body();
+            throw new \Exception('Anthropic API Error: '.$errorMessage);
+        }
+
+        $data = $response->json();
+
+        $usage = $data['usage'] ?? [];
+        $promptTokens = $usage['input_tokens'] ?? null;
+        $completionTokens = $usage['output_tokens'] ?? null;
+        $totalTokens = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+        $this->lastTokenUsage = $totalTokens;
+
+        // Check for tool use blocks
+        $toolCalls = [];
+        $contentBlocks = $data['content'] ?? [];
+
+        foreach ($contentBlocks as $block) {
+            if (($block['type'] ?? null) === 'tool_use') {
+                $toolCalls[] = [
+                    'id' => $block['id'] ?? '',
+                    'name' => $block['name'] ?? '',
+                    'arguments' => $block['input'] ?? [],
+                ];
+            }
+        }
+
+        // If there are tool calls, return them
+        if (! empty($toolCalls)) {
+            return [
+                'response' => null,
+                'tool_calls' => $toolCalls,
+            ];
+        }
+
+        // Otherwise extract and return text content
+        $content = $this->extractContent($data);
+        if ($content === null) {
+            throw new \Exception('Anthropic returned unexpected response format: '.json_encode($data));
+        }
+
+        return [
+            'response' => new AIResponse(
+                content: $content,
+                promptTokens: $promptTokens,
+                completionTokens: $completionTokens,
+                totalTokens: $totalTokens
+            ),
+            'tool_calls' => [],
+        ];
+    }
+
+    public function supportsTools(): bool
+    {
+        return true;
     }
 
     protected function preparePayload(Collection $messages, float $temperature): array

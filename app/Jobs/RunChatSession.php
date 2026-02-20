@@ -105,7 +105,10 @@ class RunChatSession implements ShouldQueue
                 $maxChunkSize = (int) config('ai.stream_chunk_size', 1500);
                 $chunkCount = 0;
 
-                foreach ($service->generateTurn($conversation, $currentPersona, $history) as $chunk) {
+                $generation = $service->generateTurn($conversation, $currentPersona, $history);
+                $driver = $generation['driver'];
+
+                foreach ($generation['content'] as $chunk) {
                     $fullResponse .= $chunk;
 
                     foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
@@ -151,7 +154,8 @@ class RunChatSession implements ShouldQueue
                 }
 
                 // 5. Save & Finalize Turn
-                $message = $service->saveTurn($conversation, $currentPersona, $fullResponse);
+                $tokensUsed = $driver->getLastTokenUsage();
+                $message = $service->saveTurn($conversation, $currentPersona, $fullResponse, $tokensUsed);
                 $broadcaster->broadcast(
                     new MessageCompleted($message),
                     [

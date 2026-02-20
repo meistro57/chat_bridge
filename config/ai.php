@@ -54,6 +54,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tool Calling (MCP Integration)
+    |--------------------------------------------------------------------------
+    |
+    | Enable AI personas to call MCP tools during conversations. When enabled,
+    | AI models with tool support (OpenAI, Anthropic, Gemini) can search past
+    | conversations, retrieve contextual memory, and access conversation history.
+    |
+    */
+
+    'tools_enabled' => env('AI_TOOLS_ENABLED', true),
+    'max_tool_iterations' => env('AI_MAX_TOOL_ITERATIONS', 5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Pricing Estimates
     |--------------------------------------------------------------------------
     |
@@ -75,8 +89,12 @@ return [
             'openai/gpt-4o-mini' => ['prompt_per_million' => 0.15, 'completion_per_million' => 0.60],
             'gpt-4o' => ['prompt_per_million' => 2.50, 'completion_per_million' => 10.00],
             'openai/gpt-4o' => ['prompt_per_million' => 2.50, 'completion_per_million' => 10.00],
+            'gpt-4o-2024-11-20' => ['prompt_per_million' => 2.50, 'completion_per_million' => 10.00],
+            'openai/gpt-4o-2024-11-20' => ['prompt_per_million' => 2.50, 'completion_per_million' => 10.00],
             'claude-sonnet-4-5-20250929' => ['prompt_per_million' => 3.00, 'completion_per_million' => 15.00],
             'anthropic/claude-sonnet-4-5-20250929' => ['prompt_per_million' => 3.00, 'completion_per_million' => 15.00],
+            'claude-haiku-4-5-20251001' => ['prompt_per_million' => 0.80, 'completion_per_million' => 4.00],
+            'anthropic/claude-haiku-4-5-20251001' => ['prompt_per_million' => 0.80, 'completion_per_million' => 4.00],
             'deepseek-chat' => ['prompt_per_million' => 0.14, 'completion_per_million' => 0.28],
             'deepseek/deepseek-chat' => ['prompt_per_million' => 0.14, 'completion_per_million' => 0.28],
             'gemini-1.5-flash' => ['prompt_per_million' => 0.075, 'completion_per_million' => 0.30],

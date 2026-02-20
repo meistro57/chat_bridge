@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -12,10 +13,59 @@ class BoostDashboardController extends Controller
     public function index(): Response
     {
         $boostConfig = $this->readBoostConfig();
+        $liveStats = $this->getLiveStats();
 
         return Inertia::render('Admin/BoostDashboard', [
             'boost' => $boostConfig,
+            'liveStats' => $liveStats,
         ]);
+    }
+
+    /**
+     * @return array{
+     *     conversations: int,
+     *     messages: int,
+     *     personas: int,
+     *     users: int,
+     *     embeddings: int,
+     *     mcp_health: array{ok: bool, status: string},
+     *     timestamp: string
+     * }
+     */
+    public function stats(): JsonResponse
+    {
+        return response()->json($this->getLiveStats());
+    }
+
+    private function getLiveStats(): array
+    {
+        try {
+            $mcpController = app(\App\Http\Controllers\Api\McpController::class);
+            $healthResponse = $mcpController->health();
+            $healthData = method_exists($healthResponse, 'getData')
+                ? $healthResponse->getData(true)
+                : [];
+
+            $mcpHealth = [
+                'ok' => ($healthData['status'] ?? null) === 'ok',
+                'status' => $healthData['status'] ?? 'unknown',
+            ];
+        } catch (\Throwable) {
+            $mcpHealth = [
+                'ok' => false,
+                'status' => 'error',
+            ];
+        }
+
+        return [
+            'conversations' => \App\Models\Conversation::count(),
+            'messages' => \App\Models\Message::count(),
+            'personas' => \App\Models\Persona::count(),
+            'users' => \App\Models\User::count(),
+            'embeddings' => \App\Models\Message::whereNotNull('embedding')->count(),
+            'mcp_health' => $mcpHealth,
+            'timestamp' => now()->toIso8601String(),
+        ];
     }
 
     /**
