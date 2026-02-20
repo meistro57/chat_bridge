@@ -7,7 +7,9 @@ use App\Models\Persona;
 use App\Models\User;
 use App\Services\AI\AIManager;
 use App\Services\AI\Contracts\AIDriverInterface;
+use App\Services\AI\Data\AIResponse;
 use App\Services\AI\EmbeddingService;
+use App\Services\AI\Tools\ToolExecutor;
 use App\Services\AI\TranscriptService;
 use App\Services\ConversationService;
 use App\Services\RagService;
@@ -55,7 +57,10 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             ->andReturn(new \ArrayIterator([]));
         $driver->shouldReceive('chat')
             ->once()
-            ->andReturn('fallback response');
+            ->andReturn(new AIResponse('fallback response'));
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(false);
 
         $ai = Mockery::mock(AIManager::class);
         $ai->shouldReceive('driverForProvider')
@@ -66,12 +71,12 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             ai: $ai,
             transcripts: Mockery::mock(TranscriptService::class),
             embeddings: Mockery::mock(EmbeddingService::class),
-            rag: Mockery::mock(RagService::class)
+            rag: Mockery::mock(RagService::class),
+            toolExecutor: Mockery::mock(ToolExecutor::class)
         );
 
-        $chunks = iterator_to_array(
-            $service->generateTurn($conversation, $personaA, new Collection)
-        );
+        $result = $service->generateTurn($conversation, $personaA, new Collection);
+        $chunks = iterator_to_array($result['content']);
 
         $this->assertSame(['fallback response'], $chunks);
     }

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\Drivers\AnthropicDriver;
 use Illuminate\Support\Collection;
@@ -26,7 +27,8 @@ class AnthropicDriverTest extends TestCase
 
         $response = $driver->chat($messages, 0.7);
 
-        $this->assertSame('Hello!', $response);
+        $this->assertInstanceOf(AIResponse::class, $response);
+        $this->assertSame('Hello!', $response->content);
     }
 
     public function test_chat_returns_empty_string_when_content_empty(): void
@@ -54,6 +56,7 @@ class AnthropicDriverTest extends TestCase
 
         $response = $driver->chat($messages, 0.7);
 
-        $this->assertSame('', $response);
+        $this->assertInstanceOf(AIResponse::class, $response);
+        $this->assertSame('', $response->content);
     }
 }

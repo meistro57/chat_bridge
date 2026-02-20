@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\Drivers\OpenAIDriver;
 use Illuminate\Support\Facades\Http;
@@ -33,7 +34,8 @@ class OpenAIDriverTest extends TestCase
 
         $result = $driver->chat($messages, 0.7);
 
-        $this->assertSame('OK', $result);
+        $this->assertInstanceOf(AIResponse::class, $result);
+        $this->assertSame('OK', $result->content);
         Http::assertSentCount(2);
         Http::assertSent(function ($request): bool {
             $data = $request->data();
