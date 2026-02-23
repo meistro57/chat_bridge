@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
+use App\Models\ModelPrice;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class ProviderController extends Controller
 {
-    public function getModels(Request $request)
+    public function getModels(Request $request): JsonResponse
     {
         $provider = $request->input('provider');
 
@@ -19,6 +21,7 @@ class ProviderController extends Controller
 
         try {
             $models = $this->fetchModelsForProvider($provider);
+            $this->persistModelPricing($provider, $models);
 
             return response()->json([
                 'provider' => $provider,
@@ -120,6 +123,8 @@ class ProviderController extends Controller
                             'name' => $model['name'] ?? $model['id'],
                             'context' => $model['context_length'] ?? null,
                             'cost' => $cost,
+                            'prompt_per_million' => $promptPerMillion,
+                            'completion_per_million' => $completionPerMillion,
                         ];
                     })
                     ->sortBy('name')
@@ -255,5 +260,133 @@ class ProviderController extends Controller
             ['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo', 'cost' => '$10/$30'],
             ['id' => 'gpt-3.5-turbo', 'name' => 'GPT-3.5 Turbo', 'cost' => '$0.50/$1.50'],
         ];
+    }
+
+    /**
+     * @param  array<int, array{id:string, cost?:string, prompt_per_million?:float, completion_per_million?:float}>  $models
+     */
+    private function persistModelPricing(string $provider, array $models): void
+    {
+        $timestamp = now();
+        $rows = [];
+
+        foreach ($models as $model) {
+            $modelId = $model['id'] ?? null;
+            if (! is_string($modelId) || $modelId === '') {
+                continue;
+            }
+
+            $pricing = $this->resolvePricing($provider, $model);
+            if ($pricing === null) {
+                continue;
+            }
+
+            $rows[] = [
+                'provider' => $provider,
+                'model' => $modelId,
+                'prompt_per_million' => $pricing['prompt_per_million'],
+                'completion_per_million' => $pricing['completion_per_million'],
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+        }
+
+        if ($rows === []) {
+            return;
+        }
+
+        ModelPrice::query()->upsert(
+            $rows,
+            ['provider', 'model'],
+            ['prompt_per_million', 'completion_per_million', 'updated_at']
+        );
+    }
+
+    /**
+     * @param  array{id:string, cost?:string, prompt_per_million?:float, completion_per_million?:float}  $model
+     * @return array{prompt_per_million:float, completion_per_million:float}|null
+     */
+    private function resolvePricing(string $provider, array $model): ?array
+    {
+        $prompt = $model['prompt_per_million'] ?? null;
+        $completion = $model['completion_per_million'] ?? null;
+
+        if (is_numeric($prompt) && is_numeric($completion)) {
+            return [
+                'prompt_per_million' => (float) $prompt,
+                'completion_per_million' => (float) $completion,
+            ];
+        }
+
+        $cost = $model['cost'] ?? null;
+        if (is_string($cost)) {
+            $normalizedCost = strtoupper(trim($cost));
+
+            if (str_contains($normalizedCost, 'FREE')) {
+                return [
+                    'prompt_per_million' => 0.0,
+                    'completion_per_million' => 0.0,
+                ];
+            }
+
+            if (preg_match('/\\$([0-9]+(?:\\.[0-9]+)?)\\s*\\/\\s*\\$([0-9]+(?:\\.[0-9]+)?)/', $cost, $matches) === 1) {
+                return [
+                    'prompt_per_million' => (float) $matches[1],
+                    'completion_per_million' => (float) $matches[2],
+                ];
+            }
+        }
+
+        return $this->resolvePricingFromConfig($provider, $model['id'] ?? null);
+    }
+
+    /**
+     * @return array{prompt_per_million:float, completion_per_million:float}|null
+     */
+    private function resolvePricingFromConfig(string $provider, mixed $modelId): ?array
+    {
+        if (! is_string($modelId) || $modelId === '') {
+            return null;
+        }
+
+        $modelPricing = config('ai.pricing.models', []);
+
+        $candidates = [
+            $modelId,
+            "{$provider}/{$modelId}",
+        ];
+
+        if (str_contains($modelId, '/')) {
+            $candidates[] = substr($modelId, strpos($modelId, '/') + 1);
+        }
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            $entry = $modelPricing[$candidate] ?? null;
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $prompt = $entry['prompt_per_million'] ?? null;
+            $completion = $entry['completion_per_million'] ?? null;
+
+            if (is_numeric($prompt) && is_numeric($completion)) {
+                return [
+                    'prompt_per_million' => (float) $prompt,
+                    'completion_per_million' => (float) $completion,
+                ];
+            }
+        }
+
+        $providerPerToken = config("ai.pricing.providers.{$provider}");
+        if (is_numeric($providerPerToken)) {
+            $providerPerMillion = (float) $providerPerToken * 1_000_000;
+
+            return [
+                'prompt_per_million' => $providerPerMillion,
+                'completion_per_million' => $providerPerMillion,
+            ];
+        }
+
+        return null;
     }
 }

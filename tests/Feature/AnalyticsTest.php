@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Exports\ConversationsExport;
+use App\Models\ApiKey;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\ModelPrice;
 use App\Models\Persona;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -116,5 +118,92 @@ class AnalyticsTest extends TestCase
         Excel::assertDownloaded('chat-analytics-export-2026-02-05-100000.csv', function (ConversationsExport $export) {
             return $export !== null;
         });
+    }
+
+    public function test_user_can_clear_only_their_chat_history_data(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+        $apiKey = ApiKey::factory()->create(['user_id' => $user->id, 'provider' => 'openai']);
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+        ]);
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaA->id,
+        ]);
+
+        $otherPersonaA = Persona::factory()->create(['user_id' => $otherUser->id]);
+        $otherPersonaB = Persona::factory()->create(['user_id' => $otherUser->id]);
+        $otherConversation = Conversation::factory()->create([
+            'user_id' => $otherUser->id,
+            'persona_a_id' => $otherPersonaA->id,
+            'persona_b_id' => $otherPersonaB->id,
+        ]);
+        $otherMessage = Message::factory()->create([
+            'conversation_id' => $otherConversation->id,
+            'persona_id' => $otherPersonaA->id,
+        ]);
+
+        $response = $this->actingAs($user)->delete(route('analytics.history.clear'));
+
+        $response->assertRedirect(route('analytics.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('conversations', ['id' => $conversation->id]);
+        $this->assertDatabaseMissing('messages', ['id' => $message->id]);
+
+        $this->assertDatabaseHas('personas', ['id' => $personaA->id]);
+        $this->assertDatabaseHas('personas', ['id' => $personaB->id]);
+        $this->assertDatabaseHas('api_keys', ['id' => $apiKey->id]);
+
+        $this->assertDatabaseHas('conversations', ['id' => $otherConversation->id]);
+        $this->assertDatabaseHas('messages', ['id' => $otherMessage->id]);
+    }
+
+    public function test_analytics_uses_stored_model_pricing_when_available(): void
+    {
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        $conversation = Conversation::factory()->for($user)->completed()->create([
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+        ]);
+
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaA->id,
+            'tokens_used' => 1000,
+        ]);
+
+        ModelPrice::query()->create([
+            'provider' => 'openai',
+            'model' => 'gpt-4o-mini',
+            'prompt_per_million' => 10.0,
+            'completion_per_million' => 10.0,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('analytics.metrics'));
+        $response->assertOk();
+
+        $payload = $response->json();
+
+        $this->assertSame(0.01, $payload['overview']['total_cost']);
+        $this->assertSame(0.01, $payload['costByProvider'][0]['cost']);
+        $this->assertSame('openai', $payload['costByProvider'][0]['provider']);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\ModelPrice;
 use App\Models\Persona;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 class AnalyticsService
 {
     private const CACHE_TTL = 300;
+
+    private const CACHE_VERSION_KEY = 'analytics:%d:version';
 
     /**
      * @return array{average_length:float, completion_rate:float}
@@ -67,6 +70,7 @@ class AnalyticsService
         return Cache::remember($this->cacheKey($user, 'cost-estimation'), self::CACHE_TTL, function () use ($user) {
             $byProvider = [];
             $totalCost = 0.0;
+            $costLookup = [];
 
             $query = Message::query()
                 ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
@@ -85,7 +89,7 @@ class AnalyticsService
                 ])
                 ->orderBy('messages.id');
 
-            $query->chunk(500, function (Collection $chunk) use (&$byProvider, &$totalCost) {
+            $query->chunk(500, function (Collection $chunk) use (&$byProvider, &$totalCost, &$costLookup) {
                 foreach ($chunk as $row) {
                     $tokens = (int) ($row->tokens_used ?? 0);
                     if ($tokens <= 0) {
@@ -96,7 +100,7 @@ class AnalyticsService
                     $provider = $isPersonaA ? $row->provider_a : $row->provider_b;
                     $model = $isPersonaA ? $row->model_a : $row->model_b;
 
-                    $costPerToken = $this->estimateCostPerToken($model, $provider);
+                    $costPerToken = $this->estimateCostPerToken($model, $provider, $costLookup);
                     $cost = $tokens * $costPerToken;
 
                     $totalCost += $cost;
@@ -315,8 +319,24 @@ class AnalyticsService
         return $series;
     }
 
-    private function estimateCostPerToken(?string $model, ?string $provider): float
+    /**
+     * @param  array<string, float>  $costLookup
+     */
+    private function estimateCostPerToken(?string $model, ?string $provider, array &$costLookup): float
     {
+        $lookupKey = ($provider ?? 'unknown').'|'.($model ?? 'unknown');
+
+        if (array_key_exists($lookupKey, $costLookup)) {
+            return $costLookup[$lookupKey];
+        }
+
+        $dynamicCostPerToken = $this->estimateDynamicCostPerToken($model, $provider);
+        if ($dynamicCostPerToken !== null) {
+            $costLookup[$lookupKey] = $dynamicCostPerToken;
+
+            return $dynamicCostPerToken;
+        }
+
         $pricing = config('ai.pricing', []);
         $modelPricing = $pricing['models'] ?? [];
 
@@ -325,20 +345,97 @@ class AnalyticsService
             $prompt = (float) ($modelCosts['prompt_per_million'] ?? 0);
             $completion = (float) ($modelCosts['completion_per_million'] ?? 0);
 
-            return (($prompt + $completion) / 2) / 1_000_000;
+            $costLookup[$lookupKey] = (($prompt + $completion) / 2) / 1_000_000;
+
+            return $costLookup[$lookupKey];
         }
 
         $providerPricing = $pricing['providers'] ?? [];
 
         if ($provider && array_key_exists($provider, $providerPricing)) {
-            return (float) $providerPricing[$provider];
+            $costLookup[$lookupKey] = (float) $providerPricing[$provider];
+
+            return $costLookup[$lookupKey];
         }
 
-        return (float) ($pricing['per_token_default'] ?? 0);
+        $costLookup[$lookupKey] = (float) ($pricing['per_token_default'] ?? 0);
+
+        return $costLookup[$lookupKey];
+    }
+
+    private function estimateDynamicCostPerToken(?string $model, ?string $provider): ?float
+    {
+        if (! is_string($model) || $model === '') {
+            return null;
+        }
+
+        $candidateModels = $this->candidateModelKeys($model, $provider);
+
+        $records = ModelPrice::query()
+            ->whereIn('model', $candidateModels)
+            ->orderByDesc('updated_at')
+            ->get(['provider', 'model', 'prompt_per_million', 'completion_per_million']);
+
+        if ($records->isEmpty()) {
+            return null;
+        }
+
+        if (is_string($provider) && $provider !== '') {
+            foreach ($candidateModels as $candidateModel) {
+                $record = $records->first(function (ModelPrice $price) use ($provider, $candidateModel) {
+                    return $price->provider === $provider && $price->model === $candidateModel;
+                });
+
+                if ($record !== null) {
+                    return (($record->prompt_per_million + $record->completion_per_million) / 2) / 1_000_000;
+                }
+            }
+        }
+
+        foreach ($candidateModels as $candidateModel) {
+            $record = $records->first(fn (ModelPrice $price) => $price->model === $candidateModel);
+
+            if ($record !== null) {
+                return (($record->prompt_per_million + $record->completion_per_million) / 2) / 1_000_000;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function candidateModelKeys(string $model, ?string $provider): array
+    {
+        $candidates = [$model];
+
+        if (is_string($provider) && $provider !== '' && ! str_contains($model, '/')) {
+            $candidates[] = "{$provider}/{$model}";
+        }
+
+        if (str_contains($model, '/')) {
+            $candidates[] = substr($model, strpos($model, '/') + 1);
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     private function cacheKey(User $user, string $suffix): string
     {
-        return 'analytics:'.$user->id.':'.$suffix;
+        return 'analytics:'.$user->id.':v'.$this->cacheVersion($user).':'.$suffix;
+    }
+
+    public function invalidateUserCache(User $user): void
+    {
+        $versionKey = sprintf(self::CACHE_VERSION_KEY, $user->id);
+        $currentVersion = (int) Cache::get($versionKey, 1);
+
+        Cache::forever($versionKey, $currentVersion + 1);
+    }
+
+    private function cacheVersion(User $user): int
+    {
+        return (int) Cache::get(sprintf(self::CACHE_VERSION_KEY, $user->id), 1);
     }
 }
