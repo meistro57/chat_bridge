@@ -79,6 +79,7 @@
 - **Activity Dashboard** - 7-day trend visualization
 - **Top Personas** - Most-used agents statistics
 - **Message Tracking** - Count and token usage
+- **Automatic Cost Sync** - Provider/model pricing captured from model query API and stored for analytics
 - **Query System** - Advanced filtering options
   - Keyword search
   - Date range filters

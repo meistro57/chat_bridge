@@ -249,6 +249,7 @@ Deep insights into conversations:
 - 📥 CSV export (1000 records)
 - 💬 Message & token tracking
 - 📊 Real-time metrics
+- 💰 Automatic provider/model pricing sync for more accurate cost estimates
 
 </td>
 <td width="50%">
@@ -838,6 +839,7 @@ chat_bridge/
 
 ### Provider API
 - `GET /api/providers/models?provider={name}` - Get available models for provider (with pricing)
+  - Also upserts provider/model token pricing into `model_prices` for analytics cost estimation
 
 ### Personas
 - `GET /personas` - List personas

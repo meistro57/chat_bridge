@@ -4,6 +4,12 @@ All notable changes to Chat Bridge will be documented in this file.
 
 ## [Unreleased] - 2026-02-23
 
+### 💰 **Pricing & Analytics Accuracy**
+- Added automatic provider/model pricing persistence in the model listing API (`GET /api/providers/models`)
+- New `model_prices` table stores prompt/completion pricing per provider/model
+- Analytics now prefers stored model pricing for cost calculations, then falls back to static config defaults
+- Added tests to verify pricing upsert flow and analytics DB-pricing precedence
+
 ### 🎭 **Persona Import / Export**
 - **Import JSON on Create** - Upload a `.json` file on the create persona page to pre-fill all fields
 - **Download Template** - Download a sample `persona-template.json` so users understand the expected format
