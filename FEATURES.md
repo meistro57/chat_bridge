@@ -23,6 +23,9 @@
 - **Shared Library** - 56 pre-configured personas included
 - **Ownership Tracking** - Creator attribution for all personas
 - **Full CRUD** - Create, Read, Update, Delete operations
+- **JSON Import** - Import a persona from a `.json` file on the create page
+- **JSON Export** - Export any persona from the edit page as a portable `.json` file
+- **Template Download** - Download a sample template to understand the persona JSON format
 
 ### 💬 Conversation Orchestration
 - **Automated Turns** - Let AI agents talk to each other

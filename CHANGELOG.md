@@ -2,6 +2,24 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-02-23
+
+### 🎭 **Persona Import / Export**
+- **Import JSON on Create** - Upload a `.json` file on the create persona page to pre-fill all fields
+- **Download Template** - Download a sample `persona-template.json` so users understand the expected format
+- **Export JSON on Edit** - Export any persona from the edit page as a named JSON file (e.g. `technical-expert.json`)
+- Exported files are directly re-importable on the create page
+
+### 🐛 **Bug Fixes**
+- Fixed Gemini API key checker crashing with a 500 error on brand-new keys — `strlen()` was being called on the `AIResponse` object instead of its `content` string
+- Widened `catch (\Exception)` to `catch (\Throwable)` in the key test endpoint so PHP `Error` subclasses (e.g. `TypeError`) are handled gracefully
+
+### 🧪 **Tests**
+- Added `ApiKeyFactory` for use in tests
+- Added three new `ApiKeyTest` cases: successful Gemini key validation, failed validation, and auth enforcement
+
+---
+
 ## [Unreleased] - 2026-02-20
 
 ### 🛠️ **MCP Tool Calling (Function Calling)**

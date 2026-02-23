@@ -16,6 +16,23 @@ export default function Edit({ persona }) {
         put(`/personas/${persona.id}`);
     };
 
+    const handleExport = () => {
+        const exportData = {
+            name: data.name,
+            system_prompt: data.system_prompt,
+            guidelines: data.guidelines,
+            temperature: data.temperature,
+            notes: data.notes,
+        };
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${data.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <AuthenticatedLayout>
             <Head title={`Edit ${persona.name}`} />
@@ -27,9 +44,20 @@ export default function Edit({ persona }) {
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Modify Configuration</h1>
                         <p className="mt-2 text-sm text-zinc-500">Update parameters for entity: <span className="text-white font-mono">{persona.name}</span></p>
                     </div>
-                    <Link href="/personas" className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleExport}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors text-xs font-medium"
+                            title="Export persona as JSON"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Export JSON
+                        </button>
+                        <Link href="/personas" className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="glass-panel glass-butter p-8 rounded-2xl relative overflow-hidden butter-reveal">
