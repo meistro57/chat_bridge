@@ -186,8 +186,8 @@ class ApiKeyController extends Controller
                 : $driver->completion($messages);
 
             \Log::info('Completion Result', [
-                'result_length' => strlen($result),
-                'result_preview' => substr($result, 0, 50),
+                'result_length' => strlen($result->content),
+                'result_preview' => substr($result->content, 0, 50),
             ]);
 
             // If we get here without exception, the key is valid
@@ -203,7 +203,7 @@ class ApiKeyController extends Controller
                 'is_validated' => true,
                 'last_validated_at' => $apiKey->last_validated_at,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('API Key Test Failed', [
                 'provider' => $apiKey->provider,
                 'error_type' => get_class($e),

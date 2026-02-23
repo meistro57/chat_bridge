@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\ApiKey;
 use App\Models\User;
+use App\Services\AI\Contracts\AIDriverInterface;
+use App\Services\AI\Data\AIResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class ApiKeyTest extends TestCase
@@ -45,5 +48,58 @@ class ApiKeyTest extends TestCase
 
         $response->assertSessionHasErrors('key');
         $response->assertRedirect('/api-keys/create');
+    }
+
+    public function test_gemini_key_is_marked_valid_when_api_call_succeeds(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create(['user_id' => $user->id, 'provider' => 'gemini']);
+
+        $mockDriver = Mockery::mock(AIDriverInterface::class);
+        $mockDriver->shouldReceive('chat')->andReturn(new AIResponse(content: 'OK'));
+
+        $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
+        $mockManager->shouldReceive('driver')->with('gemini')->andReturn($mockDriver);
+        $this->app->instance('ai', $mockManager);
+
+        $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
+
+        $response->assertStatus(200);
+        $response->assertJson(['success' => true, 'is_validated' => true]);
+        $this->assertDatabaseHas('api_keys', ['id' => $apiKey->id, 'is_validated' => true]);
+    }
+
+    public function test_gemini_key_is_marked_invalid_when_api_call_fails(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create(['user_id' => $user->id, 'provider' => 'gemini']);
+
+        $mockDriver = Mockery::mock(AIDriverInterface::class);
+        $mockDriver->shouldReceive('chat')->andThrow(new \Exception('API key not valid. Please pass a valid API key.'));
+
+        $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
+        $mockManager->shouldReceive('driver')->with('gemini')->andReturn($mockDriver);
+        $this->app->instance('ai', $mockManager);
+
+        $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false, 'is_validated' => false]);
+        $this->assertDatabaseHas('api_keys', [
+            'id' => $apiKey->id,
+            'is_validated' => false,
+            'validation_error' => 'API key not valid. Please pass a valid API key.',
+        ]);
+    }
+
+    public function test_key_test_endpoint_forbidden_for_other_users(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $apiKey = ApiKey::factory()->create(['user_id' => $owner->id, 'provider' => 'gemini']);
+
+        $response = $this->actingAs($other)->post("/api-keys/{$apiKey->id}/test");
+
+        $response->assertStatus(403);
     }
 }

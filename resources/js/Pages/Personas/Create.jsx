@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
+
+const PERSONA_TEMPLATE = {
+    name: 'Example Persona',
+    system_prompt: 'You are a helpful assistant with expertise in...',
+    guidelines: ['Be concise and clear', 'Cite sources when relevant'],
+    temperature: 0.7,
+    notes: 'Optional internal notes or tags',
+};
 
 export default function Create() {
     const { data, setData, post, processing, errors } = useForm({
@@ -11,9 +19,46 @@ export default function Create() {
         notes: '',
     });
 
+    const fileInputRef = useRef(null);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         post('/personas');
+    };
+
+    const handleDownloadTemplate = () => {
+        const blob = new Blob([JSON.stringify(PERSONA_TEMPLATE, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'persona-template.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImport = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const json = JSON.parse(event.target.result);
+                setData({
+                    name: json.name ?? data.name,
+                    system_prompt: json.system_prompt ?? data.system_prompt,
+                    guidelines: Array.isArray(json.guidelines) ? json.guidelines : data.guidelines,
+                    temperature: json.temperature !== undefined ? parseFloat(json.temperature) : data.temperature,
+                    notes: json.notes ?? data.notes,
+                });
+            } catch {
+                alert('Invalid JSON file. Please use a valid persona template.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
     };
 
     return (
@@ -27,9 +72,36 @@ export default function Create() {
                         <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">Define New Persona</h1>
                         <p className="mt-2 text-sm text-zinc-500">Create a reusable persona template (provider/model selected per conversation)</p>
                     </div>
-                    <Link href="/personas" className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleDownloadTemplate}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors text-xs font-medium"
+                            title="Download a sample JSON template"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Template
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors text-xs font-medium"
+                            title="Import persona from a JSON file"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Import JSON
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".json,application/json"
+                            onChange={handleImport}
+                            className="hidden"
+                        />
+                        <Link href="/personas" className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="glass-panel glass-butter p-8 rounded-2xl butter-reveal">
