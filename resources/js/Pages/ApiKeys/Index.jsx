@@ -23,20 +23,25 @@ export default function Index({ apiKeys }) {
         try {
             const response = await fetch(`/api-keys/${id}/test`, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
+                    Accept: 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 },
             });
 
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                console.error('Failed to parse JSON response:', jsonError);
-                const textResponse = await response.text();
-                console.error('Response text:', textResponse);
-                throw new Error('Invalid response from server');
+            const rawResponse = await response.text();
+            let data = {};
+
+            if (rawResponse) {
+                try {
+                    data = JSON.parse(rawResponse);
+                } catch (jsonError) {
+                    console.error('Failed to parse JSON response:', jsonError);
+                    console.error('Response text:', rawResponse);
+                    throw new Error('Invalid response from server');
+                }
             }
 
             if (response.ok) {

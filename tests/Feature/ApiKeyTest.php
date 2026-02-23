@@ -59,7 +59,9 @@ class ApiKeyTest extends TestCase
         $mockDriver->shouldReceive('chat')->andReturn(new AIResponse(content: 'OK'));
 
         $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
-        $mockManager->shouldReceive('driver')->with('gemini')->andReturn($mockDriver);
+        $mockManager->shouldReceive('driverForApiKey')->withArgs(function (ApiKey $resolvedApiKey) use ($apiKey) {
+            return $resolvedApiKey->is($apiKey);
+        })->andReturn($mockDriver);
         $this->app->instance('ai', $mockManager);
 
         $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
@@ -78,7 +80,9 @@ class ApiKeyTest extends TestCase
         $mockDriver->shouldReceive('chat')->andThrow(new \Exception('API key not valid. Please pass a valid API key.'));
 
         $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
-        $mockManager->shouldReceive('driver')->with('gemini')->andReturn($mockDriver);
+        $mockManager->shouldReceive('driverForApiKey')->withArgs(function (ApiKey $resolvedApiKey) use ($apiKey) {
+            return $resolvedApiKey->is($apiKey);
+        })->andReturn($mockDriver);
         $this->app->instance('ai', $mockManager);
 
         $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
@@ -101,5 +105,33 @@ class ApiKeyTest extends TestCase
         $response = $this->actingAs($other)->post("/api-keys/{$apiKey->id}/test");
 
         $response->assertStatus(403);
+    }
+
+    public function test_key_test_endpoint_marks_provider_key_invalid_when_key_is_blank(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'gemini',
+            'key' => '',
+        ]);
+
+        $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
+        $mockManager->shouldNotReceive('driverForApiKey');
+        $this->app->instance('ai', $mockManager);
+
+        $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'success' => false,
+            'is_validated' => false,
+            'error' => 'No API key is stored for this provider.',
+        ]);
+        $this->assertDatabaseHas('api_keys', [
+            'id' => $apiKey->id,
+            'is_validated' => false,
+            'validation_error' => 'No API key is stored for this provider.',
+        ]);
     }
 }

@@ -46,7 +46,10 @@ class ChatControllerTest extends TestCase
 
         $response->assertRedirect();
 
-        $conversation = Conversation::first();
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
         $this->assertNotNull($conversation);
         $this->assertSame($user->id, $conversation->user_id);
         $this->assertSame($payload['provider_a'], $conversation->provider_a);

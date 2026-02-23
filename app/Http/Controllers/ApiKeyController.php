@@ -156,14 +156,31 @@ class ApiKeyController extends Controller
             abort(403);
         }
 
+        if ($this->providerRequiresKey($apiKey->provider) && blank($apiKey->key)) {
+            $apiKey->update([
+                'is_validated' => false,
+                'last_validated_at' => now(),
+                'validation_error' => 'No API key is stored for this provider.',
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'API key validation failed',
+                'error' => 'No API key is stored for this provider.',
+                'is_validated' => false,
+                'last_validated_at' => $apiKey->last_validated_at,
+            ], 422);
+        }
+
         \Log::info('API Key Test Started', [
+            'api_key_id' => $apiKey->id,
             'provider' => $apiKey->provider,
             'user_id' => auth()->id(),
         ]);
 
         try {
-            // Get the AI driver for this provider
-            $driver = app('ai')->driver($apiKey->provider);
+            // Use the selected API key record directly to avoid validating another key for the same provider.
+            $driver = app('ai')->driverForApiKey($apiKey);
 
             \Log::info('AI Driver Created', [
                 'driver_class' => get_class($driver),

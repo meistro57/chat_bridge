@@ -209,4 +209,56 @@ class AIManager extends Manager
             default => $this->driver($provider),
         };
     }
+
+    public function driverForApiKey(ApiKey $apiKey, ?string $model = null): AIDriverInterface
+    {
+        $provider = $apiKey->provider;
+        $resolvedModel = $model ?? null;
+        $key = (string) ($apiKey->key ?? '');
+
+        return match ($provider) {
+            'openai' => $key !== ''
+                ? new OpenAIDriver(
+                    apiKey: $key,
+                    model: $resolvedModel ?: config('services.openai.model', 'gpt-4o-mini')
+                )
+                : new MockDriver,
+            'anthropic' => $key !== ''
+                ? new AnthropicDriver(
+                    apiKey: $key,
+                    model: $resolvedModel ?: config('services.anthropic.model', 'claude-sonnet-4-5-20250929')
+                )
+                : new MockDriver,
+            'deepseek' => $key !== ''
+                ? new DeepSeekDriver(
+                    apiKey: $key,
+                    model: $resolvedModel ?: config('services.deepseek.model', 'deepseek-chat')
+                )
+                : new MockDriver,
+            'openrouter' => $key !== ''
+                ? new OpenRouterDriver(
+                    apiKey: $key,
+                    model: $resolvedModel ?: config('services.openrouter.model', 'openai/gpt-4o-mini'),
+                    appName: config('services.openrouter.app_name'),
+                    referer: config('services.openrouter.referer')
+                )
+                : new MockDriver,
+            'gemini' => $key !== ''
+                ? new GeminiDriver(
+                    apiKey: $key,
+                    model: $resolvedModel ?: config('services.gemini.model', 'gemini-1.5-flash')
+                )
+                : new MockDriver,
+            'ollama' => new OllamaDriver(
+                model: $resolvedModel ?: config('services.ollama.model', 'llama3.1'),
+                baseUrl: config('services.ollama.host', 'http://localhost:11434')
+            ),
+            'lmstudio' => new LMStudioDriver(
+                model: $resolvedModel ?: config('services.lmstudio.model', 'local-model'),
+                baseUrl: config('services.lmstudio.base_url', 'http://localhost:1234/v1')
+            ),
+            'mock' => new MockDriver,
+            default => $this->driverForProvider($provider, $resolvedModel),
+        };
+    }
 }

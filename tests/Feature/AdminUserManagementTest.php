@@ -15,16 +15,18 @@ class AdminUserManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         User::factory()->count(3)->create();
+        $expectedTotalUsers = User::count();
+        $expectedAdminUsers = User::where('role', 'admin')->count();
 
         $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
         $response->assertOk();
         $response->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Admin/Users/Index')
-            ->has('users', 4)
+            ->has('users', $expectedTotalUsers)
             ->has('stats')
-            ->where('stats.total_users', 4)
-            ->where('stats.admin_users', 1)
+            ->where('stats.total_users', $expectedTotalUsers)
+            ->where('stats.admin_users', $expectedAdminUsers)
             ->has('filters')
         );
     }
@@ -65,12 +67,13 @@ class AdminUserManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         User::factory()->count(2)->create(['role' => 'user']);
+        $expectedAdminUsers = User::where('role', 'admin')->count();
 
         $response = $this->actingAs($admin)->get(route('admin.users.index', ['role' => 'admin']));
 
         $response->assertOk();
         $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->has('users', 1)
+            ->has('users', $expectedAdminUsers)
             ->where('users.0.role', 'admin')
         );
     }
@@ -106,12 +109,13 @@ class AdminUserManagementTest extends TestCase
         User::factory()->create(['created_at' => now()->subDays(10)]);
         // Create a user from today
         User::factory()->create(['created_at' => now()]);
+        $expectedRecentUsers = User::where('created_at', '>=', now()->subDays(7))->count();
 
         $response = $this->actingAs($admin)->get(route('admin.users.index'));
 
         $response->assertOk();
         $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('stats.recent_users', 2) // admin + today's user
+            ->where('stats.recent_users', $expectedRecentUsers)
         );
     }
 
