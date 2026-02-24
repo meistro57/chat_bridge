@@ -11,7 +11,7 @@ class ConversationSettingsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_openai_settings_force_default_temperature(): void
+    public function test_settings_force_default_temperature_for_all_providers(): void
     {
         $personaA = Persona::factory()->create(['temperature' => 0.3]);
         $personaB = Persona::factory()->create(['temperature' => 1.7]);
@@ -34,6 +34,6 @@ class ConversationSettingsTest extends TestCase
         $this->assertSame(1.0, $settingsA['temperature']);
 
         $this->assertSame('deepseek', $settingsB['provider']);
-        $this->assertSame(1.7, $settingsB['temperature']);
+        $this->assertSame(1.0, $settingsB['temperature']);
     }
 }

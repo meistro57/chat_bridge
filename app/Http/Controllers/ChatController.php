@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Api\ProviderController;
 use App\Http\Requests\StoreChatRequest;
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
@@ -57,6 +58,7 @@ class ChatController extends Controller
     public function create(Request $request): InertiaResponse
     {
         $template = null;
+        $openRouterModels = [];
 
         if ($request->filled('template')) {
             $template = ConversationTemplate::query()
@@ -69,9 +71,24 @@ class ChatController extends Controller
                 ->firstOrFail();
         }
 
+        if (! app()->environment('testing')) {
+            $openRouterModels = Cache::remember('provider_models.openrouter', now()->addMinutes(10), function () {
+                try {
+                    return app(ProviderController::class)->modelsForProvider('openrouter');
+                } catch (\Throwable $exception) {
+                    Log::warning('Failed to preload OpenRouter models for create page', [
+                        'error' => $exception->getMessage(),
+                    ]);
+
+                    return [];
+                }
+            });
+        }
+
         return Inertia::render('Chat/Create', [
             'personas' => Persona::orderBy('name')->get(),
             'template' => $template,
+            'openRouterModels' => $openRouterModels,
         ]);
     }
 
@@ -97,8 +114,8 @@ class ChatController extends Controller
             'provider_b' => $validated['provider_b'],
             'model_a' => $validated['model_a'],
             'model_b' => $validated['model_b'],
-            'temp_a' => $personaA->temperature,
-            'temp_b' => $personaB->temperature,
+            'temp_a' => 1.0,
+            'temp_b' => 1.0,
             'starter_message' => $validated['starter_message'],
             'status' => 'active',
             'max_rounds' => $validated['max_rounds'],

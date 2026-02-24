@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Log;
 
 class ProviderController extends Controller
 {
+    public function modelsForProvider(string $provider): array
+    {
+        return $this->fetchModelsForProvider($provider);
+    }
+
     public function getModels(Request $request): JsonResponse
     {
         $provider = $request->input('provider');
@@ -21,7 +26,7 @@ class ProviderController extends Controller
         }
 
         try {
-            $models = $this->fetchModelsForProvider($provider);
+            $models = $this->modelsForProvider($provider);
             try {
                 $this->persistModelPricing($provider, $models);
             } catch (\Throwable $exception) {

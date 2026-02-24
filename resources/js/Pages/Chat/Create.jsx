@@ -22,7 +22,7 @@ const FALLBACK_MODELS_BY_PROVIDER = {
     ],
 };
 
-export default function Create({ personas, template }) {
+export default function Create({ personas, template, openRouterModels = [] }) {
     const { flash } = usePage().props;
     const selectedPersonaA = personas.find((persona) => persona.id === (template?.persona_a_id ?? ''));
     const selectedPersonaB = personas.find((persona) => persona.id === (template?.persona_b_id ?? ''));
@@ -56,6 +56,17 @@ export default function Create({ personas, template }) {
     const [loadingModelsA, setLoadingModelsA] = useState(false);
     const [loadingModelsB, setLoadingModelsB] = useState(false);
     const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const fallbackModelsByProvider = {
+        ...FALLBACK_MODELS_BY_PROVIDER,
+        openrouter: openRouterModels.length > 0 ? openRouterModels : FALLBACK_MODELS_BY_PROVIDER.openrouter,
+    };
+
+    const visibleModelsA = modelsA.length > 0
+        ? modelsA
+        : (data.provider_a ? (fallbackModelsByProvider[data.provider_a] || []) : []);
+    const visibleModelsB = modelsB.length > 0
+        ? modelsB
+        : (data.provider_b ? (fallbackModelsByProvider[data.provider_b] || []) : []);
 
     const templateForm = useForm({
         name: '',
@@ -94,15 +105,15 @@ export default function Create({ personas, template }) {
             const result = await response.json();
             console.log(`Fetched models for ${provider}:`, result);
             const models = result.models || [];
-            if (models.length === 0 && FALLBACK_MODELS_BY_PROVIDER[provider]) {
+            if (models.length === 0 && fallbackModelsByProvider[provider]) {
                 console.warn(`No models returned for ${provider}, using fallback list.`);
-                setModels(FALLBACK_MODELS_BY_PROVIDER[provider]);
+                setModels(fallbackModelsByProvider[provider]);
             } else {
                 setModels(models);
             }
         } catch (error) {
             console.error('Error fetching models:', error);
-            setModels(FALLBACK_MODELS_BY_PROVIDER[provider] || []);
+            setModels(fallbackModelsByProvider[provider] || []);
         } finally {
             setLoading(false);
         }
@@ -117,10 +128,10 @@ export default function Create({ personas, template }) {
     }, [data.provider_b]);
 
     useEffect(() => {
-        if (data.provider_a && !data.model_a && modelsA.length > 0) {
-            setData('model_a', modelsA[0].id);
+        if (data.provider_a && !data.model_a && visibleModelsA.length > 0) {
+            setData('model_a', visibleModelsA[0].id);
         }
-    }, [data.provider_a, data.model_a, modelsA, setData]);
+    }, [data.provider_a, data.model_a, visibleModelsA, setData]);
 
     useEffect(() => {
         const personaA = personas.find((persona) => persona.id === data.persona_a_id);
@@ -130,10 +141,10 @@ export default function Create({ personas, template }) {
     }, [data.persona_a_id, personas, setData]);
 
     useEffect(() => {
-        if (data.provider_b && !data.model_b && modelsB.length > 0) {
-            setData('model_b', modelsB[0].id);
+        if (data.provider_b && !data.model_b && visibleModelsB.length > 0) {
+            setData('model_b', visibleModelsB[0].id);
         }
-    }, [data.provider_b, data.model_b, modelsB, setData]);
+    }, [data.provider_b, data.model_b, visibleModelsB, setData]);
 
     useEffect(() => {
         const personaB = personas.find((persona) => persona.id === data.persona_b_id);
@@ -323,7 +334,7 @@ export default function Create({ personas, template }) {
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none disabled:opacity-50"
                                 >
                                     <option value="">{loadingModelsA ? 'Loading models...' : 'Select Model...'}</option>
-                                    {modelsA.map(m => (
+                                    {visibleModelsA.map(m => (
                                         <option key={m.id} value={m.id}>
                                             {m.name}{m.cost ? ` - ${m.cost}` : ''}
                                         </option>
@@ -381,7 +392,7 @@ export default function Create({ personas, template }) {
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none disabled:opacity-50"
                                 >
                                     <option value="">{loadingModelsB ? 'Loading models...' : 'Select Model...'}</option>
-                                    {modelsB.map(m => (
+                                    {visibleModelsB.map(m => (
                                         <option key={m.id} value={m.id}>
                                             {m.name}{m.cost ? ` - ${m.cost}` : ''}
                                         </option>
