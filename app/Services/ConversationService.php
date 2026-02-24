@@ -170,6 +170,15 @@ class ConversationService
                     'max' => $maxIterations,
                 ]);
 
+                $fallbackResponse = $driver->chat($messages, $temperature);
+                if (trim($fallbackResponse->content) !== '') {
+                    Log::info('Recovered empty tool response via plain chat fallback', [
+                        'iteration' => $iteration,
+                    ]);
+
+                    return $fallbackResponse->content;
+                }
+
                 $messages->push(new MessageData(
                     'system',
                     'Your previous answer was empty. Respond with a complete, substantive reply to the latest message.'
