@@ -72,17 +72,27 @@ class ChatController extends Controller
         }
 
         if (! app()->environment('testing')) {
-            $openRouterModels = Cache::remember('provider_models.openrouter', now()->addMinutes(10), function () {
+            $cacheKey = 'provider_models.openrouter';
+            $cachedModels = Cache::get($cacheKey);
+
+            if (is_array($cachedModels) && $cachedModels !== []) {
+                $openRouterModels = $cachedModels;
+            } else {
                 try {
-                    return app(ProviderController::class)->modelsForProvider('openrouter');
+                    $fetchedModels = app(ProviderController::class)->modelsForProvider('openrouter');
+                    if ($fetchedModels !== []) {
+                        Cache::put($cacheKey, $fetchedModels, now()->addMinutes(10));
+                    }
+                    $openRouterModels = $fetchedModels;
                 } catch (\Throwable $exception) {
                     Log::warning('Failed to preload OpenRouter models for create page', [
                         'error' => $exception->getMessage(),
                     ]);
 
-                    return [];
+                    Cache::forget($cacheKey);
+                    $openRouterModels = [];
                 }
-            });
+            }
         }
 
         return Inertia::render('Chat/Create', [
