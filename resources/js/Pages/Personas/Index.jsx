@@ -79,18 +79,6 @@ export default function Index({ personas }) {
                                         </span>
                                     </div>
                                 </div>
-
-                                <div className="space-y-2 border-t border-white/[0.06] pt-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-zinc-500">Creativity (Temp)</span>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                                <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${(persona.temperature / 2) * 100}%` }}></div>
-                                            </div>
-                                            <span className="text-zinc-300 font-mono text-xs">{persona.temperature}</span>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     ))}
