@@ -207,7 +207,12 @@ class RunChatSession implements ShouldQueue
                 }
 
                 if (trim($fullResponse) === '') {
-                    Log::warning('Turn produced empty response after retries; completing conversation gracefully', [
+                    $fullResponse = trim((string) config(
+                        'ai.empty_turn_fallback_message',
+                        'I need to regroup for a moment. Please continue with your strongest next point.'
+                    ));
+
+                    Log::warning('Turn produced empty response after retries; using fallback message', [
                         'conversation_id' => $this->conversationId,
                         'round' => $round + 1,
                         'persona' => $currentPersona->name,
@@ -216,16 +221,8 @@ class RunChatSession implements ShouldQueue
                         'max_empty_retries' => $maxEmptyTurnRetries,
                         'exception_retry_attempts' => $exceptionRetryAttempt,
                         'max_exception_retries' => $maxTurnExceptionRetries,
+                        'fallback_length' => strlen($fullResponse),
                     ]);
-
-                    $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
-                    $metadata['termination_reason'] = 'empty_response_after_retries';
-                    $metadata['termination_round'] = $round + 1;
-
-                    $conversation->update(['metadata' => $metadata]);
-                    $service->completeConversation($conversation);
-
-                    break;
                 }
 
                 // 5. Save & Finalize Turn

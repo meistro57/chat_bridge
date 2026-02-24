@@ -88,4 +88,77 @@ class RunChatSessionRetryTest extends TestCase
             'tokens_used' => 42,
         ]);
     }
+
+    public function test_it_uses_fallback_message_when_turn_stays_empty_after_retries(): void
+    {
+        config()->set('ai.empty_turn_retry_attempts', 1);
+        config()->set('ai.empty_turn_retry_delay_ms', 0);
+        config()->set('ai.initial_stream_enabled', false);
+        config()->set('ai.empty_turn_fallback_message', 'Fallback turn content');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'max_rounds' => 1,
+            'status' => 'active',
+            'stop_word_detection' => false,
+            'metadata' => ['notifications_enabled' => false],
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'content' => 'Start the chat',
+        ]);
+
+        $driver = new class
+        {
+            public function getLastTokenUsage(): int
+            {
+                return 7;
+            }
+        };
+
+        $service = Mockery::mock(ConversationService::class);
+        $service->shouldReceive('generateTurn')
+            ->twice()
+            ->andReturnUsing(fn () => [
+                'content' => (function () {
+                    if (false) {
+                        yield '';
+                    }
+                })(),
+                'driver' => $driver,
+            ]);
+        $service->shouldReceive('saveTurn')
+            ->once()
+            ->andReturnUsing(function (Conversation $conversationArg, Persona $personaArg, string $content, ?int $tokensUsed) {
+                return $conversationArg->messages()->create([
+                    'persona_id' => $personaArg->id,
+                    'role' => 'assistant',
+                    'content' => $content,
+                    'tokens_used' => $tokensUsed,
+                ]);
+            });
+        $service->shouldReceive('completeConversation')
+            ->once()
+            ->andReturnUsing(function (Conversation $conversationArg): void {
+                $conversationArg->update(['status' => 'completed']);
+            });
+
+        $job = new RunChatSession($conversation->id, 1);
+        $job->handle($service, app(StopWordService::class));
+
+        $conversation->refresh();
+        $this->assertSame('completed', $conversation->status);
+        $this->assertDatabaseHas('messages', [
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => 'Fallback turn content',
+            'tokens_used' => 7,
+        ]);
+    }
 }
