@@ -3,6 +3,8 @@
 # 🤖 Chat Bridge
 
 ### _The Ultimate AI Conversation Orchestration Platform_
+### --The results of when a Steel Fabricator gets his hands on AI and finds Github.--
+https://quantummindsunited.com/
 
 [![Tests](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml/badge.svg)](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
@@ -286,29 +288,34 @@ Professional debugging suite:
 
 ### 🎨 **Midnight Glass UI Design**
 
-<img width="1381" height="1271" alt="image" src="https://github.com/user-attachments/assets/ef873609-f627-44dc-b205-18afd6a1b50f" />
+<img width="1134" height="1571" alt="image" src="https://github.com/user-attachments/assets/7ad92e4f-cddf-4435-8aa5-3b8b50c05664" />
 
-<img width="1374" height="1465" alt="image" src="https://github.com/user-attachments/assets/be91a4a9-1768-4966-8525-c673c9a7bb6e" />
+<img width="1144" height="1609" alt="image" src="https://github.com/user-attachments/assets/9bca1b5a-4526-4208-b7ce-1943d08cded8" />
 
-<img width="1358" height="1494" alt="image" src="https://github.com/user-attachments/assets/1ca7b2b0-4887-400b-8ab8-1a7cf72ffe19" />
+<img width="1133" height="923" alt="image" src="https://github.com/user-attachments/assets/c83a0fe2-eaf9-4216-beec-bb6f2b72f987" />
 
-<img width="1386" height="598" alt="image" src="https://github.com/user-attachments/assets/a864f3f2-7732-4dee-8628-be9624e80e5d" />
+<img width="1131" height="765" alt="image" src="https://github.com/user-attachments/assets/b7d85765-8b2c-4798-94af-5ad953c7c660" />
 
-<img width="1384" height="1332" alt="image" src="https://github.com/user-attachments/assets/e6bdd7f2-20fe-4ae8-86b5-1160f822fb1b" />
+<img width="1136" height="724" alt="image" src="https://github.com/user-attachments/assets/456ece67-601f-42e8-beac-62f5c6fc101f" />
 
-<img width="1385" height="987" alt="image" src="https://github.com/user-attachments/assets/da2d54f5-ffda-4e81-8c96-cacd50ec33ba" />
+<img width="1134" height="1365" alt="image" src="https://github.com/user-attachments/assets/c5ad7156-85db-4aa8-9f58-609786ff23ca" />
 
-<img width="1374" height="937" alt="image" src="https://github.com/user-attachments/assets/a739b01a-00eb-4c88-900c-8211ac69d96c" />
+<img width="1132" height="1943" alt="image" src="https://github.com/user-attachments/assets/18b32b75-8013-4e3b-955d-e99db8d9d013" />
 
-<img width="1387" height="598" alt="image" src="https://github.com/user-attachments/assets/7f01fc02-2199-49d6-a441-18c56f8d6283" />
+<img width="1154" height="781" alt="image" src="https://github.com/user-attachments/assets/a038e775-f7a9-4b6c-925a-1cfd73d8025a" />
 
-<img width="1387" height="649" alt="image" src="https://github.com/user-attachments/assets/9caa329f-053c-48ee-8c79-137c42ef5a13" />
+<img width="1150" height="1725" alt="image" src="https://github.com/user-attachments/assets/06b60398-95bf-4e6a-a7fb-9c69c3608ec2" />
 
-<img width="1349" height="993" alt="image" src="https://github.com/user-attachments/assets/9443c574-97c5-43a2-8250-25d0e8e67b55" />
+<img width="1135" height="1070" alt="image" src="https://github.com/user-attachments/assets/5fa3de8f-9bc4-4daa-a54a-10a2d7efa978" />
 
-<img width="1199" height="1170" alt="image" src="https://github.com/user-attachments/assets/720aaa2c-03fc-4a59-aa54-22cf4af39b27" />
+<img width="1133" height="1049" alt="image" src="https://github.com/user-attachments/assets/77aa1510-3a88-44d8-b1ce-051489814663" />
 
-<img width="1501" height="902" alt="image" src="https://github.com/user-attachments/assets/a1810bd4-8f74-4407-a09c-add2edf94bc9" />
+<img width="1146" height="845" alt="image" src="https://github.com/user-attachments/assets/00230bc2-752b-479d-8e31-6863bc885c06" />
+
+<img width="1137" height="811" alt="image" src="https://github.com/user-attachments/assets/d45adcd7-3298-4e55-81b3-2d2d2a708e6e" />
+
+<img width="1140" height="1088" alt="image" src="https://github.com/user-attachments/assets/b9726e61-fc0a-4162-a2a9-91b72b0ba32a" />
+
 
 <table>
 <tr>
