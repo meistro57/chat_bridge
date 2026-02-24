@@ -2,7 +2,7 @@
 
 # 🤖 Chat Bridge
 
-### *The Ultimate AI Conversation Orchestration Platform*
+### _The Ultimate AI Conversation Orchestration Platform_
 
 [![Tests](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml/badge.svg)](https://github.com/meistro57/chat_bridge/actions/workflows/laravel.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
@@ -147,9 +147,9 @@ Schema optimization analysis
 2. Select a **Quick Action** from the dropdown (or write your own prompt)
 3. Click **"Invoke Codex"**
 4. Watch Codex **autonomously analyze** your application using:
-   - 📝 **Log analysis** - Pattern recognition in errors
-   - ⚙️ **Configuration checks** - Setting validation
-   - 🧠 **Codex CLI** - Non-interactive runs via `codex exec` with your service key
+    - 📝 **Log analysis** - Pattern recognition in errors
+    - ⚙️ **Configuration checks** - Setting validation
+    - 🧠 **Codex CLI** - Non-interactive runs via `codex exec` with your service key
 
 **Codex uses Codex CLI with local context (system info, error extracts, log tail) to provide actionable insights.**
 
@@ -174,7 +174,9 @@ Schema optimization analysis
 <td width="50%">
 
 ### 🎭 **Persona System**
+
 Create reusable AI persona templates with:
+
 - 🔧 Custom system prompts & guidelines
 - 🌡️ Default temperature controls (0.0-2.0)
 - 🔄 **Provider/model-agnostic design**
@@ -187,7 +189,9 @@ Create reusable AI persona templates with:
 <td width="50%">
 
 ### 💬 **Conversation Engine**
+
 Orchestrate AI discussions with:
+
 - ⚡ Real-time streaming via WebSockets
 - 🔄 Automated multi-turn dialogues (configurable max rounds)
 - 🎯 Manual stop/resume controls
@@ -204,7 +208,9 @@ Orchestrate AI discussions with:
 <td width="50%">
 
 ### 🔐 **Security & Auth**
+
 Enterprise-grade protection:
+
 - 🔒 Encrypted API key storage
 - 👤 Role-based access (User/Admin)
 - 🔑 Per-user credential isolation
@@ -216,7 +222,9 @@ Enterprise-grade protection:
 <td width="50%">
 
 ### 🧠 **RAG Intelligence**
+
 Contextual AI with memory:
+
 - 🗄️ Qdrant vector database
 - 🔍 Semantic message search
 - 💭 Persistent conversation memory
@@ -230,7 +238,9 @@ Contextual AI with memory:
 <td width="50%">
 
 ### 🛠️ **MCP Tool Calling**
+
 AI personas with superpowers:
+
 - 🔍 **search_conversations** - Find past messages by keyword
 - 🧠 **get_contextual_memory** - Vector similarity search
 - 📋 **get_recent_chats** - Retrieve recent conversations
@@ -242,7 +252,9 @@ AI personas with superpowers:
 <td width="50%">
 
 ### 📊 **Analytics Suite**
+
 Deep insights into conversations:
+
 - 📈 7-day activity trends (charts)
 - 👥 Top persona statistics
 - 🔍 Advanced query filters
@@ -252,10 +264,14 @@ Deep insights into conversations:
 - 💰 Automatic provider/model pricing sync for more accurate cost estimates
 
 </td>
+</tr>
+<tr>
 <td width="50%">
 
 ### 🐛 **Debug Tools**
+
 Professional debugging suite:
+
 - 🔭 **Laravel Telescope** - Monitor everything
 - 🐛 **Laravel Debugbar** - Real-time profiling
 - 🧪 **System Diagnostics** - Health checks
@@ -269,6 +285,7 @@ Professional debugging suite:
 </table>
 
 ### 🎨 **Midnight Glass UI Design**
+
 <img width="1381" height="1271" alt="image" src="https://github.com/user-attachments/assets/ef873609-f627-44dc-b205-18afd6a1b50f" />
 
 <img width="1374" height="1465" alt="image" src="https://github.com/user-attachments/assets/be91a4a9-1768-4966-8525-c673c9a7bb6e" />
@@ -292,7 +309,6 @@ Professional debugging suite:
 <img width="1199" height="1170" alt="image" src="https://github.com/user-attachments/assets/720aaa2c-03fc-4a59-aa54-22cf4af39b27" />
 
 <img width="1501" height="902" alt="image" src="https://github.com/user-attachments/assets/a1810bd4-8f74-4407-a09c-add2edf94bc9" />
-
 
 <table>
 <tr>
@@ -320,6 +336,7 @@ Professional debugging suite:
 </table>
 
 Our custom-designed dark theme features:
+
 - 🌑 **Deep zinc-950 background** - True black for OLED displays
 - ✨ **Glassmorphic panels** - Frosted glass with backdrop blur
 - 🎨 **Gradient accents** - Blue, purple, emerald, and cyan themes
@@ -335,6 +352,7 @@ docker compose up -d
 ```
 
 **Includes:**
+
 - 🚀 Nginx + PHP-FPM application server
 - 🗄️ PostgreSQL 16 database
 - 💾 Redis caching & queues
@@ -388,26 +406,31 @@ WebSocket Streaming
 ### **Backend Excellence**
 
 🔥 **Framework**
+
 - Laravel 12.x (Latest)
 - PHP 8.2+ with strict types
 
 🗄️ **Data Layer**
+
 - PostgreSQL 16 (Production)
 - SQLite (Development)
 - Redis (Cache & Queue)
 - Qdrant (Vector Database)
 
 ⚡ **Real-time**
+
 - Laravel Reverb (WebSockets)
 - Laravel Echo (Client)
 - Server-Sent Events
 
 🔐 **Authentication**
+
 - Laravel Breeze
 - Laravel Sanctum
 - Role-based Access Control
 
 🤖 **AI Integration**
+
 - Neuron AI (Multi-provider)
 - Saloon PHP (HTTP Client)
 - 8+ AI Provider Support
@@ -418,27 +441,32 @@ WebSocket Streaming
 ### **Frontend Magic**
 
 ⚛️ **UI Framework**
+
 - React 18
 - Inertia.js 2.0
 - TypeScript Support
 
 🎨 **Styling**
+
 - Tailwind CSS v3
 - Custom Dark Theme
 - Glassmorphic Design
 - CSS-in-JS Compatible
 
 📊 **Visualization**
+
 - Recharts (Analytics)
 - Custom Chart Components
 - Real-time Updates
 
 🔧 **Build Tools**
+
 - Vite 7 (Lightning Fast)
 - NPM/Yarn
 - Hot Module Replacement
 
 🐛 **Developer Tools**
+
 - Laravel Telescope
 - Laravel Debugbar
 - Laravel Pint (Code Style)
@@ -450,16 +478,16 @@ WebSocket Streaming
 
 ### **🎯 Supported AI Providers**
 
-| Provider | Models | Dynamic Fetching | Status |
-|----------|--------|------------------|--------|
-| 🤖 OpenAI | GPT-4o, GPT-4 Turbo, etc. | ✅ API | ✅ Active |
-| 🧠 Anthropic | Claude Sonnet 4.5, Opus 4.5, Haiku 4.5 | ✅ API | ✅ Active |
-| 🌟 Google Gemini | Gemini 2.0 Flash, 1.5 Pro | ⚙️ Static | ✅ Active |
-| 🚀 DeepSeek | DeepSeek Chat, R1 | ⚙️ Static | ✅ Active |
-| 🔀 OpenRouter | **344+ models** with live pricing | ✅ API | ✅ Active |
-| 🏠 Ollama | Local Models | ✅ Auto-detect | ✅ Active |
-| 💻 LM Studio | Local Models | ✅ Auto-detect | ✅ Active |
-| 🧪 Mock | Testing & Development | N/A | ✅ Active |
+| Provider         | Models                                 | Dynamic Fetching | Status    |
+| ---------------- | -------------------------------------- | ---------------- | --------- |
+| 🤖 OpenAI        | GPT-4o, GPT-4 Turbo, etc.              | ✅ API           | ✅ Active |
+| 🧠 Anthropic     | Claude Sonnet 4.5, Opus 4.5, Haiku 4.5 | ✅ API           | ✅ Active |
+| 🌟 Google Gemini | Gemini 2.0 Flash, 1.5 Pro              | ⚙️ Static        | ✅ Active |
+| 🚀 DeepSeek      | DeepSeek Chat, R1                      | ⚙️ Static        | ✅ Active |
+| 🔀 OpenRouter    | **344+ models** with live pricing      | ✅ API           | ✅ Active |
+| 🏠 Ollama        | Local Models                           | ✅ Auto-detect   | ✅ Active |
+| 💻 LM Studio     | Local Models                           | ✅ Auto-detect   | ✅ Active |
+| 🧪 Mock          | Testing & Development                  | N/A              | ✅ Active |
 
 ---
 
@@ -471,18 +499,19 @@ Chat Bridge includes a comprehensive suite of professional tools for system admi
 
 A powerful web-based control panel with 8 diagnostic actions:
 
-| Action | Description | Use Case |
-|--------|-------------|----------|
-| 🏥 Health Check | Complete system status overview | Quick sanity check |
-| 🔐 Fix Permissions | Repair file permissions automatically | After deployment |
-| 🗑️ Clear Caches | Clear config, routes, views, events | Development workflow |
-| ⚡ Optimize App | Cache configs for production | Before going live |
-| 🤖 Validate AI | Test all AI service connections | API key validation |
-| 🗄️ Check Database | Database health & statistics | Monitoring |
-| 🧪 Run Tests | Execute full PHPUnit test suite | CI/CD integration |
-| ✨ Fix Code Style | Auto-fix with Laravel Pint | Code quality |
+| Action             | Description                           | Use Case             |
+| ------------------ | ------------------------------------- | -------------------- |
+| 🏥 Health Check    | Complete system status overview       | Quick sanity check   |
+| 🔐 Fix Permissions | Repair file permissions automatically | After deployment     |
+| 🗑️ Clear Caches    | Clear config, routes, views, events   | Development workflow |
+| ⚡ Optimize App    | Cache configs for production          | Before going live    |
+| 🤖 Validate AI     | Test all AI service connections       | API key validation   |
+| 🗄️ Check Database  | Database health & statistics          | Monitoring           |
+| 🧪 Run Tests       | Execute full PHPUnit test suite       | CI/CD integration    |
+| ✨ Fix Code Style  | Auto-fix with Laravel Pint            | Code quality         |
 
 **System Information Panel:**
+
 - PHP & Laravel versions
 - Environment & debug status
 - Memory limit & execution time
@@ -491,14 +520,16 @@ A powerful web-based control panel with 8 diagnostic actions:
 - File permission status
 
 **Codex Service Key Panel:**
+
 - Set a single OpenAI service key for Codex/Boost diagnostics
 - Test key connectivity from the dashboard
 - Clear the stored key when rotating credentials
- - Codex CLI is bundled in the app image and uses the same service key
+- Codex CLI is bundled in the app image and uses the same service key
 
 ### 🔭 **Laravel Telescope** (`/telescope`)
 
 Professional application monitoring:
+
 - 📊 Request/Response tracking
 - 🐛 Exception monitoring
 - 💾 Database query profiling
@@ -512,6 +543,7 @@ Professional application monitoring:
 ### 🐛 **Laravel Debugbar**
 
 Real-time profiling bar (bottom of page):
+
 - ⚡ Query profiling with execution time
 - 🧠 Memory usage tracking
 - ⏱️ Timeline visualization
@@ -536,42 +568,50 @@ Real-time profiling bar (bottom of page):
 ## 🚀 Installation
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <repository-url>
 cd chat_bridge
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 composer install
 npm install
 ```
 
 ### 3. Environment Setup
+
 ```bash
 cp .env.example .env
 php artisan key:generate
 ```
 
 ### 4. Configure Database
+
 ```bash
 touch database/database.sqlite
 php artisan migrate --force
 ```
 
 ### 5. Build Assets
+
 ```bash
 npm run build
 ```
 
-### 7. Start the Application
+### 6. Start the Application
+
 For automatic port selection and service management (recommended):
+
 ```bash
 chmod +x start-services.sh
 ./start-services.sh
 ```
 
 This script will:
+
 1. Find available ports for Web and WebSocket servers
 2. Configure your environment
 3. Rebuild frontend assets
@@ -579,6 +619,7 @@ This script will:
 5. Display the access URLs
 
 Or run manually:
+
 ```bash
 php artisan serve
 php artisan queue:work
@@ -619,6 +660,7 @@ make setup
 ### Docker Services
 
 The Docker deployment includes:
+
 - **app**: Laravel application (Nginx + PHP-FPM)
 - **queue**: Background worker for conversations
 - **reverb**: WebSocket server for real-time updates
@@ -656,6 +698,7 @@ make clean-volumes # Remove all containers and volumes (destructive)
 For detailed Docker documentation, see **[DOCKER.md](DOCKER.md)**
 
 Docker troubleshooting highlights:
+
 - If Docker builds fail with `permission denied` on `storage/postgres`, see the new troubleshooting section in `DOCKER.md`.
 - After changing PHP dependencies (`composer.json` / `composer.lock`), rebuild images: `docker compose build app queue reverb && docker compose up -d app queue reverb`.
 
@@ -666,11 +709,13 @@ For RAG functionality guide, see **[RAG_GUIDE.md](RAG_GUIDE.md)**
 ## 🎮 Quick Start
 
 ### Development Mode
+
 ```bash
 composer dev
 ```
 
 This single command starts:
+
 - 🌐 Laravel development server (port 8000)
 - 📦 Queue worker
 - 📝 Log viewer (Pail)
@@ -678,6 +723,7 @@ This single command starts:
 - 🔌 Reverb WebSocket server
 
 ### Production Build
+
 ```bash
 npm run build
 php artisan optimize
@@ -691,6 +737,7 @@ php artisan view:cache
 ## 📖 Usage Guide
 
 ### 1. Login with Default Admin
+
 Visit `http://localhost:8000/login` (or `http://localhost:8002` for Docker) and use the default credentials:
 
 - **Email**: `admin@chatbridge.local`
@@ -699,6 +746,7 @@ Visit `http://localhost:8000/login` (or `http://localhost:8002` for Docker) and 
 This admin user is automatically created with full admin rights during installation via database seeder.
 
 ### 2. Add API Keys
+
 1. Navigate to `/api-keys`
 2. Click "Add API Key"
 3. Select provider (e.g., "openai" or "anthropic")
@@ -707,41 +755,44 @@ This admin user is automatically created with full admin rights during installat
 6. Save
 
 ### 3. Create Personas
+
 1. Go to `/personas`
 2. Click "Create Persona"
 3. Configure:
-   - **Name**: Unique identifier
-   - **System Prompt**: Instructions for the AI's personality and behavior
-   - **Default Temperature**: 0.0 (deterministic) to 2.0 (creative)
-   - **Notes**: Optional internal notes
+    - **Name**: Unique identifier
+    - **System Prompt**: Instructions for the AI's personality and behavior
+    - **Default Temperature**: 0.0 (deterministic) to 2.0 (creative)
+    - **Notes**: Optional internal notes
 4. Save
 
 > 💡 **Note**: Personas are now provider/model-agnostic templates! You select the provider and model when creating a conversation, allowing you to reuse the same persona with different AI models.
 
 ### 4. Start a Conversation
+
 1. Navigate to `/chat/create`
 2. Configure **Agent A**:
-   - Select persona template
-   - Choose AI provider (Anthropic, OpenAI, OpenRouter, etc.)
-   - Select model from **dynamically fetched list** with pricing
-   - Adjust temperature if needed
+    - Select persona template
+    - Choose AI provider (Anthropic, OpenAI, OpenRouter, etc.)
+    - Select model from **dynamically fetched list** with pricing
+    - Adjust temperature if needed
 3. Configure **Agent B**:
-   - Select persona template
-   - Choose AI provider (can be different from Agent A!)
-   - Select model with live pricing
-   - Adjust temperature if needed
+    - Select persona template
+    - Choose AI provider (can be different from Agent A!)
+    - Select model with live pricing
+    - Adjust temperature if needed
 4. Enter **Starter Message**
 5. Configure **Chat Control Settings**:
-   - **Max Rounds**: Limit conversation turns (1-100)
-   - **Stop Word Detection**: Enable automatic stopping
-   - **Stop Words**: Comma-separated trigger words (e.g., "goodbye, end")
-   - **Threshold**: Detection sensitivity (0.1-1.0)
+    - **Max Rounds**: Limit conversation turns (1-100)
+    - **Stop Word Detection**: Enable automatic stopping
+    - **Stop Words**: Comma-separated trigger words (e.g., "goodbye, end")
+    - **Threshold**: Detection sensitivity (0.1-1.0)
 6. Click "Begin Simulation"
 7. Watch the real-time conversation unfold!
 
 > 💰 **Pricing**: All models display cost per 1M tokens (input/output) so you can make informed decisions!
 
 ### 5. Monitor Conversations
+
 - View active conversations on `/chat`
 - Click any conversation to see details
 - Use the stop button to halt long conversations
@@ -825,11 +876,13 @@ chat_bridge/
 ## 🌐 API Endpoints
 
 ### Authentication
+
 - `POST /register` - Register new user
 - `POST /login` - User login
 - `POST /logout` - User logout
 
 ### Conversations
+
 - `GET /chat` - List conversations
 - `POST /chat` - Create conversation (with provider/model selection & chat controls)
 - `GET /chat/{id}` - View conversation
@@ -838,10 +891,12 @@ chat_bridge/
 - `GET /chat/{id}/transcript` - Download transcript
 
 ### Provider API
+
 - `GET /api/providers/models?provider={name}` - Get available models for provider (with pricing)
-  - Also upserts provider/model token pricing into `model_prices` for analytics cost estimation
+    - Also upserts provider/model token pricing into `model_prices` for analytics cost estimation
 
 ### Personas
+
 - `GET /personas` - List personas
 - `POST /personas` - Create persona
 - `GET /personas/{id}/edit` - Edit form
@@ -849,6 +904,7 @@ chat_bridge/
 - `DELETE /personas/{id}` - Delete persona
 
 ### API Keys
+
 - `GET /api-keys` - List API keys
 - `POST /api-keys` - Add API key
 - `PUT /api-keys/{id}` - Update API key
@@ -856,17 +912,20 @@ chat_bridge/
 - `POST /api-keys/{id}/test` - Validate API key with provider
 
 ### Analytics
+
 - `GET /analytics` - Analytics dashboard with charts
 - `POST /analytics/query` - Query conversation history
 - `POST /analytics/export` - Export conversations to CSV
 
 ### Admin (Requires Admin Role)
+
 - `GET /admin/users` - List all users
 - `POST /admin/users` - Create user
 - `PUT /admin/users/{id}` - Update user
 - `DELETE /admin/users/{id}` - Delete user
 
 ### External API
+
 - `POST /api/chat-bridge/respond` - Chat bridge endpoint (requires token)
 
 ---
@@ -939,18 +998,23 @@ php artisan test --coverage
 ## 🐛 Troubleshooting
 
 ### Queue Not Processing
+
 ```bash
 php artisan queue:work --tries=1
 ```
 
 ### WebSocket Connection Failed
+
 Check Reverb is running:
+
 ```bash
 php artisan reverb:start
 ```
 
 ### Broadcast Payload Too Large
+
 If messages vanish or you see payload size errors, lower streaming chunk size or raise Reverb limits:
+
 ```bash
 # Lower broadcast chunk size (safer for large personas)
 AI_STREAM_CHUNK_SIZE=600
@@ -961,12 +1025,15 @@ REVERB_APP_MAX_MESSAGE_SIZE=25000
 ```
 
 Then restart the services:
+
 ```bash
 php artisan queue:restart
 ```
 
 ### Build Errors
+
 Clear cache and rebuild:
+
 ```bash
 php artisan config:clear
 php artisan cache:clear
@@ -975,7 +1042,9 @@ npm run build
 ```
 
 ### Database Locked (SQLite)
+
 Stop all queue workers and retry:
+
 ```bash
 php artisan queue:restart
 php artisan migrate --force
@@ -986,15 +1055,17 @@ php artisan migrate --force
 ## 📚 Documentation
 
 ### 📖 Chat Bridge Documentation
-| Document | Description |
-|----------|-------------|
-| **[FEATURES.md](FEATURES.md)** | 🎯 Complete feature list (200+) |
-| **[DOCKER.md](DOCKER.md)** | 🐳 Docker deployment guide |
-| **[RAG_GUIDE.md](RAG_GUIDE.md)** | 🧠 RAG & AI memory guide |
-| **[ROADMAP.md](ROADMAP.md)** | 🗺️ Future development plans |
-| **[DATA_MANIPULATION.md](DATA_MANIPULATION.md)** | 📊 Data operations guide |
+
+| Document                                         | Description                     |
+| ------------------------------------------------ | ------------------------------- |
+| **[FEATURES.md](FEATURES.md)**                   | 🎯 Complete feature list (200+) |
+| **[DOCKER.md](DOCKER.md)**                       | 🐳 Docker deployment guide      |
+| **[RAG_GUIDE.md](RAG_GUIDE.md)**                 | 🧠 RAG & AI memory guide        |
+| **[ROADMAP.md](ROADMAP.md)**                     | 🗺️ Future development plans     |
+| **[DATA_MANIPULATION.md](DATA_MANIPULATION.md)** | 📊 Data operations guide        |
 
 ### 🌐 External Documentation
+
 - **[Laravel 12.x](https://laravel.com/docs/12.x)** - Framework documentation
 - **[React 18](https://react.dev/)** - UI library guide
 - **[Inertia.js](https://inertiajs.com/)** - SPA bridge documentation
@@ -1028,16 +1099,16 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 <div align="center">
 
-| Metric | Count |
-|--------|-------|
-| 🎭 **Pre-configured Personas** | 56 |
-| 🤖 **AI Providers Supported** | 8+ |
-| ✨ **Features** | 200+ |
-| 🎨 **Custom CSS Utilities** | 15+ |
-| 📊 **Admin Dashboard Actions** | 8 |
-| 🧪 **Test Coverage** | Comprehensive |
-| 📦 **Total Dependencies** | 93+ |
-| ⚡ **Vector Search Speed** | <10ms |
+| Metric                         | Count         |
+| ------------------------------ | ------------- |
+| 🎭 **Pre-configured Personas** | 56            |
+| 🤖 **AI Providers Supported**  | 8+            |
+| ✨ **Features**                | 200+          |
+| 🎨 **Custom CSS Utilities**    | 15+           |
+| 📊 **Admin Dashboard Actions** | 8             |
+| 🧪 **Test Coverage**           | Comprehensive |
+| 📦 **Total Dependencies**      | 93+           |
+| ⚡ **Vector Search Speed**     | <10ms         |
 
 </div>
 
@@ -1050,18 +1121,22 @@ This project is open-sourced software licensed under the [MIT license](https://o
 <td width="50%">
 
 ### 🎨 **Stunning UI**
+
 Not just functional—beautiful! Our custom "Midnight Glass" dark theme with glassmorphic design makes working with AI agents a visual treat.
 
 ### 🔧 **Developer-First**
+
 Built by developers, for developers. Includes Telescope, Debugbar, comprehensive testing, and a full diagnostics suite.
 
 </td>
 <td width="50%">
 
 ### 🚀 **Production-Ready**
+
 Not a toy project. Enterprise-grade security, performance optimization, Docker deployment, and comprehensive monitoring.
 
 ### 🧠 **Intelligent**
+
 RAG-powered conversations with persistent memory. Your AI agents remember context across sessions for truly intelligent discussions.
 
 </td>
@@ -1099,6 +1174,7 @@ Powered by amazing open-source projects:
 Check out our [ROADMAP.md](ROADMAP.md) for upcoming features and improvements!
 
 **Coming Soon:**
+
 - 🌐 Multi-language support
 - 📱 Mobile app (React Native)
 - 🎙️ Voice conversation support
