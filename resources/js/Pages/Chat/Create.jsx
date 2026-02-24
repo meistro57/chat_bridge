@@ -15,6 +15,8 @@ const PROVIDERS = [
 
 export default function Create({ personas, template }) {
     const { flash } = usePage().props;
+    const selectedPersonaA = personas.find((persona) => persona.id === (template?.persona_a_id ?? ''));
+    const selectedPersonaB = personas.find((persona) => persona.id === (template?.persona_b_id ?? ''));
     const { data, setData, post, processing, errors, transform } = useForm({
         persona_a_id: template?.persona_a_id ?? '',
         persona_b_id: template?.persona_b_id ?? '',
@@ -22,8 +24,8 @@ export default function Create({ personas, template }) {
         provider_b: '',
         model_a: '',
         model_b: '',
-        temp_a: 0.7,
-        temp_b: 0.7,
+        temp_a: selectedPersonaA?.temperature ?? 0.7,
+        temp_b: selectedPersonaB?.temperature ?? 0.7,
         starter_message: template?.starter_message ?? '',
         max_rounds: template?.max_rounds ?? 10,
         stop_word_detection: false,
@@ -99,10 +101,60 @@ export default function Create({ personas, template }) {
         fetchModels(data.provider_b, setModelsB, setLoadingModelsB);
     }, [data.provider_b]);
 
+    useEffect(() => {
+        if (data.provider_a && !data.model_a && modelsA.length > 0) {
+            setData('model_a', modelsA[0].id);
+        }
+    }, [data.provider_a, data.model_a, modelsA, setData]);
+
+    useEffect(() => {
+        const personaA = personas.find((persona) => persona.id === data.persona_a_id);
+        if (personaA) {
+            setData('temp_a', personaA.temperature ?? 0.7);
+        }
+    }, [data.persona_a_id, personas, setData]);
+
+    useEffect(() => {
+        if (data.provider_b && !data.model_b && modelsB.length > 0) {
+            setData('model_b', modelsB[0].id);
+        }
+    }, [data.provider_b, data.model_b, modelsB, setData]);
+
+    useEffect(() => {
+        const personaB = personas.find((persona) => persona.id === data.persona_b_id);
+        if (personaB) {
+            setData('temp_b', personaB.temperature ?? 0.7);
+        }
+    }, [data.persona_b_id, personas, setData]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(route('chat.store'));
+        post(route('chat.store'), {
+            onError: () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+        });
     };
+
+    const hasStopWords = data.stop_words
+        .split(',')
+        .map((word) => word.trim())
+        .filter((word) => word.length > 0)
+        .length > 0;
+
+    const isValidRoundCount = Number.isInteger(Number(data.max_rounds)) && Number(data.max_rounds) >= 1 && Number(data.max_rounds) <= 100;
+
+    const canSubmit = Boolean(
+        data.persona_a_id &&
+        data.persona_b_id &&
+        data.provider_a &&
+        data.provider_b &&
+        data.model_a &&
+        data.model_b &&
+        data.starter_message.trim().length > 0 &&
+        isValidRoundCount &&
+        (!data.stop_word_detection || (hasStopWords && data.stop_word_threshold >= 0.1 && data.stop_word_threshold <= 1))
+    );
 
     const openTemplateModal = () => {
         templateForm.setData({
@@ -121,6 +173,8 @@ export default function Create({ personas, template }) {
     const handleSaveTemplate = (e) => {
         e.preventDefault();
         templateForm.post(route('templates.storeFromChat'), {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => setShowTemplateModal(false),
         });
     };
@@ -162,6 +216,18 @@ export default function Create({ personas, template }) {
                     {flash?.success && (
                         <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-300 butter-reveal">
                             {flash.success}
+                        </div>
+                    )}
+                    {Object.keys(errors).length > 0 && (
+                        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-sm text-red-300 butter-reveal">
+                            <p className="font-semibold">Please review the form errors and try again:</p>
+                            <ul className="mt-2 list-disc space-y-1 pl-5">
+                                {Object.entries(errors).map(([field, message]) => (
+                                    <li key={field}>
+                                        {message}
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
 
@@ -252,22 +318,6 @@ export default function Create({ personas, template }) {
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Temperature: {data.temp_a}</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="2"
-                                    step="0.1"
-                                    value={data.temp_a}
-                                    onChange={e => setData('temp_a', parseFloat(e.target.value))}
-                                    className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-zinc-600">
-                                    <span>Deterministic</span>
-                                    <span>Creative</span>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Agent B */}
@@ -326,22 +376,6 @@ export default function Create({ personas, template }) {
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Temperature: {data.temp_b}</label>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="2"
-                                    step="0.1"
-                                    value={data.temp_b}
-                                    onChange={e => setData('temp_b', parseFloat(e.target.value))}
-                                    className="w-full"
-                                />
-                                <div className="flex justify-between text-xs text-zinc-600">
-                                    <span>Deterministic</span>
-                                    <span>Creative</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -369,9 +403,18 @@ export default function Create({ personas, template }) {
                                     min="1"
                                     max="100"
                                     value={data.max_rounds}
-                                    onChange={e => setData('max_rounds', parseInt(e.target.value))}
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        setData('max_rounds', value === '' ? '' : parseInt(value, 10));
+                                    }}
+                                    onBlur={() => {
+                                        if (!isValidRoundCount) {
+                                            setData('max_rounds', 10);
+                                        }
+                                    }}
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
                                 />
+                                {errors.max_rounds && <div className="text-red-400 text-sm">{errors.max_rounds}</div>}
                                 <p className="text-xs text-zinc-600">Maximum number of conversation turns</p>
                             </div>
 
@@ -413,6 +456,7 @@ export default function Create({ personas, template }) {
                                         placeholder="goodbye, farewell, end"
                                         className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
                                     />
+                                    {errors.stop_words && <div className="text-red-400 text-sm">{errors.stop_words}</div>}
                                 </div>
 
                                 <div className="space-y-2">
@@ -426,6 +470,7 @@ export default function Create({ personas, template }) {
                                         onChange={e => setData('stop_word_threshold', parseFloat(e.target.value))}
                                         className="w-full"
                                     />
+                                    {errors.stop_word_threshold && <div className="text-red-400 text-sm">{errors.stop_word_threshold}</div>}
                                     <div className="flex justify-between text-xs text-zinc-600">
                                         <span>Loose</span>
                                         <span>Strict</span>
@@ -439,7 +484,7 @@ export default function Create({ personas, template }) {
                     <div className="pt-4 flex flex-col gap-3">
                         <button
                             type="submit"
-                            disabled={processing}
+                            disabled={processing || !canSubmit}
                             className="w-full group relative bg-white text-black rounded-xl py-4 font-bold overflow-hidden transition-all hover:scale-[1.01] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20 group-hover:opacity-40 transition-opacity"></div>
@@ -460,6 +505,11 @@ export default function Create({ personas, template }) {
                                 )}
                             </span>
                         </button>
+                        {!canSubmit && (
+                            <p className="text-xs text-zinc-500 text-center">
+                                Complete persona, provider, model, prompt, and round settings to start.
+                            </p>
+                        )}
 
                         <button
                             type="button"

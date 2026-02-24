@@ -20,7 +20,7 @@ class GeminiDriver implements AIDriverInterface
 
     public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
 
         $response = Http::post("{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}", $payload);
 
@@ -54,7 +54,7 @@ class GeminiDriver implements AIDriverInterface
     {
         $this->lastTokenUsage = null;
 
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
 
         $response = Http::withOptions(['stream' => true])
             ->post("{$this->baseUrl}/models/{$this->model}:streamGenerateContent?alt=sse&key={$this->apiKey}", $payload);
@@ -88,7 +88,7 @@ class GeminiDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
         $payload['tools'] = [
             [
                 'function_declarations' => $tools->map(fn (ToolDefinition $tool) => $tool->toGeminiSchema())->all(),
@@ -154,7 +154,7 @@ class GeminiDriver implements AIDriverInterface
         return true;
     }
 
-    protected function preparePayload(Collection $messages, float $temperature): array
+    protected function preparePayload(Collection $messages): array
     {
         // Combine all system messages (system prompt + guidelines) into a single instruction
         $systemMessages = $messages->where('role', 'system');
@@ -171,7 +171,6 @@ class GeminiDriver implements AIDriverInterface
             'contents' => $contents,
             'system_instruction' => $systemInstruction,
             'generationConfig' => [
-                'temperature' => $temperature,
                 'maxOutputTokens' => 2048,
             ],
         ]);

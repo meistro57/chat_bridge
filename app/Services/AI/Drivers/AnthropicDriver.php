@@ -22,7 +22,7 @@ class AnthropicDriver implements AIDriverInterface
 
     public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
 
         $response = Http::withHeaders([
             'x-api-key' => $this->apiKey,
@@ -69,7 +69,7 @@ class AnthropicDriver implements AIDriverInterface
     {
         $this->lastTokenUsage = null;
 
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
         $payload['stream'] = true;
 
         $response = Http::withHeaders([
@@ -133,7 +133,7 @@ class AnthropicDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        $payload = $this->preparePayload($messages, $temperature);
+        $payload = $this->preparePayload($messages);
         $payload['tools'] = $tools->map(fn (ToolDefinition $tool) => $tool->toAnthropicSchema())->all();
 
         $response = Http::withHeaders([
@@ -200,7 +200,7 @@ class AnthropicDriver implements AIDriverInterface
         return true;
     }
 
-    protected function preparePayload(Collection $messages, float $temperature): array
+    protected function preparePayload(Collection $messages): array
     {
         // Combine all system messages (system prompt + guidelines) into a single string
         $systemMessages = $messages->where('role', 'system');
@@ -220,7 +220,6 @@ class AnthropicDriver implements AIDriverInterface
             ]))->all(),
             'system' => $system,
             'max_tokens' => 8192,
-            'temperature' => $temperature,
         ]);
     }
 

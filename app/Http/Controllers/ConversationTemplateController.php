@@ -74,7 +74,9 @@ class ConversationTemplateController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
-        return Redirect::route('chat.create')->with('success', 'Template saved successfully.');
+        $target = url()->previous() ?: route('chat.create');
+
+        return Redirect::to($target)->with('success', 'Template saved successfully.');
     }
 
     public function edit(Request $request, ConversationTemplate $template): Response

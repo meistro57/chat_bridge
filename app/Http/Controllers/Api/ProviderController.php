@@ -8,6 +8,7 @@ use App\Models\ModelPrice;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class ProviderController extends Controller
 {
@@ -21,7 +22,14 @@ class ProviderController extends Controller
 
         try {
             $models = $this->fetchModelsForProvider($provider);
-            $this->persistModelPricing($provider, $models);
+            try {
+                $this->persistModelPricing($provider, $models);
+            } catch (\Throwable $exception) {
+                Log::warning('Failed to persist provider model pricing', [
+                    'provider' => $provider,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'provider' => $provider,
@@ -295,11 +303,13 @@ class ProviderController extends Controller
             return;
         }
 
-        ModelPrice::query()->upsert(
-            $rows,
-            ['provider', 'model'],
-            ['prompt_per_million', 'completion_per_million', 'updated_at']
-        );
+        foreach (array_chunk($rows, 200) as $chunk) {
+            ModelPrice::query()->upsert(
+                $chunk,
+                ['provider', 'model'],
+                ['prompt_per_million', 'completion_per_million', 'updated_at']
+            );
+        }
     }
 
     /**

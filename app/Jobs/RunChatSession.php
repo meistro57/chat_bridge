@@ -103,20 +103,28 @@ class RunChatSession implements ShouldQueue
                 $chunker = app(StreamingChunker::class);
                 $broadcaster = app(SafeBroadcaster::class);
                 $maxChunkSize = (int) config('ai.stream_chunk_size', 1500);
+                $initialStreamEnabled = (bool) config('ai.initial_stream_enabled', true);
+                $initialStreamChunk = (string) config('ai.initial_stream_chunk', '');
+                $interTurnDelayMs = max(0, (int) config('ai.inter_turn_delay_ms', 250));
+                $maxEmptyTurnRetries = max(0, (int) config('ai.empty_turn_retry_attempts', 1));
+                $emptyTurnRetryDelayMs = max(0, (int) config('ai.empty_turn_retry_delay_ms', 350));
                 $chunkCount = 0;
+                $retryAttempt = 0;
+                $driver = null;
 
-                $generation = $service->generateTurn($conversation, $currentPersona, $history);
-                $driver = $generation['driver'];
+                do {
+                    $fullResponse = '';
+                    $chunkCount = 0;
 
-                foreach ($generation['content'] as $chunk) {
-                    $fullResponse .= $chunk;
+                    $generation = $service->generateTurn($conversation, $currentPersona, $history);
+                    $driver = $generation['driver'];
 
-                    foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                    if ($initialStreamEnabled) {
                         $chunkCount++;
                         $broadcaster->broadcast(
                             new MessageChunkSent(
                                 conversationId: $conversation->id,
-                                chunk: $piece,
+                                chunk: $initialStreamChunk,
                                 role: 'assistant',
                                 personaName: $currentPersona->name
                             ),
@@ -127,10 +135,48 @@ class RunChatSession implements ShouldQueue
                         );
                     }
 
-                    if (Cache::get("conversation.stop.{$this->conversationId}")) {
+                    foreach ($generation['content'] as $chunk) {
+                        $fullResponse .= $chunk;
+
+                        foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                            $chunkCount++;
+                            $broadcaster->broadcast(
+                                new MessageChunkSent(
+                                    conversationId: $conversation->id,
+                                    chunk: $piece,
+                                    role: 'assistant',
+                                    personaName: $currentPersona->name
+                                ),
+                                [
+                                    'conversation_id' => $conversation->id,
+                                    'phase' => 'chunk',
+                                ]
+                            );
+                        }
+
+                        if (Cache::get("conversation.stop.{$this->conversationId}")) {
+                            break;
+                        }
+                    }
+
+                    if (trim($fullResponse) !== '') {
                         break;
                     }
-                }
+
+                    $retryAttempt++;
+
+                    if ($retryAttempt <= $maxEmptyTurnRetries) {
+                        Log::warning('Turn produced empty response, retrying', [
+                            'conversation_id' => $this->conversationId,
+                            'round' => $round + 1,
+                            'persona' => $currentPersona->name,
+                            'retry_attempt' => $retryAttempt,
+                            'max_retries' => $maxEmptyTurnRetries,
+                        ]);
+
+                        usleep($emptyTurnRetryDelayMs * 1000);
+                    }
+                } while ($retryAttempt <= $maxEmptyTurnRetries);
 
                 if (trim($fullResponse) === '') {
                     Log::warning('Turn produced empty response', [
@@ -154,7 +200,7 @@ class RunChatSession implements ShouldQueue
                 }
 
                 // 5. Save & Finalize Turn
-                $tokensUsed = $driver->getLastTokenUsage();
+                $tokensUsed = $driver?->getLastTokenUsage();
                 $message = $service->saveTurn($conversation, $currentPersona, $fullResponse, $tokensUsed);
                 $broadcaster->broadcast(
                     new MessageCompleted($message),
@@ -185,7 +231,7 @@ class RunChatSession implements ShouldQueue
                 }
 
                 $round++;
-                sleep(1);
+                usleep($interTurnDelayMs * 1000);
             }
 
             if ($round >= $maxRounds && $conversation->fresh()->status === 'active') {

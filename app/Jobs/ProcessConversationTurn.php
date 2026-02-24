@@ -63,6 +63,9 @@ class ProcessConversationTurn implements ShouldQueue
         $messages = $messages->concat($history);
 
         $maxChunkSize = (int) config('ai.stream_chunk_size', 1500);
+        $initialStreamEnabled = (bool) config('ai.initial_stream_enabled', true);
+        $initialStreamChunk = (string) config('ai.initial_stream_chunk', '');
+        $interTurnDelayMs = max(0, (int) config('ai.inter_turn_delay_ms', 250));
         $chunker = app(StreamingChunker::class);
         $broadcaster = app(SafeBroadcaster::class);
         $startAt = microtime(true);
@@ -82,6 +85,17 @@ class ProcessConversationTurn implements ShouldQueue
 
         $fullResponse = '';
         try {
+            if ($initialStreamEnabled) {
+                $chunkCount++;
+                $broadcaster->broadcast(
+                    new MessageChunkSent($conversation->id, $initialStreamChunk, 'assistant', $currentPersona->name),
+                    [
+                        'conversation_id' => $conversation->id,
+                        'phase' => 'chunk',
+                    ]
+                );
+            }
+
             foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
                 if ($firstChunkAt === null) {
                     $firstChunkAt = microtime(true);
@@ -182,6 +196,6 @@ class ProcessConversationTurn implements ShouldQueue
 
         // Schedule next turn
         dispatch(new self($this->conversationId, $this->round + 1, $maxRounds))
-            ->delay(now()->addSeconds(2));
+            ->delay(now()->addMilliseconds($interTurnDelayMs));
     }
 }

@@ -32,8 +32,6 @@ class ChatControllerTest extends TestCase
             'provider_b' => 'openai',
             'model_a' => 'gpt-4o-mini',
             'model_b' => 'gpt-4o-mini',
-            'temp_a' => 0.6,
-            'temp_b' => 0.8,
             'starter_message' => 'Test kickoff prompt.',
             'max_rounds' => 7,
             'stop_word_detection' => true,
@@ -54,6 +52,8 @@ class ChatControllerTest extends TestCase
         $this->assertSame($user->id, $conversation->user_id);
         $this->assertSame($payload['provider_a'], $conversation->provider_a);
         $this->assertSame($payload['model_b'], $conversation->model_b);
+        $this->assertEquals($personaA->temperature, $conversation->temp_a);
+        $this->assertEquals($personaB->temperature, $conversation->temp_b);
         $this->assertSame($payload['max_rounds'], $conversation->max_rounds);
         $this->assertSame($payload['stop_words'], $conversation->stop_words);
         $this->assertTrue($conversation->stop_word_detection);
@@ -87,8 +87,6 @@ class ChatControllerTest extends TestCase
             'provider_b' => 'openai',
             'model_a' => 'gpt-4o-mini',
             'model_b' => 'gpt-4o-mini',
-            'temp_a' => 0.6,
-            'temp_b' => 0.8,
             'starter_message' => 'Test default notifications setting.',
             'max_rounds' => 7,
             'stop_word_detection' => false,

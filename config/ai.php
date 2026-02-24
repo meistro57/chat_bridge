@@ -116,6 +116,43 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Initial Stream Chunk
+    |--------------------------------------------------------------------------
+    |
+    | Optional small chunk broadcast immediately when a turn starts so the UI
+    | can render a live bubble before provider tokens arrive.
+    |
+    */
+
+    'initial_stream_enabled' => env('AI_INITIAL_STREAM_ENABLED', true),
+    'initial_stream_chunk' => env('AI_INITIAL_STREAM_CHUNK', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Inter-Turn Delay
+    |--------------------------------------------------------------------------
+    |
+    | Delay between conversation turns in milliseconds.
+    |
+    */
+
+    'inter_turn_delay_ms' => (int) env('AI_INTER_TURN_DELAY_MS', 250),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Empty Turn Retry
+    |--------------------------------------------------------------------------
+    |
+    | If a provider returns an empty turn, retry generation this many times
+    | before failing the conversation.
+    |
+    */
+
+    'empty_turn_retry_attempts' => (int) env('AI_EMPTY_TURN_RETRY_ATTEMPTS', 1),
+    'empty_turn_retry_delay_ms' => (int) env('AI_EMPTY_TURN_RETRY_DELAY_MS', 350),
+
+    /*
+    |--------------------------------------------------------------------------
     | Broadcast Payload Limit
     |--------------------------------------------------------------------------
     |

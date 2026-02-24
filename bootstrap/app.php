@@ -17,6 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        if (class_exists(\Barryvdh\Debugbar\Middleware\InjectDebugbar::class)) {
+            $middleware->web(append: [
+                \Barryvdh\Debugbar\Middleware\InjectDebugbar::class,
+            ]);
+        }
+
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
         ]);

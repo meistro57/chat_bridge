@@ -8,6 +8,7 @@ use App\Models\Persona;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\EmbeddingService;
+use App\Services\AI\StreamingChunker;
 use App\Services\AI\Tools\ToolExecutor;
 use App\Services\AI\TranscriptService;
 use App\Services\Broadcast\SafeBroadcaster;
@@ -21,7 +22,8 @@ class ConversationService
         protected TranscriptService $transcripts,
         protected EmbeddingService $embeddings,
         protected RagService $rag,
-        protected ToolExecutor $toolExecutor
+        protected ToolExecutor $toolExecutor,
+        protected StreamingChunker $streamingChunker
     ) {}
 
     /**
@@ -43,9 +45,11 @@ class ConversationService
             // Use agentic loop with tools (non-streaming)
             $result = $this->generateWithTools($driver, $messages, $settings['temperature']);
 
-            // Create generator that yields the final content
+            // Stream the final tools response in smaller chunks for smoother UI updates.
             $generator = function () use ($result) {
-                yield $result;
+                foreach ($this->streamingChunker->split($result, $this->toolResponseChunkSize()) as $chunk) {
+                    yield $chunk;
+                }
             };
 
             return [
@@ -76,6 +80,13 @@ class ConversationService
         ];
     }
 
+    protected function toolResponseChunkSize(): int
+    {
+        $configuredLimit = (int) config('ai.stream_chunk_size', 1500);
+
+        return max(1, min($configuredLimit, 120));
+    }
+
     /**
      * Build message collection with system prompts, guidelines, and history
      */
@@ -87,17 +98,17 @@ class ConversationService
         $messages->push(new MessageData('system', $persona->system_prompt));
 
         // Add conversation context for multi-turn awareness
-        $conversationContext = "IMPORTANT: This is an ongoing multi-turn conversation simulation. You MUST respond to each message.\n\n" .
-            "Your task:\n" .
-            "1. Read the most recent message from the other participant\n" .
-            "2. Provide a substantive response from YOUR professional perspective\n" .
-            "3. Engage with their points - agree, disagree, add context, or raise new concerns\n" .
-            "4. Keep the dialogue active and interesting\n\n" .
-            "Even if the previous message seems complete, find an angle to respond from your expertise. " .
-            "Share your thoughts, concerns, alternative approaches, or practical considerations. " .
-            "NEVER leave a message unanswered.\n\n" .
-            "You have access to tools that can search past conversations and retrieve contextual information. " .
-            "Use these tools when relevant to provide informed responses based on conversation history.";
+        $conversationContext = "IMPORTANT: This is an ongoing multi-turn conversation simulation. You MUST respond to each message.\n\n".
+            "Your task:\n".
+            "1. Read the most recent message from the other participant\n".
+            "2. Provide a substantive response from YOUR professional perspective\n".
+            "3. Engage with their points - agree, disagree, add context, or raise new concerns\n".
+            "4. Keep the dialogue active and interesting\n\n".
+            'Even if the previous message seems complete, find an angle to respond from your expertise. '.
+            'Share your thoughts, concerns, alternative approaches, or practical considerations. '.
+            "NEVER leave a message unanswered.\n\n".
+            'You have access to tools that can search past conversations and retrieve contextual information. '.
+            'Use these tools when relevant to provide informed responses based on conversation history.';
         $messages->push(new MessageData('system', $conversationContext));
 
         // Guidelines
@@ -150,7 +161,21 @@ class ConversationService
 
             // If AI returned a text response (no tool calls), we're done
             if ($result['response'] !== null) {
-                return $result['response']->content;
+                if (trim($result['response']->content) !== '') {
+                    return $result['response']->content;
+                }
+
+                Log::warning('Tool-enabled response was empty; requesting retry', [
+                    'iteration' => $iteration,
+                    'max' => $maxIterations,
+                ]);
+
+                $messages->push(new MessageData(
+                    'system',
+                    'Your previous answer was empty. Respond with a complete, substantive reply to the latest message.'
+                ));
+
+                continue;
             }
 
             // AI wants to call tools
@@ -182,7 +207,7 @@ class ConversationService
                 if ($tr['error']) {
                     $toolResultsText .= "Error: {$tr['error']}\n";
                 } else {
-                    $toolResultsText .= "Result: ".json_encode($tr['result'], JSON_PRETTY_PRINT)."\n";
+                    $toolResultsText .= 'Result: '.json_encode($tr['result'], JSON_PRETTY_PRINT)."\n";
                 }
                 $toolResultsText .= "\n";
             }

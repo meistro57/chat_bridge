@@ -778,15 +778,13 @@ This admin user is automatically created with full admin rights during installat
 
 1. Navigate to `/chat/create`
 2. Configure **Agent A**:
-    - Select persona template
-    - Choose AI provider (Anthropic, OpenAI, OpenRouter, etc.)
-    - Select model from **dynamically fetched list** with pricing
-    - Adjust temperature if needed
+   - Select persona template
+   - Choose AI provider (Anthropic, OpenAI, OpenRouter, etc.)
+   - Select model from **dynamically fetched list** with pricing
 3. Configure **Agent B**:
-    - Select persona template
-    - Choose AI provider (can be different from Agent A!)
-    - Select model with live pricing
-    - Adjust temperature if needed
+   - Select persona template
+   - Choose AI provider (can be different from Agent A!)
+   - Select model with live pricing
 4. Enter **Starter Message**
 5. Configure **Chat Control Settings**:
     - **Max Rounds**: Limit conversation turns (1-100)
@@ -1010,6 +1008,8 @@ php artisan test --coverage
 php artisan queue:work --tries=1
 ```
 
+> This project uses Laravel queue workers (`queue:work` / `queue:restart`), not Horizon.
+
 ### WebSocket Connection Failed
 
 Check Reverb is running:
@@ -1034,6 +1034,20 @@ REVERB_APP_MAX_MESSAGE_SIZE=25000
 Then restart the services:
 
 ```bash
+php artisan queue:restart
+```
+
+### Conversation Stops Early (Empty Turn)
+If a provider occasionally returns an empty response, tune retry behavior:
+```bash
+# Retry empty turns before failing the conversation
+AI_EMPTY_TURN_RETRY_ATTEMPTS=2
+AI_EMPTY_TURN_RETRY_DELAY_MS=500
+```
+
+Apply config changes and restart workers:
+```bash
+php artisan optimize:clear
 php artisan queue:restart
 ```
 

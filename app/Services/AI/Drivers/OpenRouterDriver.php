@@ -30,7 +30,6 @@ class OpenRouterDriver extends OpenAIDriver
     {
         \Log::info('OpenRouter Chat Request', [
             'model' => $this->model,
-            'temperature' => $temperature,
             'messages_count' => $messages->count(),
             'headers_keys' => array_keys($this->getHeaders()),
         ]);
@@ -39,7 +38,6 @@ class OpenRouterDriver extends OpenAIDriver
             $requestBody = [
                 'model' => $this->model,
                 'messages' => $messages->map->toArray()->all(),
-                'temperature' => $temperature,
             ];
 
             \Log::debug('OpenRouter Request Body', [
@@ -119,7 +117,6 @@ class OpenRouterDriver extends OpenAIDriver
             ->post("{$this->baseUrl}/chat/completions", [
                 'model' => $this->model,
                 'messages' => $messages->map->toArray()->all(),
-                'temperature' => $temperature,
                 'stream' => true,
             ]);
 

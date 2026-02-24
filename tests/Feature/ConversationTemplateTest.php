@@ -179,16 +179,18 @@ class ConversationTemplateTest extends TestCase
         $personaA = Persona::factory()->create(['user_id' => $user->id]);
         $personaB = Persona::factory()->create(['user_id' => $user->id]);
 
-        $response = $this->actingAs($user)->post(route('templates.storeFromChat'), [
-            'name' => 'Chat Snapshot',
-            'description' => 'Saved from chat/create.',
-            'category' => 'Snapshot',
-            'starter_message' => 'Discuss the future of AI.',
-            'max_rounds' => 6,
-            'persona_a_id' => $personaA->id,
-            'persona_b_id' => $personaB->id,
-            'is_public' => false,
-        ]);
+        $response = $this->actingAs($user)
+            ->from(route('chat.create'))
+            ->post(route('templates.storeFromChat'), [
+                'name' => 'Chat Snapshot',
+                'description' => 'Saved from chat/create.',
+                'category' => 'Snapshot',
+                'starter_message' => 'Discuss the future of AI.',
+                'max_rounds' => 6,
+                'persona_a_id' => $personaA->id,
+                'persona_b_id' => $personaB->id,
+                'is_public' => false,
+            ]);
 
         $response->assertRedirect(route('chat.create'));
         $this->assertDatabaseHas('conversation_templates', [

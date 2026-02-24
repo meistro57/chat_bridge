@@ -28,8 +28,6 @@ class StoreChatRequest extends FormRequest
             'provider_b' => ['required', 'string'],
             'model_a' => ['required', 'string'],
             'model_b' => ['required', 'string'],
-            'temp_a' => ['required', 'numeric', 'min:0', 'max:2'],
-            'temp_b' => ['required', 'numeric', 'min:0', 'max:2'],
             'starter_message' => ['required', 'string'],
             'max_rounds' => ['required', 'integer', 'min:1', 'max:100'],
             'stop_word_detection' => ['boolean'],

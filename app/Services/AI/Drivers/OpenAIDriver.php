@@ -7,7 +7,6 @@ use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class OpenAIDriver implements AIDriverInterface
 {
@@ -21,15 +20,7 @@ class OpenAIDriver implements AIDriverInterface
 
     public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
-        $response = $this->sendChatRequest($messages, $temperature, false);
-        if ($response->failed()) {
-            if ($this->isTemperatureUnsupported($response->body())) {
-                Log::warning('OpenAI temperature unsupported, retrying without temperature.', [
-                    'model' => $this->model,
-                ]);
-                $response = $this->sendChatRequest($messages, null, false);
-            }
-        }
+        $response = $this->sendChatRequest($messages, false);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body());
@@ -57,15 +48,7 @@ class OpenAIDriver implements AIDriverInterface
     {
         $this->lastTokenUsage = null;
 
-        $response = $this->sendChatRequest($messages, $temperature, true);
-        if ($response->failed()) {
-            if ($this->isTemperatureUnsupported($response->body())) {
-                Log::warning('OpenAI temperature unsupported, retrying stream without temperature.', [
-                    'model' => $this->model,
-                ]);
-                $response = $this->sendChatRequest($messages, null, true);
-            }
-        }
+        $response = $this->sendChatRequest($messages, true);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body());
@@ -106,26 +89,7 @@ class OpenAIDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        $payload = [
-            'model' => $this->model,
-            'messages' => $messages->map(function ($m) {
-                $msgArray = $m->toArray();
-                if ($m->name && $m->role === 'assistant') {
-                    $msgArray['content'] = "[{$m->name}]: {$msgArray['content']}";
-                    unset($msgArray['name']);
-                }
-
-                return $msgArray;
-            })->all(),
-            'tools' => $tools->map(fn (ToolDefinition $tool) => $tool->toOpenAISchema())->all(),
-            'tool_choice' => 'auto',
-        ];
-
-        if ($temperature !== null) {
-            $payload['temperature'] = $temperature;
-        }
-
-        $response = Http::withToken($this->apiKey)->post("{$this->baseUrl}/chat/completions", $payload);
+        $response = $this->sendToolChatRequest($messages, $tools);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body());
@@ -194,7 +158,7 @@ class OpenAIDriver implements AIDriverInterface
         return trim($buffer);
     }
 
-    private function sendChatRequest(Collection $messages, ?float $temperature, bool $stream)
+    private function sendChatRequest(Collection $messages, bool $stream)
     {
         $payload = [
             'model' => $this->model,
@@ -205,13 +169,10 @@ class OpenAIDriver implements AIDriverInterface
                     $msgArray['content'] = "[{$m->name}]: {$msgArray['content']}";
                     unset($msgArray['name']); // Remove name field, use content prefix instead
                 }
+
                 return $msgArray;
             })->all(),
         ];
-
-        if ($temperature !== null) {
-            $payload['temperature'] = $temperature;
-        }
 
         if ($stream) {
             $payload['stream'] = true;
@@ -226,26 +187,23 @@ class OpenAIDriver implements AIDriverInterface
         return $client->post("{$this->baseUrl}/chat/completions", $payload);
     }
 
-    private function isTemperatureUnsupported(string $body): bool
+    private function sendToolChatRequest(Collection $messages, Collection $tools)
     {
-        if ($body === '') {
-            return false;
-        }
+        $payload = [
+            'model' => $this->model,
+            'messages' => $messages->map(function ($m) {
+                $msgArray = $m->toArray();
+                if ($m->name && $m->role === 'assistant') {
+                    $msgArray['content'] = "[{$m->name}]: {$msgArray['content']}";
+                    unset($msgArray['name']);
+                }
 
-        $decoded = json_decode($body, true);
-        if (is_array($decoded)) {
-            $error = $decoded['error'] ?? [];
-            $param = $error['param'] ?? null;
-            if ($param === 'temperature') {
-                return true;
-            }
+                return $msgArray;
+            })->all(),
+            'tools' => $tools->map(fn (ToolDefinition $tool) => $tool->toOpenAISchema())->all(),
+            'tool_choice' => 'auto',
+        ];
 
-            $message = $error['message'] ?? '';
-            if (is_string($message) && str_contains(strtolower($message), 'temperature')) {
-                return true;
-            }
-        }
-
-        return false;
+        return Http::withToken($this->apiKey)->post("{$this->baseUrl}/chat/completions", $payload);
     }
 }

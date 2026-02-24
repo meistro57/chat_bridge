@@ -21,9 +21,6 @@ class OllamaDriver implements AIDriverInterface
         $response = Http::post("{$this->baseUrl}/api/chat", [
             'model' => $this->model,
             'messages' => $messages->map->toArray()->all(),
-            'options' => [
-                'temperature' => $temperature,
-            ],
             'stream' => false,
         ]);
 
@@ -61,9 +58,6 @@ class OllamaDriver implements AIDriverInterface
             ->post("{$this->baseUrl}/api/chat", [
                 'model' => $this->model,
                 'messages' => $messages->map->toArray()->all(),
-                'options' => [
-                    'temperature' => $temperature,
-                ],
                 'stream' => true,
             ]);
 
