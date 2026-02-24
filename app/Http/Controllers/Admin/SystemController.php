@@ -75,6 +75,10 @@ class SystemController extends Controller
                     $output = $this->fixCodeStyle();
                     break;
 
+                case 'update_laravel':
+                    $output = $this->updateLaravelFramework();
+                    break;
+
                 case 'invoke_codex':
                     $output = $this->invokeCodex($request->input('prompt', ''));
                     break;
@@ -144,7 +148,8 @@ class SystemController extends Controller
         ]);
 
         try {
-            $result = trim($driver->chat($messages, 0));
+            $response = $driver->chat($messages, 0);
+            $result = trim($response->content);
         } catch (\Throwable $e) {
             Log::warning('OpenAI key test failed', [
                 'user_id' => auth()->id(),
@@ -546,6 +551,49 @@ class SystemController extends Controller
         } else {
             $output[] = '✗ Laravel Pint not found';
             $output[] = '→ Install with: composer require laravel/pint --dev';
+        }
+
+        return implode("\n", $output);
+    }
+
+    private function updateLaravelFramework(): string
+    {
+        $output = [];
+        $output[] = 'Updating Laravel framework (laravel/framework)...';
+
+        if (app()->environment('testing')) {
+            $output[] = '→ Skipped in testing environment.';
+
+            return implode("\n", $output);
+        }
+
+        $composerPath = base_path('composer.json');
+        if (! File::exists($composerPath)) {
+            $output[] = '✗ composer.json not found.';
+
+            return implode("\n", $output);
+        }
+
+        $process = new Process(
+            ['composer', 'update', 'laravel/framework', '--with-all-dependencies', '--no-interaction'],
+            base_path(),
+            null,
+            null,
+            1800
+        );
+
+        try {
+            $process->run();
+            $combinedOutput = trim($process->getOutput()."\n".$process->getErrorOutput());
+            $output[] = $combinedOutput !== '' ? $combinedOutput : 'No Composer output.';
+
+            if ($process->isSuccessful()) {
+                $output[] = '✓ Laravel framework update completed.';
+            } else {
+                $output[] = '✗ Laravel framework update failed.';
+            }
+        } catch (\Throwable $e) {
+            $output[] = '✗ Laravel framework update failed: '.$e->getMessage();
         }
 
         return implode("\n", $output);

@@ -162,23 +162,39 @@ class RunChatSession implements ShouldQueue
                             }
                         }
                     } catch (\Throwable $exception) {
-                        if (
-                            $this->isRetryableTurnException($exception)
-                            && $exceptionRetryAttempt < $maxTurnExceptionRetries
-                        ) {
-                            $exceptionRetryAttempt++;
-                            Log::warning('Turn failed with retryable exception, retrying', [
+                        if ($this->isRetryableTurnException($exception)) {
+                            if ($exceptionRetryAttempt < $maxTurnExceptionRetries) {
+                                $exceptionRetryAttempt++;
+                                Log::warning('Turn failed with retryable exception, retrying', [
+                                    'conversation_id' => $this->conversationId,
+                                    'round' => $round + 1,
+                                    'persona' => $currentPersona->name,
+                                    'retry_attempt' => $exceptionRetryAttempt,
+                                    'max_retries' => $maxTurnExceptionRetries,
+                                    'error' => $exception->getMessage(),
+                                ]);
+
+                                usleep($turnExceptionRetryDelayMs * 1000);
+
+                                continue;
+                            }
+
+                            $fullResponse = trim((string) config(
+                                'ai.empty_turn_fallback_message',
+                                'I need to regroup for a moment. Please continue with your strongest next point.'
+                            ));
+
+                            Log::warning('Turn failed with retryable exception after retries; using fallback message', [
                                 'conversation_id' => $this->conversationId,
                                 'round' => $round + 1,
                                 'persona' => $currentPersona->name,
-                                'retry_attempt' => $exceptionRetryAttempt,
+                                'retry_attempts' => $exceptionRetryAttempt,
                                 'max_retries' => $maxTurnExceptionRetries,
                                 'error' => $exception->getMessage(),
+                                'fallback_length' => strlen($fullResponse),
                             ]);
 
-                            usleep($turnExceptionRetryDelayMs * 1000);
-
-                            continue;
+                            break;
                         }
 
                         throw $exception;

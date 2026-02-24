@@ -19,10 +19,27 @@ All notable changes to Chat Bridge will be documented in this file.
 ### 🐛 **Bug Fixes**
 - Fixed Gemini API key checker crashing with a 500 error on brand-new keys — `strlen()` was being called on the `AIResponse` object instead of its `content` string
 - Widened `catch (\Exception)` to `catch (\Throwable)` in the key test endpoint so PHP `Error` subclasses (e.g. `TypeError`) are handled gracefully
+- Fixed OpenAI admin key checker crash by reading `AIResponse->content` before trimming
 
 ### 🧪 **Tests**
 - Added `ApiKeyFactory` for use in tests
 - Added three new `ApiKeyTest` cases: successful Gemini key validation, failed validation, and auth enforcement
+- Added System Diagnostics test coverage for OpenAI key test endpoint and Laravel update action
+
+### 🛡️ **Conversation Reliability**
+- Added provider HTTP resilience controls in `config/ai.php`:
+  - `AI_HTTP_TIMEOUT_SECONDS`
+  - `AI_HTTP_CONNECT_TIMEOUT_SECONDS`
+  - `AI_HTTP_RETRY_ATTEMPTS`
+  - `AI_HTTP_RETRY_DELAY_MS`
+- Added OpenAI driver request timeout/connect-timeout/retry behavior
+- Added job-level fallback behavior when retryable provider exceptions persist
+- Added floating live log panel on chat session view for real-time event tracing
+
+### 🧰 **Admin & Diagnostics**
+- Added new System Diagnostics action: **Update Laravel**
+  - Runs `composer update laravel/framework --with-all-dependencies --no-interaction`
+  - Skips execution in `testing` environment
 
 ---
 

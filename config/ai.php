@@ -165,6 +165,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Provider HTTP Client Resilience
+    |--------------------------------------------------------------------------
+    |
+    | Timeout and retry controls for outbound AI provider HTTP requests.
+    | These protect long-running model calls from transient network stalls.
+    |
+    */
+
+    'http_timeout_seconds' => (int) env('AI_HTTP_TIMEOUT_SECONDS', 90),
+    'http_connect_timeout_seconds' => (int) env('AI_HTTP_CONNECT_TIMEOUT_SECONDS', 15),
+    'http_retry_attempts' => (int) env('AI_HTTP_RETRY_ATTEMPTS', 2),
+    'http_retry_delay_ms' => (int) env('AI_HTTP_RETRY_DELAY_MS', 500),
+
+    /*
+    |--------------------------------------------------------------------------
     | Empty Turn Fallback Message
     |--------------------------------------------------------------------------
     |

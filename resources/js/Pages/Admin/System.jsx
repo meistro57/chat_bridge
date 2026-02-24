@@ -184,6 +184,7 @@ export default function System({ systemInfo }) {
         { id: 'check_database', label: 'Check Database', icon: '🗄️', color: 'emerald' },
         { id: 'run_tests', label: 'Run Tests', icon: '🧪', color: 'pink' },
         { id: 'fix_code_style', label: 'Fix Code Style', icon: '✨', color: 'indigo' },
+        { id: 'update_laravel', label: 'Update Laravel', icon: '⬆️', color: 'blue' },
     ];
 
     const handleActionSelect = (actionId) => {

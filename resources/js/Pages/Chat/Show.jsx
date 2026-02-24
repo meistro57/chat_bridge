@@ -86,18 +86,37 @@ export default function Show({ conversation, stopSignal }) {
     const [streamingSpeaker, setStreamingSpeaker] = useState(null);
     const [status, setStatus] = useState(conversation.status);
     const [isStopping, setIsStopping] = useState(stopSignal);
+    const [liveLogs, setLiveLogs] = useState([]);
+    const [isLogOpen, setIsLogOpen] = useState(true);
     const scrollRef = useRef(null);
     const streamingContentRef = useRef('');
     const streamingSpeakerRef = useRef(null);
+    const logCounterRef = useRef(0);
+
+    const appendLiveLog = (level, event, details = '') => {
+        const nextId = logCounterRef.current + 1;
+        logCounterRef.current = nextId;
+        const entry = {
+            id: nextId,
+            at: new Date().toISOString(),
+            level,
+            event,
+            details,
+        };
+
+        setLiveLogs(prev => [...prev, entry].slice(-120));
+    };
 
     useEffect(() => {
         const channel = window.Echo.private(`conversation.${conversation.id}`);
+        appendLiveLog('info', 'channel.subscribed', `conversation.${conversation.id}`);
         
         channel.listen('.message.chunk', (e) => {
             setStreamingSpeaker(e.personaName);
             streamingSpeakerRef.current = e.personaName;
             setStreamingContent(prev => prev + e.chunk);
             streamingContentRef.current = `${streamingContentRef.current}${e.chunk}`;
+            appendLiveLog('debug', 'message.chunk', `${e.personaName ?? 'assistant'} · +${String(e.chunk ?? '').length} chars`);
         });
 
         channel.listen('.message.completed', (e) => {
@@ -125,16 +144,23 @@ export default function Show({ conversation, stopSignal }) {
             setStreamingSpeaker(null);
             streamingContentRef.current = '';
             streamingSpeakerRef.current = null;
+            appendLiveLog('info', 'message.completed', `${personaName ?? 'assistant'} · ${String(content ?? '').length} chars`);
         });
 
         channel.listen('.conversation.status.updated', (e) => {
             setStatus(e.conversation.status);
+            appendLiveLog('warn', 'conversation.status.updated', `status=${e.conversation.status}`);
             if (e.conversation.status === 'completed') {
                 setIsStopping(false);
             }
         });
 
+        channel.error((error) => {
+            appendLiveLog('error', 'channel.error', typeof error === 'string' ? error : JSON.stringify(error));
+        });
+
         return () => {
+            appendLiveLog('info', 'channel.left', `conversation.${conversation.id}`);
             window.Echo.leave(`conversation.${conversation.id}`);
         };
     }, [conversation.id]);
@@ -349,6 +375,51 @@ export default function Show({ conversation, stopSignal }) {
                                 <MarkdownContent content={streamingContent} />
                                 <span className="inline-block w-2 h-5 bg-cyan-400 ml-1 animate-blink">|</span>
                             </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="fixed bottom-4 right-4 z-50 w-[92vw] max-w-2xl">
+                <div className="rounded-2xl border border-white/10 bg-zinc-950/85 shadow-2xl backdrop-blur-xl">
+                    <button
+                        type="button"
+                        onClick={() => setIsLogOpen(prev => !prev)}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left"
+                    >
+                        <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">
+                            Live Logs
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500">
+                            {liveLogs.length} events · {isLogOpen ? 'hide' : 'show'}
+                        </span>
+                    </button>
+
+                    {isLogOpen && (
+                        <div className="max-h-56 space-y-1 overflow-y-auto border-t border-white/10 p-3 font-mono text-[11px]">
+                            {liveLogs.length === 0 && (
+                                <div className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-zinc-500">
+                                    Waiting for live events...
+                                </div>
+                            )}
+                            {liveLogs.map((entry) => {
+                                const levelClass = entry.level === 'error'
+                                    ? 'text-red-300'
+                                    : (entry.level === 'warn' ? 'text-amber-300' : (entry.level === 'debug' ? 'text-cyan-300' : 'text-emerald-300'));
+
+                                return (
+                                    <div key={entry.id} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-zinc-200">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-zinc-500">{new Date(entry.at).toLocaleTimeString()}</span>
+                                            <span className={`uppercase ${levelClass}`}>{entry.level}</span>
+                                            <span className="text-indigo-300">{entry.event}</span>
+                                        </div>
+                                        {entry.details && (
+                                            <div className="mt-1 break-words text-zinc-400">{entry.details}</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

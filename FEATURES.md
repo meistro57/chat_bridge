@@ -30,6 +30,7 @@
 ### 💬 Conversation Orchestration
 - **Automated Turns** - Let AI agents talk to each other
 - **Real-time Streaming** - See responses as they're generated
+- **Floating Live Logs** - Bottom-right live event panel with chunk/status/completion/error entries
 - **WebSocket Support** - Laravel Reverb for live updates
 - **Manual Controls** - Start, stop, and resume conversations
 - **Per-Conversation Provider/Model Selection** - Choose any provider and model for each agent
@@ -96,7 +97,7 @@
 
 ### 🧪 System Diagnostics (`/admin/system`)
 
-**8 Diagnostic Actions:**
+**9 Diagnostic Actions:**
 
 1. **Health Check** 🏥
    - PHP version
@@ -152,6 +153,12 @@
    - PSR-12 compliance
    - Automatic fixes
    - Result reporting
+
+9. **Update Laravel** ⬆️
+   - Runs `composer update laravel/framework --with-all-dependencies`
+   - No-interaction safe execution
+   - Full command output in diagnostics console
+   - Skips in testing environment
 
 **System Information Panel:**
 - PHP & Laravel versions

@@ -195,6 +195,7 @@ Create reusable AI persona templates with:
 Orchestrate AI discussions with:
 
 - ⚡ Real-time streaming via WebSockets
+- 🧾 Floating live event log panel on session view (chunks, status, completion, errors)
 - 🔄 Automated multi-turn dialogues (configurable max rounds)
 - 🎯 Manual stop/resume controls
 - 🛑 **Smart stop-word detection with thresholds**
@@ -504,7 +505,7 @@ Chat Bridge includes a comprehensive suite of professional tools for system admi
 
 ### 🧪 **System Diagnostics Dashboard** (`/admin/system`)
 
-A powerful web-based control panel with 8 diagnostic actions:
+A powerful web-based control panel with 9 diagnostic actions:
 
 | Action             | Description                           | Use Case             |
 | ------------------ | ------------------------------------- | -------------------- |
@@ -516,6 +517,7 @@ A powerful web-based control panel with 8 diagnostic actions:
 | 🗄️ Check Database  | Database health & statistics          | Monitoring           |
 | 🧪 Run Tests       | Execute full PHPUnit test suite       | CI/CD integration    |
 | ✨ Fix Code Style  | Auto-fix with Laravel Pint            | Code quality         |
+| ⬆️ Update Laravel  | Update `laravel/framework` safely     | Framework maintenance |
 
 **System Information Panel:**
 
@@ -1049,6 +1051,15 @@ Apply config changes and restart workers:
 ```bash
 php artisan optimize:clear
 php artisan queue:restart
+```
+
+### Provider Timeouts (cURL error 28)
+If first-token latency is high for some models, increase provider HTTP resilience:
+```bash
+AI_HTTP_TIMEOUT_SECONDS=90
+AI_HTTP_CONNECT_TIMEOUT_SECONDS=15
+AI_HTTP_RETRY_ATTEMPTS=2
+AI_HTTP_RETRY_DELAY_MS=500
 ```
 
 ### Build Errors

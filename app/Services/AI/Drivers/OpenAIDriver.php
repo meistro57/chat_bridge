@@ -5,6 +5,8 @@ namespace App\Services\AI\Drivers;
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -178,7 +180,7 @@ class OpenAIDriver implements AIDriverInterface
             $payload['stream'] = true;
         }
 
-        $client = Http::withToken($this->apiKey);
+        $client = $this->buildRequest();
 
         if ($stream) {
             $client = $client->withOptions(['stream' => true]);
@@ -204,6 +206,28 @@ class OpenAIDriver implements AIDriverInterface
             'tool_choice' => 'auto',
         ];
 
-        return Http::withToken($this->apiKey)->post("{$this->baseUrl}/chat/completions", $payload);
+        return $this->buildRequest()->post("{$this->baseUrl}/chat/completions", $payload);
+    }
+
+    private function buildRequest(): PendingRequest
+    {
+        $timeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+        $connectTimeoutSeconds = max(1, (int) config('ai.http_connect_timeout_seconds', 15));
+        $retryAttempts = max(1, (int) config('ai.http_retry_attempts', 2));
+        $retryDelayMs = max(0, (int) config('ai.http_retry_delay_ms', 500));
+
+        $request = Http::withToken($this->apiKey)
+            ->timeout($timeoutSeconds)
+            ->connectTimeout($connectTimeoutSeconds);
+
+        if ($retryAttempts > 1) {
+            $request = $request->retry(
+                $retryAttempts,
+                $retryDelayMs,
+                fn (\Exception $exception): bool => $exception instanceof ConnectionException
+            );
+        }
+
+        return $request;
     }
 }
