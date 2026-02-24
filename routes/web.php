@@ -64,6 +64,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('templates', \App\Http\Controllers\ConversationTemplateController::class);
     Route::post('/templates/{template}/use', [\App\Http\Controllers\ConversationTemplateController::class, 'use'])->name('templates.use');
     Route::post('/templates/{template}/clone', [\App\Http\Controllers\ConversationTemplateController::class, 'clone'])->name('templates.clone');
+    Route::post('/templates/save-from-chat', [\App\Http\Controllers\ConversationTemplateController::class, 'storeFromChat'])->name('templates.storeFromChat');
 
     // API Keys routes
     Route::resource('api-keys', \App\Http\Controllers\ApiKeyController::class);

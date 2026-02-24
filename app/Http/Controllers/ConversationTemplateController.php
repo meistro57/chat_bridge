@@ -47,7 +47,7 @@ class ConversationTemplateController extends Controller
     public function create(Request $request): Response
     {
         return Inertia::render('Templates/Create', [
-            'personas' => $this->loadPersonas($request),
+            'personas' => $this->loadPersonas(),
             'categories' => $this->loadCategories($request),
         ]);
     }
@@ -65,13 +65,25 @@ class ConversationTemplateController extends Controller
             ->with('success', 'Template created successfully.');
     }
 
+    public function storeFromChat(StoreConversationTemplateRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+
+        ConversationTemplate::create([
+            ...$data,
+            'user_id' => $request->user()->id,
+        ]);
+
+        return Redirect::route('chat.create')->with('success', 'Template saved successfully.');
+    }
+
     public function edit(Request $request, ConversationTemplate $template): Response
     {
         $this->authorizeOwner($request, $template);
 
         return Inertia::render('Templates/Edit', [
             'template' => $template,
-            'personas' => $this->loadPersonas($request),
+            'personas' => $this->loadPersonas(),
             'categories' => $this->loadCategories($request),
         ]);
     }
@@ -134,13 +146,9 @@ class ConversationTemplateController extends Controller
         abort(403);
     }
 
-    private function loadPersonas(Request $request)
+    private function loadPersonas(): array|\Illuminate\Database\Eloquent\Collection
     {
         return Persona::query()
-            ->where(function ($query) use ($request) {
-                $query->whereNull('user_id')
-                    ->orWhere('user_id', $request->user()->id);
-            })
             ->orderBy('name')
             ->get(['id', 'name']);
     }

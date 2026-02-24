@@ -153,6 +153,50 @@ class ConversationTemplateTest extends TestCase
         ]);
     }
 
+    public function test_create_form_includes_personas_from_other_users(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $ownPersona = Persona::factory()->create(['user_id' => $user->id]);
+        $otherPersona = Persona::factory()->create(['user_id' => $otherUser->id]);
+        $systemPersona = Persona::factory()->create(['user_id' => null]);
+
+        $response = $this->actingAs($user)->get(route('templates.create'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Templates/Create')
+            ->where('personas', fn ($personas) => collect($personas)->pluck('id')->contains($ownPersona->id)
+                && collect($personas)->pluck('id')->contains($otherPersona->id)
+                && collect($personas)->pluck('id')->contains($systemPersona->id)
+            )
+        );
+    }
+
+    public function test_user_can_save_template_from_chat(): void
+    {
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->post(route('templates.storeFromChat'), [
+            'name' => 'Chat Snapshot',
+            'description' => 'Saved from chat/create.',
+            'category' => 'Snapshot',
+            'starter_message' => 'Discuss the future of AI.',
+            'max_rounds' => 6,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'is_public' => false,
+        ]);
+
+        $response->assertRedirect(route('chat.create'));
+        $this->assertDatabaseHas('conversation_templates', [
+            'name' => 'Chat Snapshot',
+            'user_id' => $user->id,
+        ]);
+    }
+
     public function test_user_can_delete_own_template(): void
     {
         $user = User::factory()->create();

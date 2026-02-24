@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, Link } from '@inertiajs/react';
+import Modal from '@/Components/Modal';
+import { Head, useForm, usePage, Link } from '@inertiajs/react';
 
 const PROVIDERS = [
     { id: 'anthropic', name: 'Anthropic (Claude)' },
@@ -13,6 +14,7 @@ const PROVIDERS = [
 ];
 
 export default function Create({ personas, template }) {
+    const { flash } = usePage().props;
     const { data, setData, post, processing, errors, transform } = useForm({
         persona_a_id: template?.persona_a_id ?? '',
         persona_b_id: template?.persona_b_id ?? '',
@@ -42,6 +44,18 @@ export default function Create({ personas, template }) {
     const [modelsB, setModelsB] = useState([]);
     const [loadingModelsA, setLoadingModelsA] = useState(false);
     const [loadingModelsB, setLoadingModelsB] = useState(false);
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+
+    const templateForm = useForm({
+        name: '',
+        description: '',
+        category: '',
+        is_public: false,
+        persona_a_id: data.persona_a_id,
+        persona_b_id: data.persona_b_id,
+        starter_message: data.starter_message,
+        max_rounds: data.max_rounds,
+    });
 
     const fetchModels = async (provider, setModels, setLoading) => {
         if (!provider) {
@@ -90,6 +104,27 @@ export default function Create({ personas, template }) {
         post(route('chat.store'));
     };
 
+    const openTemplateModal = () => {
+        templateForm.setData({
+            name: '',
+            description: '',
+            category: '',
+            is_public: false,
+            persona_a_id: data.persona_a_id,
+            persona_b_id: data.persona_b_id,
+            starter_message: data.starter_message,
+            max_rounds: data.max_rounds,
+        });
+        setShowTemplateModal(true);
+    };
+
+    const handleSaveTemplate = (e) => {
+        e.preventDefault();
+        templateForm.post(route('templates.storeFromChat'), {
+            onSuccess: () => setShowTemplateModal(false),
+        });
+    };
+
     return (
         <AuthenticatedLayout>
             <Head title="Initialize Protocol" />
@@ -123,6 +158,12 @@ export default function Create({ personas, template }) {
                             Back to Sessions
                         </Link>
                     </div>
+
+                    {flash?.success && (
+                        <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 text-sm text-emerald-300 butter-reveal">
+                            {flash.success}
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="space-y-8">
                     {template && (
@@ -394,8 +435,8 @@ export default function Create({ personas, template }) {
                         )}
                     </div>
 
-                    {/* Submit Button */}
-                    <div className="pt-4">
+                    {/* Submit Buttons */}
+                    <div className="pt-4 flex flex-col gap-3">
                         <button
                             type="submit"
                             disabled={processing}
@@ -419,10 +460,89 @@ export default function Create({ personas, template }) {
                                 )}
                             </span>
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={openTemplateModal}
+                            className="w-full rounded-xl border border-white/10 bg-zinc-900/50 py-3 text-sm font-semibold text-zinc-300 transition-all hover:border-white/20 hover:bg-zinc-900/70 hover:text-white"
+                        >
+                            Save as Template
+                        </button>
                     </div>
                     </form>
                 </div>
             </div>
+
+            <Modal show={showTemplateModal} onClose={() => setShowTemplateModal(false)} maxWidth="md">
+                <form onSubmit={handleSaveTemplate} className="p-6 space-y-5">
+                    <h2 className="text-lg font-bold text-zinc-100">Save as Template</h2>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Name <span className="text-red-400">*</span></label>
+                        <input
+                            type="text"
+                            value={templateForm.data.name}
+                            onChange={e => templateForm.setData('name', e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-zinc-900/80 p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
+                            placeholder="Template name..."
+                        />
+                        {templateForm.errors.name && <div className="text-red-400 text-sm">{templateForm.errors.name}</div>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Description</label>
+                        <textarea
+                            value={templateForm.data.description}
+                            onChange={e => templateForm.setData('description', e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-zinc-900/80 p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none resize-none"
+                            rows={3}
+                            placeholder="Optional description..."
+                        />
+                        {templateForm.errors.description && <div className="text-red-400 text-sm">{templateForm.errors.description}</div>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Category</label>
+                        <input
+                            type="text"
+                            value={templateForm.data.category}
+                            onChange={e => templateForm.setData('category', e.target.value)}
+                            className="w-full rounded-xl border border-white/10 bg-zinc-900/80 p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
+                            placeholder="e.g. Debate, Interview..."
+                        />
+                        {templateForm.errors.category && <div className="text-red-400 text-sm">{templateForm.errors.category}</div>}
+                    </div>
+
+                    <div>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={templateForm.data.is_public}
+                                onChange={e => templateForm.setData('is_public', e.target.checked)}
+                                className="w-5 h-5 rounded bg-zinc-900/50 border-white/10"
+                            />
+                            <span className="text-sm text-zinc-300">Make this template public</span>
+                        </label>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowTemplateModal(false)}
+                            className="rounded-xl border border-white/10 bg-zinc-900/50 px-5 py-2 text-sm font-semibold text-zinc-300 transition-all hover:bg-zinc-900/70 hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={templateForm.processing}
+                            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {templateForm.processing ? 'Saving...' : 'Save Template'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }
