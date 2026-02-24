@@ -704,25 +704,7 @@ validate_ai_services() {
     print_info "Checking AI driver registration..."
 
     # Check if AI manager is bound
-    if run_in_app "php artisan tinker --execute=\"
-        try {
-            \$ai = app('ai');
-            echo 'AI Manager: OK' . PHP_EOL;
-
-            // Test each driver
-            \$drivers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'ollama', 'lmstudio', 'mock'];
-            foreach (\$drivers as \$driver) {
-                try {
-                    \$instance = app('ai')->driver(\$driver);
-                    echo ucfirst(\$driver) . ' Driver: OK' . PHP_EOL;
-                } catch (Exception \$e) {
-                    echo ucfirst(\$driver) . ' Driver: FAILED - ' . \$e->getMessage() . PHP_EOL;
-                }
-            }
-        } catch (Exception \$e) {
-            echo 'AI Manager: FAILED - ' . \$e->getMessage() . PHP_EOL;
-        }
-    \" 2>/dev/null"; then
+    if run_in_app "php artisan tinker --execute='try { \$manager = app(\"ai\"); echo \"AI Manager: OK\".PHP_EOL; foreach ([\"openai\", \"anthropic\", \"gemini\", \"deepseek\", \"openrouter\", \"ollama\", \"lmstudio\", \"mock\"] as \$driver) { try { \$manager->driver(\$driver); echo ucfirst(\$driver).\" Driver: OK\".PHP_EOL; } catch (\\Throwable \$e) { echo ucfirst(\$driver).\" Driver: FAILED - \".\$e->getMessage().PHP_EOL; } } } catch (\\Throwable \$e) { echo \"AI Manager: FAILED - \".\$e->getMessage().PHP_EOL; }' 2>/dev/null"; then
         print_success "AI services validated!"
     else
         print_error "AI service validation failed!"
