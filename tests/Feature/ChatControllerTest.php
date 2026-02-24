@@ -140,10 +140,20 @@ class ChatControllerTest extends TestCase
         $response = $this->actingAs($user)->get(route('chat.transcript', $conversation));
 
         $expectedFilename = Str::slug($conversation->id).'.md';
+        $storedPath = 'transcripts/'.$expectedFilename;
 
         $response->assertOk();
         $response->assertDownload($expectedFilename);
-        Storage::disk('local')->assertExists('transcripts/'.$expectedFilename);
+        Storage::disk('local')->assertExists($storedPath);
+
+        $markdown = Storage::disk('local')->get($storedPath);
+        $this->assertStringContainsString('# Conversation Report', $markdown);
+        $this->assertStringContainsString('## Executive Summary', $markdown);
+        $this->assertStringContainsString('## Participants', $markdown);
+        $this->assertStringContainsString('## Runtime Metrics', $markdown);
+        $this->assertStringContainsString('## Safety and Stop Conditions', $markdown);
+        $this->assertStringContainsString('# Transcript', $markdown);
+        $this->assertStringContainsString('Transcript content.', $markdown);
     }
 
     public function test_show_includes_markdown_message_content(): void

@@ -179,22 +179,21 @@ class RunChatSession implements ShouldQueue
                 } while ($retryAttempt <= $maxEmptyTurnRetries);
 
                 if (trim($fullResponse) === '') {
-                    Log::warning('Turn produced empty response', [
+                    Log::warning('Turn produced empty response after retries; completing conversation gracefully', [
                         'conversation_id' => $this->conversationId,
                         'round' => $round + 1,
                         'persona' => $currentPersona->name,
                         'chunk_count' => $chunkCount,
+                        'retry_attempts' => $retryAttempt,
+                        'max_retries' => $maxEmptyTurnRetries,
                     ]);
 
-                    $conversation->update(['status' => 'failed']);
-                    $broadcaster->broadcast(
-                        new \App\Events\ConversationStatusUpdated($conversation),
-                        [
-                            'conversation_id' => $conversation->id,
-                            'phase' => 'status',
-                        ]
-                    );
-                    $this->notifyFailure($conversation, 'Empty response from provider.');
+                    $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+                    $metadata['termination_reason'] = 'empty_response_after_retries';
+                    $metadata['termination_round'] = $round + 1;
+
+                    $conversation->update(['metadata' => $metadata]);
+                    $service->completeConversation($conversation);
 
                     break;
                 }
