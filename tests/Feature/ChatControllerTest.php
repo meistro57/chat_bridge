@@ -72,6 +72,41 @@ class ChatControllerTest extends TestCase
         });
     }
 
+    public function test_store_defaults_notifications_to_off_when_omitted(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'temp_a' => 0.6,
+            'temp_b' => 0.8,
+            'starter_message' => 'Test default notifications setting.',
+            'max_rounds' => 7,
+            'stop_word_detection' => false,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
+    }
+
     public function test_transcript_downloads_markdown_from_private_storage(): void
     {
         Storage::fake('local');

@@ -43,7 +43,7 @@ class StoreChatRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'notifications_enabled' => $this->boolean('notifications_enabled', true),
+            'notifications_enabled' => $this->boolean('notifications_enabled', false),
         ]);
     }
 

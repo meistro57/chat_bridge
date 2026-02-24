@@ -6,7 +6,10 @@ use App\Exports\ConversationsExport;
 use App\Models\Message;
 use App\Services\AnalyticsService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Maatwebsite\Excel\Excel;
@@ -119,5 +122,25 @@ class AnalyticsController extends Controller
         ]));
 
         return $export->download($filename, $writerType);
+    }
+
+    public function clearHistory(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        $conversationIds = $user->conversations()->pluck('id');
+
+        DB::transaction(function () use ($user, $conversationIds) {
+            foreach ($conversationIds as $conversationId) {
+                Cache::forget("conversation.stop.{$conversationId}");
+            }
+
+            $user->conversations()->delete();
+        });
+
+        $this->analyticsService->invalidateUserCache($user);
+
+        return redirect()
+            ->route('analytics.index')
+            ->with('success', 'Conversation history cleared. Personas and API keys were not changed.');
     }
 }

@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/analytics/query', [\App\Http\Controllers\AnalyticsController::class, 'query'])->name('analytics.query');
     Route::get('/analytics/metrics', [\App\Http\Controllers\AnalyticsController::class, 'metrics'])->name('analytics.metrics');
     Route::post('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'export'])->name('analytics.export');
+    Route::delete('/analytics/history', [\App\Http\Controllers\AnalyticsController::class, 'clearHistory'])->name('analytics.history.clear');
 
     // Chat routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');

@@ -27,7 +27,7 @@ export default function Create({ personas, template }) {
         stop_word_detection: false,
         stop_words: '',
         stop_word_threshold: 0.8,
-        notifications_enabled: true,
+        notifications_enabled: false,
     });
 
     transform((payload) => ({
