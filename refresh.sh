@@ -18,6 +18,23 @@ done
 
 echo "🚀 Starting Chat Bridge refresh..."
 
+# Ensure SQLite config is container-safe when running via Docker
+if [ -f ".env" ]; then
+    DB_CONNECTION_VALUE=$(grep -E '^DB_CONNECTION=' .env | cut -d '=' -f2- | tr -d '\r')
+    DB_DATABASE_VALUE=$(grep -E '^DB_DATABASE=' .env | cut -d '=' -f2- | tr -d '\r')
+
+    if [ "$DB_CONNECTION_VALUE" = "sqlite" ]; then
+        if [[ "$DB_DATABASE_VALUE" == /home/* ]]; then
+            echo "🔧 Rewriting SQLite DB path for Docker..."
+            sed -i 's|^DB_DATABASE=.*|DB_DATABASE=/var/www/html/database/database.sqlite|' .env
+        fi
+
+        echo "🧱 Ensuring SQLite database file exists..."
+        mkdir -p database
+        touch database/database.sqlite
+    fi
+fi
+
 # 1. FIX KNOWN CONFLICTS (The "Magic Fix")
 # We remove the untracked debugbar ignore file if it exists, so git pull doesn't choke.
 if [ -f "storage/debugbar/.gitignore" ]; then
