@@ -153,6 +153,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Turn Exception Retry
+    |--------------------------------------------------------------------------
+    |
+    | Retry a turn when transient provider/network exceptions happen.
+    |
+    */
+
+    'turn_exception_retry_attempts' => (int) env('AI_TURN_EXCEPTION_RETRY_ATTEMPTS', 2),
+    'turn_exception_retry_delay_ms' => (int) env('AI_TURN_EXCEPTION_RETRY_DELAY_MS', 1000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Broadcast Payload Limit
     |--------------------------------------------------------------------------
     |

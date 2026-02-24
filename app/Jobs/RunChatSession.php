@@ -108,42 +108,26 @@ class RunChatSession implements ShouldQueue
                 $interTurnDelayMs = max(0, (int) config('ai.inter_turn_delay_ms', 250));
                 $maxEmptyTurnRetries = max(0, (int) config('ai.empty_turn_retry_attempts', 1));
                 $emptyTurnRetryDelayMs = max(0, (int) config('ai.empty_turn_retry_delay_ms', 350));
+                $maxTurnExceptionRetries = max(0, (int) config('ai.turn_exception_retry_attempts', 2));
+                $turnExceptionRetryDelayMs = max(0, (int) config('ai.turn_exception_retry_delay_ms', 1000));
                 $chunkCount = 0;
-                $retryAttempt = 0;
                 $driver = null;
+                $emptyRetryAttempt = 0;
+                $exceptionRetryAttempt = 0;
 
-                do {
+                while (true) {
                     $fullResponse = '';
                     $chunkCount = 0;
+                    try {
+                        $generation = $service->generateTurn($conversation, $currentPersona, $history);
+                        $driver = $generation['driver'];
 
-                    $generation = $service->generateTurn($conversation, $currentPersona, $history);
-                    $driver = $generation['driver'];
-
-                    if ($initialStreamEnabled) {
-                        $chunkCount++;
-                        $broadcaster->broadcast(
-                            new MessageChunkSent(
-                                conversationId: $conversation->id,
-                                chunk: $initialStreamChunk,
-                                role: 'assistant',
-                                personaName: $currentPersona->name
-                            ),
-                            [
-                                'conversation_id' => $conversation->id,
-                                'phase' => 'chunk',
-                            ]
-                        );
-                    }
-
-                    foreach ($generation['content'] as $chunk) {
-                        $fullResponse .= $chunk;
-
-                        foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                        if ($initialStreamEnabled) {
                             $chunkCount++;
                             $broadcaster->broadcast(
                                 new MessageChunkSent(
                                     conversationId: $conversation->id,
-                                    chunk: $piece,
+                                    chunk: $initialStreamChunk,
                                     role: 'assistant',
                                     personaName: $currentPersona->name
                                 ),
@@ -154,29 +138,73 @@ class RunChatSession implements ShouldQueue
                             );
                         }
 
-                        if (Cache::get("conversation.stop.{$this->conversationId}")) {
-                            break;
+                        foreach ($generation['content'] as $chunk) {
+                            $fullResponse .= $chunk;
+
+                            foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                                $chunkCount++;
+                                $broadcaster->broadcast(
+                                    new MessageChunkSent(
+                                        conversationId: $conversation->id,
+                                        chunk: $piece,
+                                        role: 'assistant',
+                                        personaName: $currentPersona->name
+                                    ),
+                                    [
+                                        'conversation_id' => $conversation->id,
+                                        'phase' => 'chunk',
+                                    ]
+                                );
+                            }
+
+                            if (Cache::get("conversation.stop.{$this->conversationId}")) {
+                                break;
+                            }
                         }
+                    } catch (\Throwable $exception) {
+                        if (
+                            $this->isRetryableTurnException($exception)
+                            && $exceptionRetryAttempt < $maxTurnExceptionRetries
+                        ) {
+                            $exceptionRetryAttempt++;
+                            Log::warning('Turn failed with retryable exception, retrying', [
+                                'conversation_id' => $this->conversationId,
+                                'round' => $round + 1,
+                                'persona' => $currentPersona->name,
+                                'retry_attempt' => $exceptionRetryAttempt,
+                                'max_retries' => $maxTurnExceptionRetries,
+                                'error' => $exception->getMessage(),
+                            ]);
+
+                            usleep($turnExceptionRetryDelayMs * 1000);
+
+                            continue;
+                        }
+
+                        throw $exception;
                     }
 
                     if (trim($fullResponse) !== '') {
                         break;
                     }
 
-                    $retryAttempt++;
-
-                    if ($retryAttempt <= $maxEmptyTurnRetries) {
+                    if ($emptyRetryAttempt < $maxEmptyTurnRetries) {
+                        $emptyRetryAttempt++;
                         Log::warning('Turn produced empty response, retrying', [
                             'conversation_id' => $this->conversationId,
                             'round' => $round + 1,
                             'persona' => $currentPersona->name,
-                            'retry_attempt' => $retryAttempt,
+                            'retry_attempt' => $emptyRetryAttempt,
                             'max_retries' => $maxEmptyTurnRetries,
                         ]);
 
                         usleep($emptyTurnRetryDelayMs * 1000);
+
+                        continue;
                     }
-                } while ($retryAttempt <= $maxEmptyTurnRetries);
+
+                    break;
+                }
 
                 if (trim($fullResponse) === '') {
                     Log::warning('Turn produced empty response after retries; completing conversation gracefully', [
@@ -184,8 +212,10 @@ class RunChatSession implements ShouldQueue
                         'round' => $round + 1,
                         'persona' => $currentPersona->name,
                         'chunk_count' => $chunkCount,
-                        'retry_attempts' => $retryAttempt,
-                        'max_retries' => $maxEmptyTurnRetries,
+                        'empty_retry_attempts' => $emptyRetryAttempt,
+                        'max_empty_retries' => $maxEmptyTurnRetries,
+                        'exception_retry_attempts' => $exceptionRetryAttempt,
+                        'max_exception_retries' => $maxTurnExceptionRetries,
                     ]);
 
                     $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
@@ -334,5 +364,31 @@ class RunChatSession implements ShouldQueue
         }
 
         return (bool) $metadata['notifications_enabled'];
+    }
+
+    private function isRetryableTurnException(\Throwable $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+
+        $retryableSnippets = [
+            'curl error 28',
+            'timed out',
+            'timeout',
+            'connection reset',
+            'connection refused',
+            'temporarily unavailable',
+            'server error',
+            'service unavailable',
+            'too many requests',
+            'rate limit',
+        ];
+
+        foreach ($retryableSnippets as $snippet) {
+            if (str_contains($message, $snippet)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
