@@ -71,6 +71,11 @@ class Conversation extends Model
         $provider = $usePersonaA ? $this->provider_a : $this->provider_b;
         $model = $usePersonaA ? $this->model_a : $this->model_b;
         $temperature = $usePersonaA ? $this->temp_a : $this->temp_b;
+        $normalizedProvider = strtolower((string) $provider);
+
+        if ($normalizedProvider === 'openai') {
+            $temperature = 1.0;
+        }
 
         return [
             'provider' => $provider ?: config('ai.default', 'openai'),

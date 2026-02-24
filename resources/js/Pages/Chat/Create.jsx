@@ -13,6 +13,15 @@ const PROVIDERS = [
     { id: 'lmstudio', name: 'LM Studio (Local)' },
 ];
 
+const FALLBACK_MODELS_BY_PROVIDER = {
+    openrouter: [
+        { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
+        { id: 'openai/gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
+        { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3.00/$15.00' },
+        { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
+    ],
+};
+
 export default function Create({ personas, template }) {
     const { flash } = usePage().props;
     const selectedPersonaA = personas.find((persona) => persona.id === (template?.persona_a_id ?? ''));
@@ -84,10 +93,16 @@ export default function Create({ personas, template }) {
 
             const result = await response.json();
             console.log(`Fetched models for ${provider}:`, result);
-            setModels(result.models || []);
+            const models = result.models || [];
+            if (models.length === 0 && FALLBACK_MODELS_BY_PROVIDER[provider]) {
+                console.warn(`No models returned for ${provider}, using fallback list.`);
+                setModels(FALLBACK_MODELS_BY_PROVIDER[provider]);
+            } else {
+                setModels(models);
+            }
         } catch (error) {
             console.error('Error fetching models:', error);
-            setModels([]);
+            setModels(FALLBACK_MODELS_BY_PROVIDER[provider] || []);
         } finally {
             setLoading(false);
         }
