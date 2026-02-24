@@ -226,8 +226,21 @@ class ConversationService
 
         // Max iterations reached - ask AI to respond without more tools
         Log::warning('Max tool iterations reached', ['max' => $maxIterations]);
+        $finalResponse = trim($driver->chat($messages, $temperature)->content);
+        if ($finalResponse !== '') {
+            return $finalResponse;
+        }
 
-        return $driver->chat($messages, $temperature)->content;
+        $fallbackMessage = (string) config(
+            'ai.empty_turn_fallback_message',
+            'I need to regroup for a moment. Please continue with your strongest next point.'
+        );
+
+        Log::warning('Tool-enabled generation remained empty after retries; using fallback message', [
+            'max_iterations' => $maxIterations,
+        ]);
+
+        return $fallbackMessage;
     }
 
     /**

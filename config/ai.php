@@ -165,6 +165,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Empty Turn Fallback Message
+    |--------------------------------------------------------------------------
+    |
+    | Safety net text used when a provider repeatedly returns empty content.
+    |
+    */
+
+    'empty_turn_fallback_message' => env(
+        'AI_EMPTY_TURN_FALLBACK_MESSAGE',
+        'I need to regroup for a moment. Please continue with your strongest next point.'
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
     | Broadcast Payload Limit
     |--------------------------------------------------------------------------
     |

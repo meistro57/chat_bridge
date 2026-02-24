@@ -285,6 +285,73 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $this->assertSame(['Fallback recovery'], $chunks);
     }
 
+    public function test_generate_turn_uses_configured_fallback_when_all_tool_attempts_are_empty(): void
+    {
+        config()->set('services.qdrant.enabled', false);
+        config()->set('ai.tools_enabled', true);
+        config()->set('ai.max_tool_iterations', 1);
+        config()->set('ai.empty_turn_fallback_message', 'Fallback bridge response');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 1.0,
+            'temp_b' => 1.0,
+            'starter_message' => 'Hello',
+            'status' => 'active',
+            'metadata' => [],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(true);
+        $driver->shouldReceive('chatWithTools')
+            ->once()
+            ->andReturn(['response' => new AIResponse(''), 'tool_calls' => []]);
+        $driver->shouldReceive('chat')
+            ->twice()
+            ->andReturn(new AIResponse(''), new AIResponse(''));
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $toolExecutor = Mockery::mock(ToolExecutor::class);
+        $toolExecutor->shouldReceive('getAllTools')
+            ->once()
+            ->andReturn(collect());
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: Mockery::mock(RagService::class),
+            toolExecutor: $toolExecutor,
+            streamingChunker: new StreamingChunker
+        );
+
+        $result = $service->generateTurn($conversation, $personaA, new Collection);
+        $chunks = iterator_to_array($result['content']);
+
+        $this->assertSame(['Fallback bridge response'], $chunks);
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
