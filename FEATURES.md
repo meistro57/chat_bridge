@@ -15,6 +15,9 @@
 
 ### 🎭 Persona Management
 - **Create & Configure** - Build AI personas with custom personalities
+- **AI Persona Creator Bot** - Popout generator on persona create screen
+  - Uses configured OpenAI service key (`services.openai.key`)
+  - Generates and auto-fills persona `name` + `system_prompt`
 - **System Prompts** - Define behavior with detailed instructions
 - **Guidelines** - JSON-based behavioral rules
 - **Temperature Control** - Default temperature setting (0.0-2.0)
@@ -58,6 +61,10 @@
 - **Password Reset** - Forgot password functionality
 - **Remember Me** - Persistent login option
 - **Username Login** - Login with username OR email
+- **Read-Only Safety Mode** - Optional global write protection
+  - Toggle with `APP_READ_ONLY_MODE=true`
+  - Blocks mutating requests and non-infrastructure SQL writes
+  - Keeps safe read endpoints available (e.g. analytics SQL runner, persona generator)
 
 ### 🔑 API Key Management
 - **Encrypted Storage** - AES-256 encryption for keys

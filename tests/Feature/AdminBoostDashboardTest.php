@@ -33,7 +33,48 @@ class AdminBoostDashboardTest extends TestCase
                 ->where('vector_search', false)
                 ->has('error')
             )
+            ->has('liveStats', fn (AssertableInertia $liveStats) => $liveStats
+                ->has('conversations')
+                ->has('messages')
+                ->has('personas')
+                ->has('users')
+                ->has('embeddings')
+                ->has('mcp_health')
+                ->has('redis')
+                ->has('timestamp')
+            )
         );
+    }
+
+    public function test_admin_can_fetch_boost_live_stats_with_redis_payload(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.boost.stats'));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'conversations',
+            'messages',
+            'personas',
+            'users',
+            'embeddings',
+            'mcp_health' => ['ok', 'status'],
+            'redis' => [
+                'status',
+                'connected',
+                'client',
+                'host',
+                'port',
+                'database',
+                'keys',
+                'ping_ms',
+                'error',
+            ],
+            'timestamp',
+        ]);
     }
 
     public function test_non_admin_cannot_view_boost_dashboard_page(): void

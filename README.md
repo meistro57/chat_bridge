@@ -180,6 +180,9 @@ Schema optimization analysis
 Create reusable AI persona templates with:
 
 - 🔧 Custom system prompts & guidelines
+- 🪄 **Built-in AI Persona Creator Bot** popout on the Persona create screen
+  - Uses your **OpenAI service API key** (not per-user API key records)
+  - Auto-generates and auto-fills both **Persona Name** and **System Prompt**
 - 🌡️ Default temperature controls (0.0-2.0)
 - 🔄 **Provider/model-agnostic design**
 - 👥 Shared library - 56 pre-configured personas

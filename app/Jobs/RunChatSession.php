@@ -43,6 +43,14 @@ class RunChatSession implements ShouldQueue
         StopWordService $stopWords,
         DiscordStreamer $discordStreamer
     ): void {
+        if (config('safety.read_only_mode', false)) {
+            Log::warning('Skipping chat session in read-only mode', [
+                'conversation_id' => $this->conversationId,
+            ]);
+
+            return;
+        }
+
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
 
         if ($conversation->status !== 'active') {

@@ -1,6 +1,6 @@
 import { GlassCard } from '@/Components/ui/GlassCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 
 function StatusPill({ present, error }) {
@@ -95,7 +95,7 @@ export default function BoostDashboard({ boost, liveStats: initialLiveStats }) {
     const refreshStats = async () => {
         setLoading(true);
         try {
-            const response = await fetch(route('boost.stats'));
+            const response = await fetch(route('admin.boost.stats'));
             const data = await response.json();
             setLiveStats(data);
             setLastUpdated(new Date(data.timestamp));
@@ -213,6 +213,29 @@ export default function BoostDashboard({ boost, liveStats: initialLiveStats }) {
                                 loading={loading}
                             />
                         </div>
+
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Redis</div>
+                                <span
+                                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+                                        liveStats?.redis?.connected
+                                            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-200'
+                                            : 'border-red-500/30 bg-red-500/15 text-red-200'
+                                    }`}
+                                >
+                                    {liveStats?.redis?.connected ? 'Connected' : 'Unavailable'}
+                                </span>
+                            </div>
+                            <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-zinc-300 sm:grid-cols-3">
+                                <div>Client: <span className="font-mono text-zinc-200">{liveStats?.redis?.client ?? 'unknown'}</span></div>
+                                <div>Host: <span className="font-mono text-zinc-200">{liveStats?.redis?.host ?? 'n/a'}:{liveStats?.redis?.port ?? 'n/a'}</span></div>
+                                <div>DB: <span className="font-mono text-zinc-200">{liveStats?.redis?.database ?? 'n/a'}</span></div>
+                                <div>Keys: <span className="font-mono text-zinc-200">{liveStats?.redis?.keys ?? 'n/a'}</span></div>
+                                <div>Ping: <span className="font-mono text-zinc-200">{liveStats?.redis?.ping_ms ?? 'n/a'} ms</span></div>
+                                <div>Status: <span className="font-mono text-zinc-200">{liveStats?.redis?.status ?? 'unknown'}</span></div>
+                            </div>
+                        </div>
                     </GlassCard>
 
                     <GlassCard accent="cyan" className="space-y-6">
@@ -249,36 +272,36 @@ export default function BoostDashboard({ boost, liveStats: initialLiveStats }) {
                         <h2 className="text-lg font-semibold text-zinc-100">Quick Actions</h2>
                         <ul className="grid grid-cols-1 gap-3 text-sm text-zinc-300 md:grid-cols-2">
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
-                                <a href="/admin/mcp-utilities" className="flex items-center justify-between group">
+                                <Link href={route('admin.mcp.utilities')} className="flex items-center justify-between group">
                                     <span>View MCP Endpoints</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
                                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                                     </svg>
-                                </a>
+                                </Link>
                             </li>
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
-                                <a href="/admin/system" className="flex items-center justify-between group">
+                                <Link href={route('admin.system')} className="flex items-center justify-between group">
                                     <span>System Diagnostics</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
                                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                                     </svg>
-                                </a>
+                                </Link>
                             </li>
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
-                                <a href="/analytics" className="flex items-center justify-between group">
+                                <Link href={route('analytics.index')} className="flex items-center justify-between group">
                                     <span>View Analytics</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
                                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                                     </svg>
-                                </a>
+                                </Link>
                             </li>
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
-                                <a href="/admin/performance" className="flex items-center justify-between group">
+                                <Link href={route('admin.performance.index')} className="flex items-center justify-between group">
                                     <span>Performance Monitor</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
                                         <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                                     </svg>
-                                </a>
+                                </Link>
                             </li>
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
                                 <button onClick={refreshStats} className="w-full flex items-center justify-between group">

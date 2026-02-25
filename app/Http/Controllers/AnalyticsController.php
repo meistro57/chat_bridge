@@ -330,13 +330,13 @@ class AnalyticsController extends Controller
                 'id' => 'messages-by-role',
                 'title' => 'Messages by Role',
                 'description' => 'Count user vs assistant messages.',
-                'sql' => "SELECT role, COUNT(*) AS total_messages\nFROM messages\nWHERE user_id = {{auth_user_id}}\nGROUP BY role\nORDER BY total_messages DESC",
+                'sql' => "SELECT m.role, COUNT(*) AS total_messages\nFROM messages m\nINNER JOIN conversations c ON c.id = m.conversation_id\nWHERE c.user_id = {{auth_user_id}}\nGROUP BY m.role\nORDER BY total_messages DESC",
             ],
             [
                 'id' => 'persona-activity',
                 'title' => 'Persona Activity',
                 'description' => 'Top personas by message volume.',
-                'sql' => "SELECT p.name AS persona_name, COUNT(*) AS total_messages\nFROM messages m\nINNER JOIN personas p ON p.id = m.persona_id\nWHERE m.user_id = {{auth_user_id}}\nGROUP BY p.name\nORDER BY total_messages DESC\nLIMIT 20",
+                'sql' => "SELECT COALESCE(p.name, 'Unknown Persona') AS persona_name, COUNT(*) AS total_messages\nFROM messages m\nINNER JOIN conversations c ON c.id = m.conversation_id\nLEFT JOIN personas p ON p.id = m.persona_id\nWHERE c.user_id = {{auth_user_id}}\nGROUP BY COALESCE(p.name, 'Unknown Persona')\nORDER BY total_messages DESC\nLIMIT 20",
             ],
             [
                 'id' => 'daily-volume',

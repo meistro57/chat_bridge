@@ -156,18 +156,23 @@ class ApiKeyController extends Controller
             abort(403);
         }
 
+        $persistValidationState = ! config('safety.read_only_mode', false);
+
         if ($this->providerRequiresKey($apiKey->provider) && blank($apiKey->key)) {
-            $apiKey->update([
-                'is_validated' => false,
-                'last_validated_at' => now(),
-                'validation_error' => 'No API key is stored for this provider.',
-            ]);
+            if ($persistValidationState) {
+                $apiKey->update([
+                    'is_validated' => false,
+                    'last_validated_at' => now(),
+                    'validation_error' => 'No API key is stored for this provider.',
+                ]);
+            }
 
             return response()->json([
                 'success' => false,
                 'message' => 'API key validation failed',
                 'error' => 'No API key is stored for this provider.',
                 'is_validated' => false,
+                'persisted' => $persistValidationState,
                 'last_validated_at' => $apiKey->last_validated_at,
             ], 422);
         }
@@ -208,16 +213,21 @@ class ApiKeyController extends Controller
             ]);
 
             // If we get here without exception, the key is valid
-            $apiKey->update([
-                'is_validated' => true,
-                'last_validated_at' => now(),
-                'validation_error' => null,
-            ]);
+            if ($persistValidationState) {
+                $apiKey->update([
+                    'is_validated' => true,
+                    'last_validated_at' => now(),
+                    'validation_error' => null,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'API key validated successfully',
+                'message' => $persistValidationState
+                    ? 'API key validated successfully'
+                    : 'API key validated successfully (read-only mode: status not persisted)',
                 'is_validated' => true,
+                'persisted' => $persistValidationState,
                 'last_validated_at' => $apiKey->last_validated_at,
             ]);
         } catch (\Throwable $e) {
@@ -229,17 +239,20 @@ class ApiKeyController extends Controller
             ]);
 
             // Key is invalid or there was an error
-            $apiKey->update([
-                'is_validated' => false,
-                'last_validated_at' => now(),
-                'validation_error' => $e->getMessage(),
-            ]);
+            if ($persistValidationState) {
+                $apiKey->update([
+                    'is_validated' => false,
+                    'last_validated_at' => now(),
+                    'validation_error' => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'success' => false,
                 'message' => 'API key validation failed',
                 'error' => $e->getMessage(),
                 'is_validated' => false,
+                'persisted' => $persistValidationState,
                 'last_validated_at' => $apiKey->last_validated_at,
             ], 422);
         }

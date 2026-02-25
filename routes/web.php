@@ -60,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Persona routes
+    Route::post('/personas/generate', [PersonaController::class, 'generate'])->name('personas.generate');
     Route::resource('personas', PersonaController::class);
 
     // Template routes

@@ -27,3 +27,15 @@ docker exec -it chatbridge-app php artisan tinker
 
 ## Shared Cache Warning
 The `bootstrap/cache` directory is shared. If you run `composer` or `package:discover` locally, ensure your environment matches the container (packages) to avoid "Class not found" errors.
+
+## Read-Only Safety Mode (Prevent DB Overwrites)
+You can enforce write protection at runtime:
+
+```bash
+APP_READ_ONLY_MODE=true
+APP_READ_ONLY_ALLOW_INFRA_WRITES=true
+```
+
+- `APP_READ_ONLY_MODE=true` blocks mutating HTTP requests and app-data SQL writes.
+- `APP_READ_ONLY_ALLOW_INFRA_WRITES=true` still allows infrastructure tables (`sessions`, `cache`, `jobs`, etc.) so auth/sessions keep working.
+- This mode is intended for operational safety windows where chat/key/persona data must not be overwritten.

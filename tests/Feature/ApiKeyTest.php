@@ -134,4 +134,40 @@ class ApiKeyTest extends TestCase
             'validation_error' => 'No API key is stored for this provider.',
         ]);
     }
+
+    public function test_key_test_endpoint_validates_without_persisting_in_read_only_mode(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'gemini',
+            'is_validated' => false,
+            'last_validated_at' => null,
+            'validation_error' => null,
+        ]);
+        config(['safety.read_only_mode' => true]);
+
+        $mockDriver = Mockery::mock(AIDriverInterface::class);
+        $mockDriver->shouldReceive('chat')->andReturn(new AIResponse(content: 'OK'));
+
+        $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
+        $mockManager->shouldReceive('driverForApiKey')->withArgs(function (ApiKey $resolvedApiKey) use ($apiKey) {
+            return $resolvedApiKey->is($apiKey);
+        })->andReturn($mockDriver);
+        $this->app->instance('ai', $mockManager);
+
+        $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'is_validated' => true,
+            'persisted' => false,
+        ]);
+
+        $apiKey->refresh();
+        $this->assertFalse($apiKey->is_validated);
+        $this->assertNull($apiKey->last_validated_at);
+        $this->assertNull($apiKey->validation_error);
+    }
 }

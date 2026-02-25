@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Redis;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,6 +30,17 @@ class BoostDashboardController extends Controller
      *     users: int,
      *     embeddings: int,
      *     mcp_health: array{ok: bool, status: string},
+     *     redis: array{
+     *         status: string,
+     *         connected: bool,
+     *         client: string,
+     *         host: string|null,
+     *         port: int|null,
+     *         database: int|null,
+     *         keys: int|null,
+     *         ping_ms: int|null,
+     *         error: string|null
+     *     },
      *     timestamp: string
      * }
      */
@@ -64,8 +76,65 @@ class BoostDashboardController extends Controller
             'users' => \App\Models\User::count(),
             'embeddings' => \App\Models\Message::whereNotNull('embedding')->count(),
             'mcp_health' => $mcpHealth,
+            'redis' => $this->getRedisStats(),
             'timestamp' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array{
+     *     status: string,
+     *     connected: bool,
+     *     client: string,
+     *     host: string|null,
+     *     port: int|null,
+     *     database: int|null,
+     *     keys: int|null,
+     *     ping_ms: int|null,
+     *     error: string|null
+     * }
+     */
+    private function getRedisStats(): array
+    {
+        $host = config('database.redis.default.host');
+        $port = config('database.redis.default.port');
+        $database = config('database.redis.default.database');
+        $client = (string) config('database.redis.client', 'unknown');
+        $cacheDriver = (string) config('cache.default', '');
+        $queueConnection = (string) config('queue.default', '');
+
+        $stats = [
+            'status' => ($cacheDriver === 'redis' || $queueConnection === 'redis') ? 'checking' : 'optional',
+            'connected' => false,
+            'client' => $client,
+            'host' => is_string($host) ? $host : null,
+            'port' => is_int($port) ? $port : (is_numeric($port) ? (int) $port : null),
+            'database' => is_int($database) ? $database : (is_numeric($database) ? (int) $database : null),
+            'keys' => null,
+            'ping_ms' => null,
+            'error' => null,
+        ];
+
+        try {
+            $startedAt = microtime(true);
+            $connection = Redis::connection();
+            $connection->command('PING');
+            $stats['ping_ms'] = (int) round((microtime(true) - $startedAt) * 1000);
+            $stats['connected'] = true;
+            $stats['status'] = 'ok';
+
+            try {
+                $dbSize = $connection->command('DBSIZE');
+                $stats['keys'] = is_numeric($dbSize) ? (int) $dbSize : null;
+            } catch (\Throwable) {
+                $stats['keys'] = null;
+            }
+        } catch (\Throwable $exception) {
+            $stats['status'] = 'error';
+            $stats['error'] = $exception->getMessage();
+        }
+
+        return $stats;
     }
 
     /**

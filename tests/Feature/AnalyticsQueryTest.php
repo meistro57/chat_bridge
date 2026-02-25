@@ -72,4 +72,51 @@ class AnalyticsQueryTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonPath('message', 'Only SELECT and WITH queries are allowed.');
     }
+
+    public function test_all_sql_playground_examples_are_runnable(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $persona->id,
+            'persona_b_id' => $persona->id,
+            'status' => 'completed',
+        ]);
+
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'user_id' => $user->id,
+            'role' => 'assistant',
+            'content' => 'Sample query execution row',
+        ]);
+
+        $queryPage = $this->actingAs($user)->get(route('analytics.query'));
+        $queryPage->assertOk();
+
+        /** @var array<int, array{id:string,title:string,description:string,sql:string}> $examples */
+        $examples = data_get($queryPage->viewData('page'), 'props.sqlPlayground.examples', []);
+
+        $this->assertNotEmpty($examples);
+
+        foreach ($examples as $example) {
+            $sql = str_replace('{{auth_user_id}}', (string) $user->id, $example['sql']);
+
+            $response = $this->actingAs($user)->postJson(route('analytics.query.run-sql'), [
+                'sql' => $sql,
+                'limit' => 25,
+            ]);
+
+            $response->assertOk();
+            $response->assertJsonStructure([
+                'columns',
+                'rows',
+                'row_count',
+                'truncated',
+                'limit',
+                'execution_ms',
+            ]);
+        }
+    }
 }
