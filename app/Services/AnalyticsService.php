@@ -18,6 +18,8 @@ class AnalyticsService
 
     private const CACHE_VERSION_KEY = 'analytics:%d:version';
 
+    private const PRICING_CACHE_VERSION_KEY = 'analytics:pricing:version';
+
     /**
      * @return array{average_length:float, completion_rate:float}
      */
@@ -45,20 +47,42 @@ class AnalyticsService
     public function getTokenUsageByProvider(User $user): array
     {
         return Cache::remember($this->cacheKey($user, 'token-usage-provider'), self::CACHE_TTL, function () use ($user) {
-            $stats = Message::query()
+            $tokenTotals = [];
+
+            $query = Message::query()
                 ->join('conversations', 'messages.conversation_id', '=', 'conversations.id')
                 ->where('conversations.user_id', $user->id)
                 ->whereNotNull('messages.persona_id')
-                ->selectRaw('CASE WHEN messages.persona_id = conversations.persona_a_id THEN conversations.provider_a ELSE conversations.provider_b END as provider')
-                ->selectRaw('SUM(COALESCE(messages.tokens_used, 0)) as tokens')
-                ->groupBy('provider')
-                ->orderByDesc('tokens')
-                ->get();
+                ->select([
+                    'messages.persona_id',
+                    'messages.tokens_used',
+                    'conversations.persona_a_id',
+                    'conversations.persona_b_id',
+                    'conversations.provider_a',
+                    'conversations.provider_b',
+                ])
+                ->orderBy('messages.id');
 
-            return $stats->map(fn ($row) => [
-                'provider' => (string) $row->provider,
-                'tokens' => (int) $row->tokens,
-            ])->all();
+            $query->chunk(500, function (Collection $chunk) use (&$tokenTotals) {
+                foreach ($chunk as $row) {
+                    $tokens = (int) ($row->tokens_used ?? 0);
+                    if ($tokens <= 0) {
+                        continue;
+                    }
+
+                    $provider = $this->resolveMessageProviderAndModel($row)['provider'];
+                    $tokenTotals[$provider] = ($tokenTotals[$provider] ?? 0) + $tokens;
+                }
+            });
+
+            return collect($tokenTotals)
+                ->map(fn (int $tokens, string $provider) => [
+                    'provider' => $provider,
+                    'tokens' => $tokens,
+                ])
+                ->sortByDesc('tokens')
+                ->values()
+                ->all();
         });
     }
 
@@ -96,9 +120,7 @@ class AnalyticsService
                         continue;
                     }
 
-                    $isPersonaA = $row->persona_id && $row->persona_a_id && $row->persona_id === $row->persona_a_id;
-                    $provider = $isPersonaA ? $row->provider_a : $row->provider_b;
-                    $model = $isPersonaA ? $row->model_a : $row->model_b;
+                    ['provider' => $provider, 'model' => $model] = $this->resolveMessageProviderAndModel($row);
 
                     $costPerToken = $this->estimateCostPerToken($model, $provider, $costLookup);
                     $cost = $tokens * $costPerToken;
@@ -421,9 +443,45 @@ class AnalyticsService
         return array_values(array_unique($candidates));
     }
 
+    /**
+     * @return array{provider:string, model:?string}
+     */
+    private function resolveMessageProviderAndModel(object $row): array
+    {
+        $personaId = $row->persona_id ?? null;
+        $personaAId = $row->persona_a_id ?? null;
+        $personaBId = $row->persona_b_id ?? null;
+
+        if ($personaId !== null && $personaAId !== null && $personaId === $personaAId) {
+            return [
+                'provider' => (string) ($row->provider_a ?? 'unresolved'),
+                'model' => $row->model_a ?? null,
+            ];
+        }
+
+        if ($personaId !== null && $personaBId !== null && $personaId === $personaBId) {
+            return [
+                'provider' => (string) ($row->provider_b ?? 'unresolved'),
+                'model' => $row->model_b ?? null,
+            ];
+        }
+
+        if (($row->provider_a ?? null) === ($row->provider_b ?? null)) {
+            return [
+                'provider' => (string) ($row->provider_a ?? 'unresolved'),
+                'model' => $row->model_a ?? $row->model_b ?? null,
+            ];
+        }
+
+        return [
+            'provider' => 'unresolved',
+            'model' => null,
+        ];
+    }
+
     private function cacheKey(User $user, string $suffix): string
     {
-        return 'analytics:'.$user->id.':v'.$this->cacheVersion($user).':'.$suffix;
+        return 'analytics:'.$user->id.':v'.$this->cacheVersion($user).':p'.$this->pricingCacheVersion().':'.$suffix;
     }
 
     public function invalidateUserCache(User $user): void
@@ -434,8 +492,19 @@ class AnalyticsService
         Cache::forever($versionKey, $currentVersion + 1);
     }
 
+    public function invalidatePricingCache(): void
+    {
+        $currentVersion = (int) Cache::get(self::PRICING_CACHE_VERSION_KEY, 1);
+        Cache::forever(self::PRICING_CACHE_VERSION_KEY, $currentVersion + 1);
+    }
+
     private function cacheVersion(User $user): int
     {
         return (int) Cache::get(sprintf(self::CACHE_VERSION_KEY, $user->id), 1);
+    }
+
+    private function pricingCacheVersion(): int
+    {
+        return (int) Cache::get(self::PRICING_CACHE_VERSION_KEY, 1);
     }
 }

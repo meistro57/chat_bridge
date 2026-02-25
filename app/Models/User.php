@@ -27,6 +27,8 @@ class User extends Authenticatable
         'role',
         'is_active',
         'notification_preferences',
+        'discord_webhook_url',
+        'discord_streaming_default',
     ];
 
     /**
@@ -58,6 +60,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'notification_preferences' => 'json',
+            'discord_streaming_default' => 'boolean',
         ];
     }
 

@@ -4,11 +4,32 @@ All notable changes to Chat Bridge will be documented in this file.
 
 ## [Unreleased] - 2026-02-23
 
+### 📊 **Analytics SQL Playground**
+- Upgraded `/analytics/query` into a full SQL runner with read-only guardrails (`SELECT` / `WITH` only)
+- Added schema explorer + SQL keyword/table/column autocomplete in the query editor
+- Added built-in SQL examples with authenticated user template hydration
+- Added execution telemetry on results (`row_count`, `execution_ms`, truncation indicator)
+- Added explicit row limits (1-500) and single-statement enforcement for safety
+
 ### 💰 **Pricing & Analytics Accuracy**
 - Added automatic provider/model pricing persistence in the model listing API (`GET /api/providers/models`)
 - New `model_prices` table stores prompt/completion pricing per provider/model
 - Analytics now prefers stored model pricing for cost calculations, then falls back to static config defaults
 - Added tests to verify pricing upsert flow and analytics DB-pricing precedence
+
+### 📈 **Performance Monitoring**
+- Added admin performance monitor page at `/admin/performance`
+- Added `/admin/performance/stats` JSON endpoint with rolling request/DB performance snapshots
+- Added request instrumentation middleware for latency, memory, SQL totals, and slow query capture
+- Added route latency breakdown, throughput series, slow request feed, and queue/runtime health metrics
+
+### 🔔 **Discord Conversation Broadcasts**
+- Added per-conversation Discord broadcast toggle on chat creation
+- Added optional per-conversation webhook override with fallback to user/global webhook defaults
+- Added conversation lifecycle Discord notifications (start, per-message, completion, failure)
+- Added automatic Discord thread creation support and persisted thread IDs for ongoing updates
+- Added circuit-breaker behavior and safe failure handling so Discord outages do not break chat runs
+- Added configurable Discord settings in `config/discord.php` and environment templates
 
 ### 🎭 **Persona Import / Export**
 - **Import JSON on Create** - Upload a `.json` file on the create persona page to pre-fill all fields

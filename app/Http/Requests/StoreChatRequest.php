@@ -35,14 +35,22 @@ class StoreChatRequest extends FormRequest
             'stop_words.*' => ['string'],
             'stop_word_threshold' => ['required_if:stop_word_detection,true', 'numeric', 'min:0.1', 'max:1'],
             'notifications_enabled' => ['boolean'],
+            'discord_streaming_enabled' => ['boolean'],
+            'discord_webhook_url' => ['nullable', 'string', 'url'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $payload = [
             'notifications_enabled' => $this->boolean('notifications_enabled', false),
-        ]);
+        ];
+
+        if ($this->has('discord_streaming_enabled')) {
+            $payload['discord_streaming_enabled'] = $this->boolean('discord_streaming_enabled');
+        }
+
+        $this->merge($payload);
     }
 
     /**

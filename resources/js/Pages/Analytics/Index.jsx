@@ -51,7 +51,19 @@ export default function Index({
     };
 
     const formatNumber = (value) => new Intl.NumberFormat().format(value ?? 0);
-    const formatCurrency = (value) => `$${(value ?? 0).toFixed(2)}`;
+    const formatCurrency = (value) => {
+        const numericValue = Number(value ?? 0);
+
+        if (numericValue === 0) {
+            return '$0.00';
+        }
+
+        if (Math.abs(numericValue) < 0.01) {
+            return `$${numericValue.toFixed(4)}`;
+        }
+
+        return `$${numericValue.toFixed(2)}`;
+    };
     const formatPercent = (value, total) => total > 0 ? `${((value / total) * 100).toFixed(1)}%` : '0%';
 
     const completionRate = metrics?.completion_rate ? (metrics.completion_rate * 100).toFixed(1) : '0.0';
@@ -144,7 +156,7 @@ export default function Index({
                             <div className="relative text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-400 to-red-400">
                                 {formatCurrency(overview?.total_cost)}
                             </div>
-                            <div className="relative mt-2 text-xs text-zinc-500">Based on pricing config</div>
+                            <div className="relative mt-2 text-xs text-zinc-500">Based on stored model pricing with config fallback</div>
                         </div>
                     </div>
 

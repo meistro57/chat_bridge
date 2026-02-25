@@ -12,6 +12,7 @@ use App\Services\AI\StopWordService;
 use App\Services\AI\StreamingChunker;
 use App\Services\Broadcast\SafeBroadcaster;
 use App\Services\ConversationService;
+use App\Services\Discord\DiscordStreamer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -39,7 +40,8 @@ class RunChatSession implements ShouldQueue
 
     public function handle(
         ConversationService $service,
-        StopWordService $stopWords
+        StopWordService $stopWords,
+        DiscordStreamer $discordStreamer
     ): void {
         $conversation = Conversation::with(['messages.persona', 'personaA', 'personaB'])->findOrFail($this->conversationId);
 
@@ -60,6 +62,10 @@ class RunChatSession implements ShouldQueue
             'persona_a' => $conversation->personaA->name,
             'persona_b' => $conversation->personaB->name,
         ]);
+
+        if ($conversation->discord_thread_id === null) {
+            $discordStreamer->startConversation($conversation);
+        }
 
         $round = 0;
         $startTime = microtime(true);
@@ -261,6 +267,8 @@ class RunChatSession implements ShouldQueue
                     'chunk_count' => $chunkCount,
                 ]);
 
+                $discordStreamer->postMessage($conversation, $message, $round + 1);
+
                 // 6. Check Stop Words
                 if ($conversation->stop_word_detection && $stopWords->shouldStopWithThreshold(
                     $fullResponse,
@@ -294,6 +302,7 @@ class RunChatSession implements ShouldQueue
                 'total_messages' => $totalMessages,
             ]);
 
+            $discordStreamer->conversationCompleted($conversation, $totalMessages, $round, $duration);
             $this->notifyCompletion($conversation, $totalMessages, $round);
         } catch (\Throwable $e) {
             Log::error("Job failed for conversation {$this->conversationId}", [
@@ -312,6 +321,7 @@ class RunChatSession implements ShouldQueue
             );
 
             $this->notifyFailure($conversation, $e->getMessage());
+            $discordStreamer->conversationFailed($conversation, $e->getMessage());
 
             throw $e;
         }
@@ -334,6 +344,7 @@ class RunChatSession implements ShouldQueue
             );
 
             $this->notifyFailure($conversation, $exception->getMessage());
+            app(DiscordStreamer::class)->conversationFailed($conversation, $exception->getMessage());
         }
     }
 

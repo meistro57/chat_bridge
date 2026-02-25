@@ -202,6 +202,7 @@ Orchestrate AI discussions with:
 - 🤖 **Per-conversation provider/model selection**
 - 💰 **Live pricing display for 344+ models**
 - 📡 Live status broadcasting
+- 🔔 Optional Discord broadcast per conversation (webhook + thread support)
 - 💾 Complete conversation history
 - 📥 Transcript export (CSV)
 
@@ -260,11 +261,12 @@ Deep insights into conversations:
 
 - 📈 7-day activity trends (charts)
 - 👥 Top persona statistics
-- 🔍 Advanced query filters
+- 🧪 Full SQL playground (read-only `SELECT` / `WITH`)
+- ✨ SQL examples, schema browser, and inline autocomplete
 - 📥 CSV export (1000 records)
 - 💬 Message & token tracking
 - 📊 Real-time metrics
-- 💰 Automatic provider/model pricing sync for more accurate cost estimates
+- 💰 Chart pricing accuracy via live provider pricing sync + `model_prices` persistence
 
 </td>
 </tr>
@@ -562,6 +564,18 @@ Real-time profiling bar (bottom of page):
 
 **Auto-disabled in production** • **Zero performance impact**
 
+### 📈 **Performance Monitor** (`/admin/performance`)
+
+Request and query-level observability for admins:
+
+- 10-second auto-refresh snapshot API (`/admin/performance/stats`)
+- 5-minute latency window (avg, p95, max, error rate)
+- DB insights (query count, total DB time, slow query rate)
+- Throughput chart (last 15 minutes)
+- Slowest route breakdown and recent slow requests
+- Recent slow SQL query samples (>= 100ms)
+- Queue health and runtime context (DB/cache driver, memory, load)
+
 ---
 
 ## 📋 Requirements
@@ -793,6 +807,8 @@ This admin user is automatically created with full admin rights during installat
     - **Stop Word Detection**: Enable automatic stopping
     - **Stop Words**: Comma-separated trigger words (e.g., "goodbye, end")
     - **Threshold**: Detection sensitivity (0.1-1.0)
+    - **Discord Broadcast** (optional): Stream conversation updates to Discord
+    - **Discord Webhook Override** (optional): Leave blank to use your profile/system default
 6. Click "Begin Simulation"
 7. Watch the real-time conversation unfold!
 
@@ -804,6 +820,18 @@ This admin user is automatically created with full admin rights during installat
 - Click any conversation to see details
 - Use the stop button to halt long conversations
 - Download transcripts for analysis
+
+### 6. Run Analytics SQL Queries
+
+1. Open `/analytics/query`
+2. Use an example query or type your own SQL
+3. Use autocomplete suggestions for keywords/tables/columns
+4. Press `Ctrl+Enter` or `Cmd+Enter` to run
+5. Adjust row limit (1-500) and export filtered results to CSV
+
+Notes:
+- The SQL runner allows read-only `SELECT` and `WITH` queries only
+- Multi-statement and write operations are blocked for safety
 
 ---
 
@@ -921,7 +949,8 @@ chat_bridge/
 ### Analytics
 
 - `GET /analytics` - Analytics dashboard with charts
-- `POST /analytics/query` - Query conversation history
+- `GET /analytics/query` - Query page with filters + SQL playground
+- `POST /analytics/query/run-sql` - Execute read-only SQL (`SELECT` / `WITH`)
 - `POST /analytics/export` - Export conversations to CSV
 
 ### Admin (Requires Admin Role)
@@ -930,6 +959,8 @@ chat_bridge/
 - `POST /admin/users` - Create user
 - `PUT /admin/users/{id}` - Update user
 - `DELETE /admin/users/{id}` - Delete user
+- `GET /admin/performance` - Performance monitor dashboard
+- `GET /admin/performance/stats` - Performance monitor JSON snapshot
 
 ### External API
 
@@ -963,6 +994,12 @@ SESSION_DRIVER=file
 REVERB_APP_ID=your-app-id
 REVERB_APP_KEY=your-app-key
 REVERB_APP_SECRET=your-app-secret
+
+# Discord conversation broadcasting
+DISCORD_STREAMING_ENABLED=true
+# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+DISCORD_THREAD_AUTO_CREATE=true
+DISCORD_CIRCUIT_BREAKER_THRESHOLD=5
 
 # Add your AI provider keys to database via UI
 # DO NOT store them in .env for security
@@ -1019,6 +1056,27 @@ Check Reverb is running:
 ```bash
 php artisan reverb:start
 ```
+
+### Discord Broadcast Not Posting
+
+If conversations are not appearing in Discord:
+
+```bash
+# Global feature switch
+DISCORD_STREAMING_ENABLED=true
+
+# Optional global fallback webhook
+# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+
+# Restart workers after changing config/env
+php artisan optimize:clear
+php artisan queue:restart
+```
+
+Also confirm the conversation has **Discord Broadcast** enabled and that either:
+- conversation webhook override is set, or
+- user profile default webhook is set, or
+- global `DISCORD_WEBHOOK_URL` is configured.
 
 ### Broadcast Payload Too Large
 

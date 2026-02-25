@@ -8,6 +8,7 @@ use App\Models\Persona;
 use App\Models\User;
 use App\Services\AI\StopWordService;
 use App\Services\ConversationService;
+use App\Services\Discord\DiscordStreamer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Tests\TestCase;
@@ -77,7 +78,7 @@ class RunChatSessionRetryTest extends TestCase
             });
 
         $job = new RunChatSession($conversation->id, 1);
-        $job->handle($service, app(StopWordService::class));
+        $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
 
         $conversation->refresh();
         $this->assertSame('completed', $conversation->status);
@@ -150,7 +151,7 @@ class RunChatSessionRetryTest extends TestCase
             });
 
         $job = new RunChatSession($conversation->id, 1);
-        $job->handle($service, app(StopWordService::class));
+        $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
 
         $conversation->refresh();
         $this->assertSame('completed', $conversation->status);
@@ -208,7 +209,7 @@ class RunChatSessionRetryTest extends TestCase
             });
 
         $job = new RunChatSession($conversation->id, 1);
-        $job->handle($service, app(StopWordService::class));
+        $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
 
         $conversation->refresh();
         $this->assertSame('completed', $conversation->status);
@@ -218,5 +219,76 @@ class RunChatSessionRetryTest extends TestCase
             'content' => 'Fallback after timeout',
             'tokens_used' => null,
         ]);
+    }
+
+    public function test_it_broadcasts_to_discord_when_streaming_is_enabled(): void
+    {
+        config()->set('ai.initial_stream_enabled', false);
+        config()->set('discord.enabled', true);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'max_rounds' => 1,
+            'status' => 'active',
+            'stop_word_detection' => false,
+            'discord_streaming_enabled' => true,
+            'discord_webhook_url' => 'https://discord.com/api/webhooks/test/webhook',
+            'metadata' => ['notifications_enabled' => false],
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'content' => 'Start the chat',
+        ]);
+
+        $driver = new class
+        {
+            public function getLastTokenUsage(): int
+            {
+                return 12;
+            }
+        };
+
+        $service = Mockery::mock(ConversationService::class);
+        $service->shouldReceive('generateTurn')
+            ->once()
+            ->andReturn([
+                'content' => (function () {
+                    yield 'Discord enabled response';
+                })(),
+                'driver' => $driver,
+            ]);
+        $service->shouldReceive('saveTurn')
+            ->once()
+            ->andReturnUsing(function (Conversation $conversationArg, Persona $personaArg, string $content, ?int $tokensUsed) {
+                return $conversationArg->messages()->create([
+                    'persona_id' => $personaArg->id,
+                    'role' => 'assistant',
+                    'content' => $content,
+                    'tokens_used' => $tokensUsed,
+                ]);
+            });
+        $service->shouldReceive('completeConversation')
+            ->once()
+            ->andReturnUsing(function (Conversation $conversationArg): void {
+                $conversationArg->update(['status' => 'completed']);
+            });
+
+        $discordStreamer = Mockery::mock(DiscordStreamer::class);
+        $discordStreamer->shouldReceive('startConversation')->once();
+        $discordStreamer->shouldReceive('postMessage')->once();
+        $discordStreamer->shouldReceive('conversationCompleted')->once();
+        $discordStreamer->shouldReceive('conversationFailed')->never();
+
+        $job = new RunChatSession($conversation->id, 1);
+        $job->handle($service, app(StopWordService::class), $discordStreamer);
+
+        $conversation->refresh();
+        $this->assertSame('completed', $conversation->status);
     }
 }

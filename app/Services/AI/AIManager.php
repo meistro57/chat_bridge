@@ -166,7 +166,7 @@ class AIManager extends Manager
 
         return new GeminiDriver(
             apiKey: $key,
-            model: $model ?: config('services.gemini.model', 'gemini-1.5-flash')
+            model: $model ?: config('services.gemini.model', 'gemini-2.0-flash')
         );
     }
 
@@ -246,7 +246,7 @@ class AIManager extends Manager
             'gemini' => $key !== ''
                 ? new GeminiDriver(
                     apiKey: $key,
-                    model: $resolvedModel ?: config('services.gemini.model', 'gemini-1.5-flash')
+                    model: $resolvedModel ?: config('services.gemini.model', 'gemini-2.0-flash')
                 )
                 : new MockDriver,
             'ollama' => new OllamaDriver(

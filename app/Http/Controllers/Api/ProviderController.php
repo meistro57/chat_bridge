@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
 use App\Models\ModelPrice;
+use App\Services\AnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class ProviderController extends Controller
 {
+    public function __construct(private readonly AnalyticsService $analyticsService) {}
+
     public function modelsForProvider(string $provider): array
     {
         return $this->fetchModelsForProvider($provider);
@@ -168,10 +171,72 @@ class ProviderController extends Controller
 
     private function fetchGeminiModels(): array
     {
+        $apiKey = $this->getApiKey('gemini');
+
+        if ($apiKey) {
+            try {
+                $response = Http::timeout(5)->get(
+                    "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}"
+                );
+
+                if ($response->successful()) {
+                    $pricingMap = $this->getGeminiPricingMap();
+
+                    $models = collect($response->json('models', []))
+                        ->filter(fn ($model) => in_array('generateContent', $model['supportedGenerationMethods'] ?? [], true))
+                        ->map(function ($model) use ($pricingMap) {
+                            $id = str_replace('models/', '', $model['name'] ?? '');
+                            $displayName = $model['displayName'] ?? $id;
+
+                            return [
+                                'id' => $id,
+                                'name' => $displayName,
+                                'cost' => $pricingMap[$id] ?? null,
+                            ];
+                        })
+                        ->filter(fn ($model) => str_starts_with($model['id'], 'gemini-'))
+                        ->sortBy('name')
+                        ->values()
+                        ->toArray();
+
+                    if (! empty($models)) {
+                        return $models;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to fetch Gemini models from API', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return $this->getDefaultGeminiModels();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getGeminiPricingMap(): array
+    {
         return [
-            ['id' => 'gemini-2.0-flash-exp', 'name' => 'Gemini 2.0 Flash', 'cost' => 'FREE (exp)'],
-            ['id' => 'gemini-1.5-flash', 'name' => 'Gemini 1.5 Flash', 'cost' => '$0.075/$0.30'],
+            'gemini-2.5-pro-preview' => '$1.25/$10.00',
+            'gemini-2.0-pro-exp' => 'FREE (exp)',
+            'gemini-2.0-flash' => '$0.10/$0.40',
+            'gemini-2.0-flash-lite' => '$0.075/$0.30',
+            'gemini-2.0-flash-exp' => 'FREE (exp)',
+            'gemini-1.5-pro' => '$1.25/$5.00',
+            'gemini-1.5-pro-latest' => '$1.25/$5.00',
+            'gemini-1.5-flash' => '$0.075/$0.30',
+            'gemini-1.5-flash-latest' => '$0.075/$0.30',
+            'gemini-1.5-flash-8b' => '$0.037/$0.15',
+        ];
+    }
+
+    private function getDefaultGeminiModels(): array
+    {
+        return [
+            ['id' => 'gemini-2.0-flash', 'name' => 'Gemini 2.0 Flash', 'cost' => '$0.10/$0.40'],
+            ['id' => 'gemini-2.0-flash-lite', 'name' => 'Gemini 2.0 Flash Lite', 'cost' => '$0.075/$0.30'],
             ['id' => 'gemini-1.5-pro', 'name' => 'Gemini 1.5 Pro', 'cost' => '$1.25/$5.00'],
+            ['id' => 'gemini-1.5-flash-8b', 'name' => 'Gemini 1.5 Flash 8B', 'cost' => '$0.037/$0.15'],
         ];
     }
 
@@ -315,6 +380,8 @@ class ProviderController extends Controller
                 ['prompt_per_million', 'completion_per_million', 'updated_at']
             );
         }
+
+        $this->analyticsService->invalidatePricingCache();
     }
 
     /**

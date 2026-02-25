@@ -38,6 +38,8 @@ class ChatControllerTest extends TestCase
             'stop_words' => ['goodbye', 'halt'],
             'stop_word_threshold' => 0.5,
             'notifications_enabled' => false,
+            'discord_streaming_enabled' => true,
+            'discord_webhook_url' => 'https://discord.com/api/webhooks/test/webhook',
         ];
 
         $response = $this->actingAs($user)->post(route('chat.store'), $payload);
@@ -59,6 +61,8 @@ class ChatControllerTest extends TestCase
         $this->assertTrue($conversation->stop_word_detection);
         $this->assertEquals($payload['stop_word_threshold'], $conversation->stop_word_threshold);
         $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
+        $this->assertTrue($conversation->discord_streaming_enabled);
+        $this->assertSame($payload['discord_webhook_url'], $conversation->discord_webhook_url);
 
         $this->assertDatabaseHas('messages', [
             'conversation_id' => $conversation->id,
@@ -103,6 +107,42 @@ class ChatControllerTest extends TestCase
 
         $this->assertNotNull($conversation);
         $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
+    }
+
+    public function test_store_defaults_discord_streaming_to_user_preference_when_omitted(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create([
+            'discord_streaming_default' => true,
+        ]);
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'Test default discord setting.',
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $this->assertTrue($conversation->discord_streaming_enabled);
+        $this->assertNull($conversation->discord_webhook_url);
     }
 
     public function test_transcript_downloads_markdown_from_private_storage(): void

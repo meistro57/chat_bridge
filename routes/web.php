@@ -55,6 +55,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
         Route::get('/boost/stats', [BoostDashboardController::class, 'stats'])->name('boost.stats');
         Route::get('/mcp-utilities', [McpUtilitiesController::class, 'index'])->name('mcp.utilities');
+        Route::get('/performance', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'index'])->name('performance.index');
+        Route::get('/performance/stats', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'stats'])->name('performance.stats');
     });
 
     // Persona routes
@@ -73,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Analytics routes
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');
     Route::get('/analytics/query', [\App\Http\Controllers\AnalyticsController::class, 'query'])->name('analytics.query');
+    Route::post('/analytics/query/run-sql', [\App\Http\Controllers\AnalyticsController::class, 'runSql'])->name('analytics.query.run-sql');
     Route::get('/analytics/metrics', [\App\Http\Controllers\AnalyticsController::class, 'metrics'])->name('analytics.metrics');
     Route::post('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'export'])->name('analytics.export');
     Route::delete('/analytics/history', [\App\Http\Controllers\AnalyticsController::class, 'clearHistory'])->name('analytics.history.clear');

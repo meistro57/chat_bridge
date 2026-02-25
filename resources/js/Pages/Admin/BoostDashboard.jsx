@@ -273,6 +273,14 @@ export default function BoostDashboard({ boost, liveStats: initialLiveStats }) {
                                 </a>
                             </li>
                             <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
+                                <a href="/admin/performance" className="flex items-center justify-between group">
+                                    <span>Performance Monitor</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform">
+                                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                                    </svg>
+                                </a>
+                            </li>
+                            <li className="rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition-colors">
                                 <button onClick={refreshStats} className="w-full flex items-center justify-between group">
                                     <span>Refresh All Stats</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:rotate-180 transition-transform duration-500">

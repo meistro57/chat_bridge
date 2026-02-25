@@ -36,6 +36,9 @@
 - **Per-Conversation Provider/Model Selection** - Choose any provider and model for each agent
 - **Dynamic Model Fetching** - Query providers for available models (344+ models supported)
 - **Live Pricing Display** - See cost per 1M tokens before starting conversation
+- **Discord Broadcast Toggle** - Optional per-conversation broadcast to Discord
+- **Webhook Resolution Chain** - Conversation override -> user default -> global fallback
+- **Discord Threading** - Auto-create/continue a dedicated thread per conversation
 - **Advanced Chat Controls**:
   - **Max Rounds** - Set conversation length limit (1-100 turns)
   - **Stop Word Detection** - Automatic conversation stopping based on keywords
@@ -81,6 +84,11 @@
 - **Top Personas** - Most-used agents statistics
 - **Message Tracking** - Count and token usage
 - **Automatic Cost Sync** - Provider/model pricing captured from model query API and stored for analytics
+- **Full SQL Playground** - Read-only `SELECT` / `WITH` query execution
+  - Built-in SQL examples
+  - Schema browser for key tables
+  - Inline autocomplete for keywords/tables/columns
+  - Row limit controls (1-500)
 - **Query System** - Advanced filtering options
   - Keyword search
   - Date range filters
@@ -215,6 +223,18 @@
 - Detailed tabs
 - Ajax request tracking
 - Exception catching
+
+### 📈 Performance Monitor (`/admin/performance`)
+
+**Live Monitoring Features:**
+- **Latency Window** - Last 5 minutes with avg/p95/max response time
+- **DB Timing Window** - Avg/p95/max DB query time and query volume
+- **Route Breakdown** - Slowest routes by average latency
+- **Throughput Series** - Requests per minute (15-minute timeline)
+- **Slow Requests Feed** - Recent requests over 1 second
+- **Slow Query Feed** - Recent SQL queries over 100ms
+- **Queue Health** - Queued + failed jobs snapshot
+- **Runtime Context** - Memory, load average, DB/cache drivers
 
 ---
 

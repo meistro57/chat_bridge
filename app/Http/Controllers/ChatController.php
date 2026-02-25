@@ -99,6 +99,10 @@ class ChatController extends Controller
             'personas' => Persona::orderBy('name')->get(),
             'template' => $template,
             'openRouterModels' => $openRouterModels,
+            'discordDefaults' => [
+                'enabled' => (bool) $request->user()->discord_streaming_default,
+                'webhook_url' => $request->user()->discord_webhook_url,
+            ],
         ]);
     }
 
@@ -137,6 +141,10 @@ class ChatController extends Controller
                 'persona_b_name' => $personaB->name,
                 'notifications_enabled' => $request->boolean('notifications_enabled', false),
             ],
+            'discord_streaming_enabled' => $request->has('discord_streaming_enabled')
+                ? $request->boolean('discord_streaming_enabled')
+                : (bool) auth()->user()->discord_streaming_default,
+            'discord_webhook_url' => $validated['discord_webhook_url'] ?? null,
         ]);
 
         $conversation->messages()->create([

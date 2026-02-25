@@ -206,4 +206,35 @@ class AnalyticsTest extends TestCase
         $this->assertSame(0.01, $payload['costByProvider'][0]['cost']);
         $this->assertSame('openai', $payload['costByProvider'][0]['provider']);
     }
+
+    public function test_analytics_marks_unresolved_provider_instead_of_misattributing_cost(): void
+    {
+        Cache::flush();
+
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+
+        $conversation = Conversation::factory()->for($user)->create([
+            'persona_a_id' => null,
+            'persona_b_id' => null,
+            'provider_a' => 'openai',
+            'provider_b' => 'anthropic',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'claude-sonnet-4-5-20250929',
+        ]);
+
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'tokens_used' => 1500,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('analytics.metrics'));
+        $response->assertOk();
+
+        $providers = collect($response->json('costByProvider'))->pluck('provider')->all();
+
+        $this->assertContains('unresolved', $providers);
+        $this->assertNotContains('anthropic', $providers);
+    }
 }
