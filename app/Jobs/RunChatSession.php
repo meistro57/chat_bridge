@@ -132,6 +132,7 @@ class RunChatSession implements ShouldQueue
                 while (true) {
                     $fullResponse = '';
                     $chunkCount = 0;
+                    $pendingChunkBuffer = '';
                     try {
                         $generation = $service->generateTurn($conversation, $currentPersona, $history);
                         $driver = $generation['driver'];
@@ -154,8 +155,12 @@ class RunChatSession implements ShouldQueue
 
                         foreach ($generation['content'] as $chunk) {
                             $fullResponse .= $chunk;
+                            $pendingChunkBuffer .= $chunk;
 
-                            foreach ($chunker->split($chunk, $maxChunkSize) as $piece) {
+                            $pendingPieces = $chunker->split($pendingChunkBuffer, $maxChunkSize);
+                            $pendingChunkBuffer = (string) array_pop($pendingPieces);
+
+                            foreach ($pendingPieces as $piece) {
                                 $chunkCount++;
                                 $broadcaster->broadcast(
                                     new MessageChunkSent(
@@ -174,6 +179,22 @@ class RunChatSession implements ShouldQueue
                             if (Cache::get("conversation.stop.{$this->conversationId}")) {
                                 break;
                             }
+                        }
+
+                        if ($pendingChunkBuffer !== '') {
+                            $chunkCount++;
+                            $broadcaster->broadcast(
+                                new MessageChunkSent(
+                                    conversationId: $conversation->id,
+                                    chunk: $pendingChunkBuffer,
+                                    role: 'assistant',
+                                    personaName: $currentPersona->name
+                                ),
+                                [
+                                    'conversation_id' => $conversation->id,
+                                    'phase' => 'chunk',
+                                ]
+                            );
                         }
                     } catch (\Throwable $exception) {
                         if ($this->isRetryableTurnException($exception)) {

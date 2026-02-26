@@ -11,6 +11,8 @@ class DiscordStreamer
 {
     protected int $consecutiveFailures = 0;
 
+    protected ?int $lastWebhookErrorCode = null;
+
     public function __construct(
         protected DiscordEmbedBuilder $embedBuilder
     ) {}
@@ -123,11 +125,34 @@ class DiscordStreamer
             $embeds = $payload['embeds'] ?? [];
 
             foreach ($embeds as $embed) {
-                $this->executeWebhook(
+                $response = $this->executeWebhook(
                     $webhookUrl,
                     ['embeds' => [$embed]],
                     $conversation->discord_thread_id
                 );
+
+                if (
+                    $response === null
+                    && $conversation->discord_thread_id !== null
+                    && $this->shouldRetryWithoutThreadId()
+                ) {
+                    Log::info('Discord thread appears stale; retrying post in webhook channel', [
+                        'conversation_id' => $conversation->id,
+                        'thread_id' => $conversation->discord_thread_id,
+                    ]);
+
+                    $fallbackResponse = $this->executeWebhook(
+                        $webhookUrl,
+                        ['embeds' => [$embed]],
+                        null
+                    );
+
+                    if ($fallbackResponse !== null) {
+                        $conversation->updateQuietly([
+                            'discord_thread_id' => null,
+                        ]);
+                    }
+                }
             }
         }, 'postMessage');
     }
@@ -159,7 +184,26 @@ class DiscordStreamer
                 $durationSeconds
             );
 
-            $this->executeWebhook($webhookUrl, $payload, $conversation->discord_thread_id);
+            $response = $this->executeWebhook($webhookUrl, $payload, $conversation->discord_thread_id);
+
+            if (
+                $response === null
+                && $conversation->discord_thread_id !== null
+                && $this->shouldRetryWithoutThreadId()
+            ) {
+                Log::info('Discord thread appears stale; retrying completion in webhook channel', [
+                    'conversation_id' => $conversation->id,
+                    'thread_id' => $conversation->discord_thread_id,
+                ]);
+
+                $fallbackResponse = $this->executeWebhook($webhookUrl, $payload, null);
+
+                if ($fallbackResponse !== null) {
+                    $conversation->updateQuietly([
+                        'discord_thread_id' => null,
+                    ]);
+                }
+            }
         }, 'conversationCompleted');
     }
 
@@ -185,7 +229,26 @@ class DiscordStreamer
 
             $payload = $this->embedBuilder->conversationFailed($conversation, $error);
 
-            $this->executeWebhook($webhookUrl, $payload, $conversation->discord_thread_id);
+            $response = $this->executeWebhook($webhookUrl, $payload, $conversation->discord_thread_id);
+
+            if (
+                $response === null
+                && $conversation->discord_thread_id !== null
+                && $this->shouldRetryWithoutThreadId()
+            ) {
+                Log::info('Discord thread appears stale; retrying failure notice in webhook channel', [
+                    'conversation_id' => $conversation->id,
+                    'thread_id' => $conversation->discord_thread_id,
+                ]);
+
+                $fallbackResponse = $this->executeWebhook($webhookUrl, $payload, null);
+
+                if ($fallbackResponse !== null) {
+                    $conversation->updateQuietly([
+                        'discord_thread_id' => null,
+                    ]);
+                }
+            }
         }, 'conversationFailed');
     }
 
@@ -222,6 +285,7 @@ class DiscordStreamer
         }
 
         if ($response->failed()) {
+            $this->lastWebhookErrorCode = (int) ($response->json('code') ?? 0) ?: null;
             $this->recordFailure();
             Log::warning('Discord webhook failed', [
                 'status' => $response->status(),
@@ -231,9 +295,15 @@ class DiscordStreamer
             return null;
         }
 
+        $this->lastWebhookErrorCode = null;
         $this->recordSuccess();
 
         return $response->json();
+    }
+
+    protected function shouldRetryWithoutThreadId(): bool
+    {
+        return $this->lastWebhookErrorCode === 10003;
     }
 
     /**

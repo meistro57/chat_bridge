@@ -205,7 +205,10 @@ class AnthropicDriver implements AIDriverInterface
         // Combine all system messages (system prompt + guidelines) into a single string
         $systemMessages = $messages->where('role', 'system');
         $system = $systemMessages->isNotEmpty()
-            ? $systemMessages->pluck('content')->implode("\n\n")
+            ? $systemMessages
+                ->pluck('content')
+                ->map(fn ($content) => $this->normalizeMessageContent((string) $content))
+                ->implode("\n\n")
             : null;
 
         $filteredMessages = $messages->where('role', '!=', 'system')->values();
@@ -214,13 +217,20 @@ class AnthropicDriver implements AIDriverInterface
             'model' => $this->model,
             'messages' => $filteredMessages->map(fn ($m) => array_filter([
                 'role' => $m->role === 'assistant' ? 'assistant' : 'user',
-                'content' => $m->name && $m->role === 'assistant'
-                    ? "[{$m->name}]: {$m->content}"
-                    : $m->content,
+                'content' => $this->normalizeMessageContent(
+                    $m->name && $m->role === 'assistant'
+                        ? "[{$m->name}]: {$m->content}"
+                        : (string) $m->content
+                ),
             ]))->all(),
             'system' => $system,
             'max_tokens' => 8192,
         ]);
+    }
+
+    protected function normalizeMessageContent(string $content): string
+    {
+        return rtrim($content);
     }
 
     protected function readLine($stream): string
