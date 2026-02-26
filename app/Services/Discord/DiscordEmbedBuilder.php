@@ -8,6 +8,34 @@ use App\Models\Message;
 class DiscordEmbedBuilder
 {
     /**
+     * Build the starter question embed posted as the first message.
+     *
+     * @return array<string, mixed>
+     */
+    public function starterQuestion(Conversation $conversation): array
+    {
+        $starterMessage = $conversation->starter_message ?? '';
+        $maxLen = (int) config('discord.max_embed_description', 3900);
+        $starterPreview = mb_strlen($starterMessage) > $maxLen
+            ? mb_substr($starterMessage, 0, $maxLen).'…'
+            : $starterMessage;
+
+        return [
+            'embeds' => [
+                [
+                    'title' => '💬 Starter Question',
+                    'color' => config('discord.embed_colors.topic'),
+                    'description' => $starterPreview,
+                    'timestamp' => $conversation->created_at?->toIso8601String(),
+                    'footer' => [
+                        'text' => 'Chat Bridge · Conversation Prompt',
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * Build the "conversation started" embed posted when a thread is created.
      *
      * @return array<string, mixed>
@@ -16,10 +44,6 @@ class DiscordEmbedBuilder
     {
         $personaA = $conversation->personaA?->name ?? 'Agent A';
         $personaB = $conversation->personaB?->name ?? 'Agent B';
-
-        $starterPreview = mb_strlen($conversation->starter_message) > 300
-            ? mb_substr($conversation->starter_message, 0, 300).'…'
-            : $conversation->starter_message;
 
         return [
             'embeds' => [
@@ -41,11 +65,6 @@ class DiscordEmbedBuilder
                             'name' => '⚙️ Settings',
                             'value' => "Max Rounds: **{$conversation->max_rounds}**\nStop Words: ".($conversation->stop_word_detection ? '✅ Enabled' : '❌ Disabled'),
                             'inline' => true,
-                        ],
-                        [
-                            'name' => '💬 Topic',
-                            'value' => "```\n{$starterPreview}\n```",
-                            'inline' => false,
                         ],
                     ],
                     'timestamp' => $conversation->created_at?->toIso8601String(),

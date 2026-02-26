@@ -149,8 +149,20 @@ class OpenAIDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
+        $startedAt = microtime(true);
+        $streamReadTimeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+
         while (! $stream->eof()) {
             $char = $stream->read(1);
+
+            if ($char === '') {
+                if ((microtime(true) - $startedAt) >= $streamReadTimeoutSeconds) {
+                    throw new \Exception('OpenAI stream read timed out before receiving a full event line.');
+                }
+
+                continue;
+            }
+
             if ($char === "\n") {
                 break;
             }
@@ -183,7 +195,11 @@ class OpenAIDriver implements AIDriverInterface
         $client = $this->buildRequest();
 
         if ($stream) {
-            $client = $client->withOptions(['stream' => true]);
+            $readTimeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+            $client = $client->withOptions([
+                'stream' => true,
+                'read_timeout' => $readTimeoutSeconds,
+            ]);
         }
 
         return $client->post("{$this->baseUrl}/chat/completions", $payload);

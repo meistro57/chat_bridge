@@ -52,7 +52,8 @@ class DiscordStreamer
                 return null;
             }
 
-            $payload = $this->embedBuilder->conversationStarted($conversation);
+            $payload = $this->embedBuilder->starterQuestion($conversation);
+            $basePayload = $payload;
 
             // Create a thread by including thread_name in the webhook payload
             if (config('discord.thread_auto_create', true)) {
@@ -60,6 +61,14 @@ class DiscordStreamer
             }
 
             $response = $this->executeWebhook($webhookUrl, $payload);
+
+            if ($response === null && config('discord.thread_auto_create', true)) {
+                Log::info('Discord thread auto-create failed; retrying without thread_name', [
+                    'conversation_id' => $conversation->id,
+                ]);
+
+                $response = $this->executeWebhook($webhookUrl, $basePayload);
+            }
 
             if ($response === null) {
                 return null;
@@ -80,6 +89,12 @@ class DiscordStreamer
                     'thread_id' => $threadId,
                 ]);
             }
+
+            $this->executeWebhook(
+                $webhookUrl,
+                $this->embedBuilder->conversationStarted($conversation),
+                $conversation->discord_thread_id
+            );
 
             return $threadId;
         }, 'startConversation');
@@ -103,15 +118,14 @@ class DiscordStreamer
 
             $payload = $this->embedBuilder->agentMessage($message, $conversation, $turnNumber);
 
-            // Discord allows max 10 embeds per message.  If the content was
-            // split into more parts we need multiple webhook calls.
+            // Discord enforces a per-message aggregate payload size cap.
+            // Sending one embed per request avoids "embed size exceeds 6000" failures.
             $embeds = $payload['embeds'] ?? [];
-            $chunks = array_chunk($embeds, 10);
 
-            foreach ($chunks as $embedChunk) {
+            foreach ($embeds as $embed) {
                 $this->executeWebhook(
                     $webhookUrl,
-                    ['embeds' => $embedChunk],
+                    ['embeds' => [$embed]],
                     $conversation->discord_thread_id
                 );
             }
