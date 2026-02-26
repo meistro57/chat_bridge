@@ -43,6 +43,15 @@ docker run --rm -v $(pwd):/app -w /app php:8.3-cli php artisan key:generate --sh
 nano .env
 ```
 
+If you switched from host mode and your `.env` contains host SQLite values, reset it first:
+
+```bash
+cp .env.docker .env
+docker compose up -d
+docker compose exec -T app php artisan optimize:clear
+docker compose exec -T app php artisan queue:restart
+```
+
 **Required Configuration:**
 
 ```env

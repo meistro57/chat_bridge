@@ -693,6 +693,18 @@ make setup
 # Qdrant: http://localhost:6333/dashboard
 ```
 
+### Switching From Host Mode To Docker Mode
+
+If you previously ran with host PHP + SQLite, switch back to Docker-safe settings with:
+
+```bash
+cd ~/chat_bridge
+cp .env.docker .env
+docker compose up -d
+docker compose exec -T app php artisan optimize:clear
+docker compose exec -T app php artisan queue:restart
+```
+
 **Data persistence:** Docker volumes are preserved by default. Use `make clean-volumes` only when you want to wipe the database and Qdrant data.
 
 ### Docker Services
