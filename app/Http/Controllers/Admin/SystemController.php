@@ -710,9 +710,8 @@ PROMPT;
     protected function buildCodexCommand(string $fullPrompt, string $outputPath): array
     {
         return [
-            'npx',
-            '--no-install',
-            'codex',
+            'node',
+            base_path('node_modules/.bin/codex'),
             'exec',
             '--skip-git-repo-check',
             '--color',
