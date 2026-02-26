@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\McpUtilitiesController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TranscriptChatController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -90,6 +91,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chat/{conversation}/stop', [ChatController::class, 'stop'])->name('chat.stop');
     Route::delete('/chat/{conversation}', [ChatController::class, 'destroy'])->name('chat.destroy');
     Route::get('/chat/{conversation}/transcript', [ChatController::class, 'transcript'])->name('chat.transcript');
+
+    // Transcript Chat (AI Q&A over embeddings)
+    Route::get('/transcript-chat', [TranscriptChatController::class, 'index'])->name('transcript-chat.index');
+    Route::post('/transcript-chat/ask', [TranscriptChatController::class, 'ask'])->name('transcript-chat.ask');
 
     // Transmission routes
     Route::get('/transmission', [\App\Http\Controllers\TransmissionController::class, 'index'])->name('transmission.index');
