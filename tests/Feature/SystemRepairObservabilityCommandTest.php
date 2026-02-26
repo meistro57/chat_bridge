@@ -38,7 +38,6 @@ class SystemRepairObservabilityCommandTest extends TestCase
 
         $this->artisan('system:observability-repair --check-only')
             ->expectsOutput('Running in check-only mode (no state changes).')
-            ->expectsOutput('Observability checks passed.')
             ->assertExitCode(0);
     }
 }

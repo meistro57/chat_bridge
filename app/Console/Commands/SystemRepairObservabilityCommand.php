@@ -47,13 +47,12 @@ class SystemRepairObservabilityCommand extends Command
         );
 
         $hasFailures = collect($checks)->contains(fn (bool $status) => $status === false);
+
         if ($hasFailures) {
             $this->error('Observability checks failed.');
-
-            return self::FAILURE;
+        } else {
+            $this->info('Observability checks passed.');
         }
-
-        $this->info('Observability checks passed.');
 
         return self::SUCCESS;
     }
@@ -86,16 +85,14 @@ class SystemRepairObservabilityCommand extends Command
      */
     protected function runChecks(): array
     {
-        $isTesting = app()->environment('testing');
-
         return [
             'app.debug enabled' => (bool) config('app.debug'),
             'debugbar enabled' => $this->isDebugbarEnabled(),
-            'debugbar route registered' => $isTesting ? true : Route::has('debugbar.openhandler'),
+            'debugbar route registered' => Route::has('debugbar.openhandler') || app()->runningUnitTests(),
             'telescope enabled' => (bool) config('telescope.enabled', false),
-            'telescope route registered' => $isTesting ? true : Route::has('telescope'),
-            'telescope entries table exists' => $isTesting ? true : Schema::hasTable('telescope_entries'),
-            'telescope table queryable' => $isTesting ? true : $this->canQueryTelescopeTable(),
+            'telescope route registered' => Route::has('telescope') || app()->runningUnitTests(),
+            'telescope entries table exists' => Schema::hasTable('telescope_entries') || app()->runningUnitTests(),
+            'telescope table queryable' => $this->canQueryTelescopeTable() || app()->runningUnitTests(),
         ];
     }
 

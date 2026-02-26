@@ -561,7 +561,7 @@ class SystemController extends Controller
         $output = [];
         $output[] = 'Updating Laravel framework (laravel/framework)...';
 
-        if (app()->environment('testing')) {
+        if (app()->environment('testing') || app()->runningUnitTests()) {
             $output[] = '→ Skipped in testing environment.';
 
             return implode("\n", $output);

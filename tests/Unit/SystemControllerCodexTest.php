@@ -28,10 +28,9 @@ class SystemControllerCodexTest extends TestCase
 
         $command = $controller->exposedBuildCodexCommand($prompt, $outputPath);
 
-        $this->assertSame('npx', $command[0]);
-        $this->assertSame('--no-install', $command[1]);
-        $this->assertSame('codex', $command[2]);
-        $this->assertSame('exec', $command[3]);
+        $this->assertSame('node', $command[0]);
+        $this->assertStringContainsString('codex', $command[1]);
+        $this->assertSame('exec', $command[2]);
         $this->assertContains('--output-last-message', $command);
         $this->assertContains($outputPath, $command);
         $this->assertSame($prompt, $command[count($command) - 1]);
