@@ -579,6 +579,16 @@ Request and query-level observability for admins:
 - Recent slow SQL query samples (>= 100ms)
 - Queue health and runtime context (DB/cache driver, memory, load)
 
+### 🤖 **Model Context Protocol (MCP) Server** (`/api/mcp`)
+Native implementation of the JSON-RPC 2.0 MCP protocol for developer interaction:
+
+- Standardized `initialize`, `tools/list`, and `tools/call` methods
+- Protocol Version: `2024-11-05`
+- Compatible with [Crush](https://crush.charm.land) and other MCP clients
+- Securely exposes chat search, recent history, and system statistics as tools
+
+For full integration guide, see **[MCP.md](MCP.md)**
+
 ---
 
 ## 📋 Requirements
@@ -969,6 +979,10 @@ chat_bridge/
 
 - `POST /api/chat-bridge/respond` - Chat bridge endpoint (requires token)
 
+### MCP Server
+
+- `POST /api/mcp` - Native MCP JSON-RPC 2.0 endpoint (no auth required for local dev)
+
 ---
 
 ## ⚙️ Configuration
@@ -1156,6 +1170,7 @@ php artisan migrate --force
 | **[RAG_GUIDE.md](RAG_GUIDE.md)**                 | 🧠 RAG & AI memory guide        |
 | **[ROADMAP.md](ROADMAP.md)**                     | 🗺️ Future development plans     |
 | **[DATA_MANIPULATION.md](DATA_MANIPULATION.md)** | 📊 Data operations guide        |
+| **[MCP.md](MCP.md)**                             | 🤖 MCP server integration guide |
 
 ### 🌐 External Documentation
 

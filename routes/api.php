@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\ChatBridgeController;
-use App\Http\Controllers\Api\McpController;
+use App\Http\Controllers\Api\McpController as ApiMcpController;
+use App\Http\Controllers\McpController;
 use App\Http\Middleware\EnsureChatBridgeToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -13,13 +14,15 @@ Route::get('/user', function (Request $request) {
 Route::post('/chat-bridge/respond', [ChatBridgeController::class, 'respond'])
     ->middleware(EnsureChatBridgeToken::class);
 
+Route::post('/mcp', [McpController::class, 'handle']);
+
 Route::prefix('mcp')->group(function () {
-    Route::get('/health', [McpController::class, 'health']);
-    Route::get('/stats', [McpController::class, 'stats']);
-    Route::get('/recent-chats', [McpController::class, 'recentChats']);
-    Route::get('/search-chats', [McpController::class, 'search']);
-    Route::get('/contextual-memory', [McpController::class, 'contextualMemory']);
-    Route::get('/conversation/{conversation}', [McpController::class, 'conversation']);
+    Route::get('/health', [ApiMcpController::class, 'health']);
+    Route::get('/stats', [ApiMcpController::class, 'stats']);
+    Route::get('/recent-chats', [ApiMcpController::class, 'recentChats']);
+    Route::get('/search-chats', [ApiMcpController::class, 'search']);
+    Route::get('/contextual-memory', [ApiMcpController::class, 'contextualMemory']);
+    Route::get('/conversation/{conversation}', [ApiMcpController::class, 'conversation']);
 });
 
 // Provider API routes (no auth required for model listing)

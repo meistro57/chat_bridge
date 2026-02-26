@@ -87,7 +87,10 @@ class OpenRouterDriver extends OpenAIDriver
             ]);
 
             if (empty($content)) {
-                throw new \Exception('No content returned from OpenRouter API');
+                \Log::warning('OpenRouter API returned empty content', [
+                    'model' => $this->model,
+                    'data' => $data,
+                ]);
             }
 
             $usage = $data['usage'] ?? [];

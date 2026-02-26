@@ -413,6 +413,9 @@ class RunChatSession implements ShouldQueue
             'service unavailable',
             'too many requests',
             'rate limit',
+            'no content returned',
+            'empty response',
+            'unexpected response format',
         ];
 
         foreach ($retryableSnippets as $snippet) {
