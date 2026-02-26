@@ -14,8 +14,6 @@ Route::get('/user', function (Request $request) {
 Route::post('/chat-bridge/respond', [ChatBridgeController::class, 'respond'])
     ->middleware(EnsureChatBridgeToken::class);
 
-Route::post('/mcp', [McpController::class, 'handle']);
-
 Route::prefix('mcp')->group(function () {
     Route::get('/health', [ApiMcpController::class, 'health']);
     Route::get('/stats', [ApiMcpController::class, 'stats']);
@@ -24,6 +22,7 @@ Route::prefix('mcp')->group(function () {
     Route::get('/contextual-memory', [ApiMcpController::class, 'contextualMemory']);
     Route::get('/conversation/{conversation}', [ApiMcpController::class, 'conversation']);
 });
+Route::post('/mcp', [McpController::class, 'handle']);
 
 // Provider API routes (no auth required for model listing)
 Route::get('/providers/models', [\App\Http\Controllers\Api\ProviderController::class, 'getModels']);
