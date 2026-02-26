@@ -4,6 +4,16 @@ All notable changes to Chat Bridge will be documented in this file.
 
 ## [Unreleased] - 2026-02-23
 
+### 🛡️ Reliability & Error Handling
+- Added SQLite bootstrap guard in `AppServiceProvider` to auto-create missing `database.sqlite` files when `DB_CONNECTION=sqlite`
+- Updated Gemini default model from `gemini-1.5-flash` to `gemini-2.0-flash`
+- Improved Gemini driver error handling with actionable messages for model/API-version mismatches
+- Normalized Gemini API key validation failures to user-facing guidance instead of raw provider payload errors
+- Added targeted tests for SQLite bootstrap behavior and Gemini unsupported-model failure handling
+
+### 🎨 UI
+- Refreshed the chat session create page copy/labels for current terminology and added a no-personas empty-state helper
+
 ### 📊 **Analytics SQL Playground**
 - Upgraded `/analytics/query` into a full SQL runner with read-only guardrails (`SELECT` / `WITH` only)
 - Added schema explorer + SQL keyword/table/column autocomplete in the query editor

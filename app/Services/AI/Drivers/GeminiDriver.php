@@ -5,6 +5,7 @@ namespace App\Services\AI\Drivers;
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -25,7 +26,7 @@ class GeminiDriver implements AIDriverInterface
         $response = Http::post("{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}", $payload);
 
         if ($response->failed()) {
-            throw new \Exception('Gemini API Error: '.$response->body());
+            $this->throwForFailedResponse($response);
         }
 
         $data = $response->json();
@@ -58,6 +59,10 @@ class GeminiDriver implements AIDriverInterface
 
         $response = Http::withOptions(['stream' => true])
             ->post("{$this->baseUrl}/models/{$this->model}:streamGenerateContent?alt=sse&key={$this->apiKey}", $payload);
+
+        if ($response->failed()) {
+            $this->throwForFailedResponse($response);
+        }
 
         $body = $response->toPsrResponse()->getBody();
 
@@ -98,7 +103,7 @@ class GeminiDriver implements AIDriverInterface
         $response = Http::post("{$this->baseUrl}/models/{$this->model}:generateContent?key={$this->apiKey}", $payload);
 
         if ($response->failed()) {
-            throw new \Exception('Gemini API Error: '.$response->body());
+            $this->throwForFailedResponse($response);
         }
 
         $data = $response->json();
@@ -188,5 +193,18 @@ class GeminiDriver implements AIDriverInterface
         }
 
         return trim($buffer);
+    }
+
+    private function throwForFailedResponse(Response $response): void
+    {
+        $body = $response->body();
+
+        if ($response->status() === 404 && str_contains($body, 'is not found for API version')) {
+            throw new \Exception(
+                'Gemini model "'.$this->model.'" is not supported by endpoint '.$this->baseUrl.'. Use a supported model such as gemini-2.0-flash or query /api/providers/models?provider=gemini.'
+            );
+        }
+
+        throw new \Exception('Gemini API Error: '.$body);
     }
 }

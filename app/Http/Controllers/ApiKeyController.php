@@ -21,6 +21,18 @@ class ApiKeyController extends Controller
         return ! in_array($provider, self::NO_KEY_PROVIDERS, true);
     }
 
+    private function normalizeValidationError(string $provider, string $errorMessage): string
+    {
+        if (
+            $provider === 'gemini'
+            && str_contains($errorMessage, 'is not found for API version')
+        ) {
+            return 'Gemini model is not supported by the configured API version. Update GEMINI_MODEL or use /api/providers/models?provider=gemini to select a supported model.';
+        }
+
+        return $errorMessage;
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -231,10 +243,13 @@ class ApiKeyController extends Controller
                 'last_validated_at' => $apiKey->last_validated_at,
             ]);
         } catch (\Throwable $e) {
+            $normalizedError = $this->normalizeValidationError($apiKey->provider, $e->getMessage());
+
             \Log::error('API Key Test Failed', [
                 'provider' => $apiKey->provider,
                 'error_type' => get_class($e),
                 'error_message' => $e->getMessage(),
+                'normalized_error_message' => $normalizedError,
                 'error_trace' => $e->getTraceAsString(),
             ]);
 
@@ -243,14 +258,14 @@ class ApiKeyController extends Controller
                 $apiKey->update([
                     'is_validated' => false,
                     'last_validated_at' => now(),
-                    'validation_error' => $e->getMessage(),
+                    'validation_error' => $normalizedError,
                 ]);
             }
 
             return response()->json([
                 'success' => false,
                 'message' => 'API key validation failed',
-                'error' => $e->getMessage(),
+                'error' => $normalizedError,
                 'is_validated' => false,
                 'persisted' => $persistValidationState,
                 'last_validated_at' => $apiKey->last_validated_at,

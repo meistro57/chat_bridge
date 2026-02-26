@@ -26,9 +26,41 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->ensureSqliteDatabaseFileExists();
         $this->registerReadOnlyDatabaseGuard();
 
         Vite::prefetch(concurrency: 3);
+    }
+
+    private function ensureSqliteDatabaseFileExists(): void
+    {
+        if (config('database.default') !== 'sqlite') {
+            return;
+        }
+
+        $configuredPath = (string) config('database.connections.sqlite.database', '');
+
+        if ($configuredPath === '' || $configuredPath === ':memory:' || str_starts_with($configuredPath, 'file:')) {
+            return;
+        }
+
+        $databasePath = str_starts_with($configuredPath, DIRECTORY_SEPARATOR)
+            ? $configuredPath
+            : database_path($configuredPath);
+
+        try {
+            $directory = dirname($databasePath);
+
+            if (! is_dir($directory) && ! mkdir($directory, 0775, true) && ! is_dir($directory)) {
+                return;
+            }
+
+            if (! file_exists($databasePath)) {
+                touch($databasePath);
+            }
+        } catch (\Throwable) {
+            return;
+        }
     }
 
     private function registerReadOnlyDatabaseGuard(): void

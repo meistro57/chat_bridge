@@ -495,7 +495,7 @@ WebSocket Streaming
 | ---------------- | -------------------------------------- | ---------------- | --------- |
 | 🤖 OpenAI        | GPT-4o, GPT-4 Turbo, etc.              | ✅ API           | ✅ Active |
 | 🧠 Anthropic     | Claude Sonnet 4.5, Opus 4.5, Haiku 4.5 | ✅ API           | ✅ Active |
-| 🌟 Google Gemini | Gemini 2.0 Flash, 1.5 Pro              | ⚙️ Static        | ✅ Active |
+| 🌟 Google Gemini | Gemini 2.0 Flash, 2.0 Flash Lite, 1.5 Pro | ⚙️ Static        | ✅ Active |
 | 🚀 DeepSeek      | DeepSeek Chat, R1                      | ⚙️ Static        | ✅ Active |
 | 🔀 OpenRouter    | **344+ models** with live pricing      | ✅ API           | ✅ Active |
 | 🏠 Ollama        | Local Models                           | ✅ Auto-detect   | ✅ Active |
@@ -630,6 +630,8 @@ php artisan key:generate
 touch database/database.sqlite
 php artisan migrate --force
 ```
+
+Note: when `DB_CONNECTION=sqlite`, Chat Bridge now auto-creates a missing SQLite file on boot. The command above is still recommended for first-time setup.
 
 ### 5. Build Assets
 
@@ -1146,6 +1148,33 @@ php artisan config:clear
 php artisan cache:clear
 php artisan view:clear
 npm run build
+```
+
+### SQLite File Missing
+
+If you see `Database file at path ... database.sqlite does not exist`:
+
+```bash
+touch database/database.sqlite
+php artisan migrate --force
+```
+
+Also confirm `DB_DATABASE` is an absolute path in `.env` when running inside Docker.
+
+### Gemini Model Not Supported
+
+If API key testing fails with `is not found for API version`:
+
+```bash
+# Prefer a v1beta-supported default
+GEMINI_MODEL=gemini-2.0-flash
+php artisan optimize:clear
+```
+
+You can list available models for your key:
+
+```bash
+curl "https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_KEY"
 ```
 
 ### Database Locked (SQLite)

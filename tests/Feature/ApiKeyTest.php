@@ -96,6 +96,39 @@ class ApiKeyTest extends TestCase
         ]);
     }
 
+    public function test_gemini_unsupported_model_error_is_normalized_for_api_key_validation(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create(['user_id' => $user->id, 'provider' => 'gemini']);
+
+        $mockDriver = Mockery::mock(AIDriverInterface::class);
+        $mockDriver->shouldReceive('chat')->andThrow(new \Exception(
+            'Gemini API Error: {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent.","status":"NOT_FOUND"}}'
+        ));
+
+        $mockManager = Mockery::mock(\App\Services\AI\AIManager::class)->makePartial();
+        $mockManager->shouldReceive('driverForApiKey')->withArgs(function (ApiKey $resolvedApiKey) use ($apiKey) {
+            return $resolvedApiKey->is($apiKey);
+        })->andReturn($mockDriver);
+        $this->app->instance('ai', $mockManager);
+
+        $response = $this->actingAs($user)->post("/api-keys/{$apiKey->id}/test");
+
+        $expectedError = 'Gemini model is not supported by the configured API version. Update GEMINI_MODEL or use /api/providers/models?provider=gemini to select a supported model.';
+
+        $response->assertStatus(422);
+        $response->assertJson([
+            'success' => false,
+            'is_validated' => false,
+            'error' => $expectedError,
+        ]);
+        $this->assertDatabaseHas('api_keys', [
+            'id' => $apiKey->id,
+            'is_validated' => false,
+            'validation_error' => $expectedError,
+        ]);
+    }
+
     public function test_key_test_endpoint_forbidden_for_other_users(): void
     {
         $owner = User::factory()->create();

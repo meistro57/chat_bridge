@@ -210,7 +210,7 @@ export default function Create({ personas, template, openRouterModels = [], disc
 
     return (
         <AuthenticatedLayout>
-            <Head title="Initialize Protocol" />
+            <Head title="Create Session" />
 
             <div className="relative min-h-screen text-zinc-100 p-4 md:p-8 overflow-hidden">
                 <div className="pointer-events-none absolute inset-0 -z-10">
@@ -222,13 +222,13 @@ export default function Create({ personas, template, openRouterModels = [], disc
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end pb-8 border-b border-white/5 gap-6 butter-reveal">
                         <div>
                             <Link href="/chat" className="text-xs font-mono text-zinc-500 hover:text-white mb-2 block uppercase tracking-wide">
-                                &larr; Return to Bridge
+                                &larr; Back to Sessions
                             </Link>
                             <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
-                                Initialize Bridge
+                                Create Session
                             </h1>
                             <p className="text-zinc-500 text-sm mt-1">
-                                Configure parameters for new neural handshake.
+                                Configure both agents, prompt, and safety settings.
                             </p>
                         </div>
                         <Link
@@ -261,6 +261,18 @@ export default function Create({ personas, template, openRouterModels = [], disc
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-8">
+                    {personas.length === 0 && (
+                        <div className="glass-panel glass-butter rounded-2xl border border-amber-400/30 bg-amber-500/10 p-5 text-amber-100 butter-reveal">
+                            <p className="text-sm font-semibold">No personas available yet.</p>
+                            <p className="mt-1 text-xs text-amber-200/80">Create at least two personas before starting a session.</p>
+                            <Link
+                                href={route('personas.create')}
+                                className="mt-3 inline-flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-100 transition-all hover:bg-amber-500/20"
+                            >
+                                Create Persona
+                            </Link>
+                        </div>
+                    )}
                     {template && (
                         <div className="glass-panel glass-butter rounded-2xl p-5 border border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 butter-reveal">
                             <div>
@@ -293,7 +305,7 @@ export default function Create({ personas, template, openRouterModels = [], disc
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Agent A */}
                         <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal">
-                            <h2 className="text-lg font-bold text-indigo-400 uppercase tracking-wider mb-4">Agent Concept A</h2>
+                            <h2 className="text-lg font-bold text-indigo-400 uppercase tracking-wider mb-4">Agent A</h2>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Persona</label>
@@ -351,7 +363,7 @@ export default function Create({ personas, template, openRouterModels = [], disc
 
                         {/* Agent B */}
                         <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal butter-reveal-delay-1">
-                            <h2 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-4">Agent Concept B</h2>
+                            <h2 className="text-lg font-bold text-purple-400 uppercase tracking-wider mb-4">Agent B</h2>
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Persona</label>
@@ -410,19 +422,19 @@ export default function Create({ personas, template, openRouterModels = [], disc
 
                     {/* Initial Prompt */}
                     <div className="glass-panel glass-butter rounded-2xl p-6 space-y-2 butter-reveal butter-reveal-delay-2">
-                        <label className="text-xs font-bold uppercase tracking-wider text-emerald-400 ml-1">Initial Stimulus (Prompt)</label>
+                        <label className="text-xs font-bold uppercase tracking-wider text-emerald-400 ml-1">Starter Message</label>
                         <textarea
                             value={data.starter_message}
                             onChange={e => setData('starter_message', e.target.value)}
                             className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-4 text-zinc-100 focus:ring-2 focus:ring-emerald-500/50 outline-none min-h-[120px] resize-none"
-                            placeholder="Construct the initial scenario or query for the agents..."
+                            placeholder="Write the opening message that starts the conversation..."
                         ></textarea>
                         {errors.starter_message && <div className="text-red-400 text-sm">{errors.starter_message}</div>}
                     </div>
 
                     {/* Chat Control Settings */}
                     <div className="glass-panel glass-butter rounded-2xl p-6 space-y-4 butter-reveal butter-reveal-delay-3">
-                        <h2 className="text-lg font-bold text-yellow-400 uppercase tracking-wider mb-4">Chat Control Settings</h2>
+                        <h2 className="text-lg font-bold text-yellow-400 uppercase tracking-wider mb-4">Session Settings</h2>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -552,11 +564,11 @@ export default function Create({ personas, template, openRouterModels = [], disc
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Establishing Uplink...
+                                        Creating session...
                                     </>
                                 ) : (
                                     <>
-                                        Begin Simulation
+                                        Start Session
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                                     </>
                                 )}
