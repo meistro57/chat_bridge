@@ -103,6 +103,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/transcript-chat', [TranscriptChatController::class, 'index'])->name('transcript-chat.index');
     Route::post('/transcript-chat/ask', [TranscriptChatController::class, 'ask'])->name('transcript-chat.ask');
 
+    // OpenRouter stats
+    Route::get('/openrouter/stats', [\App\Http\Controllers\OpenRouterController::class, 'stats'])->name('openrouter.stats');
+
     // Transmission routes
     Route::get('/transmission', [\App\Http\Controllers\TransmissionController::class, 'index'])->name('transmission.index');
     Route::post('/transmission', [\App\Http\Controllers\TransmissionController::class, 'store'])->name('transmission.store');

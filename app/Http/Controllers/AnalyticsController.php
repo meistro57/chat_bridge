@@ -6,6 +6,7 @@ use App\Exports\ConversationsExport;
 use App\Http\Requests\RunAnalyticsSqlRequest;
 use App\Models\Message;
 use App\Services\AnalyticsService;
+use App\Services\OpenRouterService;
 use DateTimeInterface;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +22,10 @@ use Maatwebsite\Excel\Excel;
 
 class AnalyticsController extends Controller
 {
-    public function __construct(private readonly AnalyticsService $analyticsService) {}
+    public function __construct(
+        private readonly AnalyticsService $analyticsService,
+        private readonly OpenRouterService $openRouterService,
+    ) {}
 
     public function index(): Response
     {
@@ -45,6 +49,7 @@ class AnalyticsController extends Controller
             'trendData' => $trendData,
             'recentConversations' => $recentConversations,
             'costByProvider' => $costEstimation['by_provider'],
+            'openRouterStats' => $this->openRouterService->getDashboardStats(),
         ]);
     }
 

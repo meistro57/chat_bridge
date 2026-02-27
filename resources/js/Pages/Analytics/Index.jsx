@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
+
 import {
     Bar,
     BarChart,
@@ -24,6 +25,7 @@ export default function Index({
     trendData,
     recentConversations,
     costByProvider,
+    openRouterStats,
 }) {
     const handleClearHistory = () => {
         if (!confirm('Clear all conversation history? This deletes chat and analytics data only, and keeps personas and API keys.')) {
@@ -69,6 +71,8 @@ export default function Index({
     const completionRate = metrics?.completion_rate ? (metrics.completion_rate * 100).toFixed(1) : '0.0';
     const averageLength = metrics?.average_length ?? 0;
 
+    const orStats = openRouterStats ?? null;
+
     const trends = trendData ?? [];
     const providerTokens = tokenUsageByProvider ?? [];
     const providerCounts = providerUsage ?? [];
@@ -96,6 +100,14 @@ export default function Index({
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                                 Query Data
                             </Link>
+                            <a
+                                href="/openrouter/stats"
+                                target="_blank"
+                                className="group flex items-center gap-2 border border-pink-500/30 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20 px-4 py-2.5 rounded-xl font-medium transition-all"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                OpenRouter
+                            </a>
                             <form method="post" action={route('analytics.export')} className="flex">
                                 <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content} />
                                 <input type="hidden" name="format" value="csv" />
@@ -117,6 +129,35 @@ export default function Index({
                             </button>
                         </div>
                     </div>
+
+                    {orStats && (
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-pink-500/80 via-rose-500/80 to-fuchsia-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">OR Balance</div>
+                                <div className="text-2xl font-bold text-pink-300">${orStats.credits?.balance?.toFixed(4) ?? '—'}</div>
+                                <div className="text-xs text-zinc-500 mt-1">of ${orStats.credits?.total_credits?.toFixed(2)} purchased</div>
+                            </div>
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-rose-500/80 to-orange-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">OR Total Used</div>
+                                <div className="text-2xl font-bold text-rose-300">${orStats.credits?.total_usage?.toFixed(4) ?? '—'}</div>
+                                <div className="text-xs text-zinc-500 mt-1">all time</div>
+                            </div>
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-fuchsia-500/80 to-pink-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">OR Today</div>
+                                <div className="text-2xl font-bold text-fuchsia-300">${orStats.today_spend?.toFixed(6) ?? '0'}</div>
+                                <div className="text-xs text-zinc-500 mt-1">today's spend</div>
+                            </div>
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-pink-500/80 to-purple-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Top Model</div>
+                                <div className="text-sm font-bold text-pink-200 truncate">{orStats.top_models && Object.keys(orStats.top_models)[0] ? Object.keys(orStats.top_models)[0].split('/').pop() : '—'}</div>
+                                <div className="text-xs text-zinc-500 mt-1">${orStats.top_models && Object.values(orStats.top_models)[0] ? Object.values(orStats.top_models)[0].toFixed(6) : '0'} spent</div>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal">
