@@ -217,6 +217,14 @@ class RagService
                 return collect();
             }
 
+            Log::info('Qdrant search response', [
+                'status' => $response->status(),
+                'result_count' => count($response->json('result', [])),
+                'score_threshold' => $scoreThreshold,
+                'filter' => $qdrantFilter,
+                'query' => $query,
+            ]);
+
             $results = $response->json('result', []);
 
             // Map results to Message models with scores

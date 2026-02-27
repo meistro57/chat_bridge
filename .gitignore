@@ -26,3 +26,5 @@ env*
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.claude_bridge
+/.mcp.json
