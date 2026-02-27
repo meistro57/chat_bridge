@@ -2,6 +2,29 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-02-27
+
+### 🤖 **AI Chatbot (Ask the Archive)**
+- Added **AI Chatbot** dashboard card linking to `/transcript-chat` with an API key status badge (green "Ready" / amber "API key required") based on the user's stored OpenAI key
+- AI Chatbot now resolves the OpenAI API key from the user's saved API Keys first, falling back to the global `OPENAI_API_KEY` config — consistent with the rest of the app
+- Added collapsible **Settings panel** on the Ask the Archive page:
+  - **System Prompt** — override the default assistant instructions per session
+  - **Model** — choose `gpt-4o-mini`, `gpt-4o`, or `gpt-4o (nov)`
+  - **Temperature** slider (0–1, default 0.3)
+  - **Max Tokens** input (256–4096, default 1024)
+  - **Sources** — number of transcript excerpts to retrieve (1–10, default 6)
+  - **Min Score** slider — similarity threshold (0.05–1, default 0.3)
+  - Settings button highlights when changed from defaults; "Reset to defaults" link restores them
+- Lowered default similarity score threshold from **0.65 → 0.30** — typical conversational queries score 0.23–0.41 so the previous threshold silently returned no results
+- Fixed `qdrant:init` chicken-and-egg bug: the command used `isAvailable()` (checks for collection existence) as a pre-flight check, causing it to fail before the collection was ever created; added `RagService::ping()` which hits `/collections` to verify Qdrant is reachable regardless of collection state
+- Shortened the chat window height from `h-screen` to `calc(100vh - 9rem)` to fit cleanly within the visible viewport
+
+### ⚡ **Parallel Queue Workers**
+- Queue container now runs **4 parallel workers** via `supervisord` instead of a single `php artisan queue:work` process — up to 4 conversations can now stream simultaneously
+- Added `docker/supervisor/queue-workers.conf` with `numprocs=4`, `--max-jobs=500`, and `stopwaitsecs=1200`
+- Updated `docker-compose.yml` queue service command and added `./docker` volume mount so the supervisor config is live without a rebuild
+- To increase concurrency, bump `numprocs` in `docker/supervisor/queue-workers.conf` and restart the queue container
+
 ## [Unreleased] - 2026-02-23
 
 ### 🛡️ Reliability & Error Handling

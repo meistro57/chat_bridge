@@ -29,16 +29,16 @@ class InitializeQdrant extends Command
     {
         $this->info('Initializing Qdrant vector database...');
 
-        // Check if Qdrant is available
-        if (! $rag->isAvailable()) {
-            $this->error('Qdrant is not available. Please check your connection settings.');
+        // Check if Qdrant service is reachable (does not require the collection to exist yet)
+        if (! $rag->ping()) {
+            $this->error('Qdrant is not reachable. Please check your connection settings.');
             $this->info('Host: '.config('services.qdrant.host'));
             $this->info('Port: '.config('services.qdrant.port'));
 
             return self::FAILURE;
         }
 
-        $this->info('Qdrant is available!');
+        $this->info('Qdrant is reachable!');
 
         // Initialize collection
         $this->info('Creating collection if it doesn\'t exist...');

@@ -86,6 +86,20 @@
 - **Sub-10ms Retrieval** - Lightning-fast vector search
 - **Scalable Storage** - Efficient compression and indexing
 
+### 🤖 AI Chatbot (`/transcript-chat`)
+- **Ask the Archive** - Natural-language Q&A over all your chat transcripts
+- **Semantic Retrieval** - Questions are matched to transcript excerpts via Qdrant vector search
+- **Grounded Answers** - OpenAI generates answers using only the retrieved context
+- **API Key Integration** - Uses the user's stored OpenAI API key (falls back to global config)
+- **Dashboard Badge** - Shows "Ready" or "API key required" on the dashboard card
+- **Conversation Filter** - Optionally scope questions to a single conversation
+- **Source Attribution** - Expandable source list showing which transcript excerpts were used and their match scores
+- **Settings Panel** - Per-session configuration:
+  - System prompt override
+  - Model selection (gpt-4o-mini / gpt-4o)
+  - Temperature, max tokens, sources limit, minimum similarity score
+  - Visual indicator when settings differ from defaults; one-click reset
+
 ### 📊 Analytics & Insights
 - **Activity Dashboard** - 7-day trend visualization
 - **Top Personas** - Most-used agents statistics
@@ -342,6 +356,7 @@
 
 ### 🚀 Scalability
 - **Queue System** - Async job processing
+- **Parallel Queue Workers** - 4 concurrent workers via supervisord (configurable via `numprocs` in `docker/supervisor/queue-workers.conf`)
 - **WebSocket Offloading** - Separate Reverb server
 - **Database Connection Pooling** - Efficient connections
 - **Redis Optimization** - Command pipelining

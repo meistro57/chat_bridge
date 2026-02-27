@@ -47,7 +47,7 @@ services:
     networks:
       - chatbridge-network
 
-  # Queue Worker
+  # Queue Worker (4 parallel workers via supervisor)
   queue:
     build:
       context: .
@@ -55,7 +55,7 @@ services:
     container_name: chatbridge-queue
     restart: unless-stopped
     working_dir: /var/www/html
-    command: php artisan queue:work redis --sleep=3 --tries=3 --timeout=1200
+    command: sh -c "mkdir -p /var/log/supervisor && /usr/bin/supervisord -c /var/www/html/docker/supervisor/queue-workers.conf"
     volumes:
       - ./storage:/var/www/html/storage
       - ./bootstrap:/var/www/html/bootstrap
@@ -66,6 +66,7 @@ services:
       - ./routes:/var/www/html/routes
       - ./public:/var/www/html/public
       - ./config:/var/www/html/config
+      - ./docker:/var/www/html/docker
     environment:
       - APP_ENV=${APP_ENV:-production}
       - APP_DEBUG=${APP_DEBUG:-false}

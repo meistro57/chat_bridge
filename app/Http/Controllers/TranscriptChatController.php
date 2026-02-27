@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TranscriptChatRequest;
+use App\Models\ApiKey;
 use App\Models\Conversation;
 use App\Services\AI\EmbeddingService;
 use App\Services\RagService;
@@ -37,8 +38,16 @@ class TranscriptChatController extends Controller
     {
         $question = $request->validated('question');
         $conversationId = $request->validated('conversation_id');
+        $settings = [
+            'system_prompt' => $request->validated('system_prompt'),
+            'model' => $request->validated('model') ?? 'gpt-4o-mini',
+            'temperature' => $request->validated('temperature') ?? 0.3,
+            'max_tokens' => $request->validated('max_tokens') ?? 1024,
+            'source_limit' => $request->validated('source_limit') ?? 6,
+            'score_threshold' => $request->validated('score_threshold') ?? 0.3,
+        ];
 
-        $context = $this->retrieveRelevantContext($question, $conversationId);
+        $context = $this->retrieveRelevantContext($question, $conversationId, $settings);
 
         if ($context->isEmpty()) {
             return response()->json([
@@ -47,7 +56,7 @@ class TranscriptChatController extends Controller
             ]);
         }
 
-        $answer = $this->generateAnswer($question, $context);
+        $answer = $this->generateAnswer($question, $context, $settings);
 
         $sources = $context->map(fn ($message) => [
             'id' => $message->id,
@@ -67,8 +76,10 @@ class TranscriptChatController extends Controller
 
     /**
      * Retrieve semantically similar messages from transcripts.
+     *
+     * @param  array<string, mixed>  $settings
      */
-    protected function retrieveRelevantContext(string $question, ?string $conversationId): \Illuminate\Support\Collection
+    protected function retrieveRelevantContext(string $question, ?string $conversationId, array $settings = []): \Illuminate\Support\Collection
     {
         $filter = ['user_id' => auth()->id()];
 
@@ -84,21 +95,46 @@ class TranscriptChatController extends Controller
 
         return $this->ragService->searchSimilarMessages(
             query: $question,
-            limit: 6,
+            limit: (int) ($settings['source_limit'] ?? 6),
             filter: $filter,
-            scoreThreshold: 0.65
+            scoreThreshold: (float) ($settings['score_threshold'] ?? 0.65)
         );
     }
 
     /**
-     * Generate an AI answer using OpenAI with the retrieved context.
+     * Resolve the OpenAI API key, preferring the authenticated user's stored key
+     * before falling back to the global config value.
      */
-    protected function generateAnswer(string $question, \Illuminate\Support\Collection $context): string
+    protected function resolveOpenAiKey(): ?string
     {
-        $apiKey = config('services.openai.key');
+        $userId = auth()->id();
+
+        if ($userId) {
+            $dbKey = ApiKey::where('provider', 'openai')
+                ->where('user_id', $userId)
+                ->where('is_active', true)
+                ->latest()
+                ->value('key');
+
+            if (! empty($dbKey)) {
+                return $dbKey;
+            }
+        }
+
+        return config('services.openai.key') ?: null;
+    }
+
+    /**
+     * Generate an AI answer using OpenAI with the retrieved context.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    protected function generateAnswer(string $question, \Illuminate\Support\Collection $context, array $settings = []): string
+    {
+        $apiKey = $this->resolveOpenAiKey();
 
         if (empty($apiKey)) {
-            return 'OpenAI API key is not configured. Please add your key in Admin → System Settings.';
+            return 'OpenAI API key is not configured. Please add your OpenAI key in API Keys.';
         }
 
         $contextText = $context->map(function ($message) {
@@ -108,13 +144,17 @@ class TranscriptChatController extends Controller
             return "[{$time}] {$speaker}: {$message->content}";
         })->implode("\n\n");
 
-        $systemPrompt = <<<'PROMPT'
+        $defaultSystemPrompt = <<<'PROMPT'
 You are a helpful assistant that answers questions about AI chat transcript archives.
 You have been given relevant excerpts from past conversations retrieved via semantic search.
 Use ONLY the provided transcript context to answer the question.
 If the context does not contain enough information, say so clearly.
 Be concise and accurate. Quote specific parts of the transcript when helpful.
 PROMPT;
+
+        $systemPrompt = ! empty($settings['system_prompt'])
+            ? $settings['system_prompt']
+            : $defaultSystemPrompt;
 
         $userMessage = <<<MSG
 Relevant transcript excerpts:
@@ -128,13 +168,13 @@ MSG;
             $response = Http::withToken($apiKey)
                 ->timeout(30)
                 ->post('https://api.openai.com/v1/chat/completions', [
-                    'model' => config('services.openai.model', 'gpt-4o-mini'),
+                    'model' => $settings['model'] ?? config('services.openai.model', 'gpt-4o-mini'),
                     'messages' => [
                         ['role' => 'system', 'content' => $systemPrompt],
                         ['role' => 'user', 'content' => $userMessage],
                     ],
-                    'temperature' => 0.3,
-                    'max_tokens' => 1024,
+                    'temperature' => (float) ($settings['temperature'] ?? 0.3),
+                    'max_tokens' => (int) ($settings['max_tokens'] ?? 1024),
                 ]);
 
             if ($response->failed()) {

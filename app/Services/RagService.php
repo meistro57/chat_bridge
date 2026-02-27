@@ -292,7 +292,26 @@ class RagService
     }
 
     /**
-     * Check if Qdrant service is available
+     * Check if the Qdrant service is reachable (does not require the collection to exist).
+     */
+    public function ping(): bool
+    {
+        try {
+            $host = config('services.qdrant.host', 'localhost');
+            $port = config('services.qdrant.port', 6333);
+            $response = \Illuminate\Support\Facades\Http::timeout(5)
+                ->get("http://{$host}:{$port}/collections");
+
+            return $response->successful();
+        } catch (\Exception $e) {
+            Log::warning('Qdrant ping failed', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Check if the Qdrant collection exists and is available.
      */
     public function isAvailable(): bool
     {

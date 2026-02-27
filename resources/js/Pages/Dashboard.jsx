@@ -2,7 +2,7 @@ import { GlassCard } from '@/Components/ui/GlassCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
-export default function Dashboard({ user }) {
+export default function Dashboard({ user, hasOpenAiKey }) {
     const modules = [
         {
             name: 'Chat Bridge',
@@ -59,6 +59,24 @@ export default function Dashboard({ user }) {
             ),
             color: 'from-emerald-500 to-teal-500',
             accent: 'emerald',
+        },
+        {
+            name: 'AI Chatbot',
+            description: 'Ask questions about your chat transcripts using semantic embeddings',
+            href: '/transcript-chat',
+            badge: hasOpenAiKey
+                ? { label: 'Ready', style: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' }
+                : { label: 'API key required', style: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a8 8 0 0 1 8 8c0 4-2.5 7-6 8.5V21H10v-2.5C6.5 17 4 14 4 10a8 8 0 0 1 8-8z"/>
+                    <path d="M9 10h.01"/>
+                    <path d="M15 10h.01"/>
+                    <path d="M9.5 14a3.5 3.5 0 0 0 5 0"/>
+                </svg>
+            ),
+            color: 'from-violet-500 to-indigo-500',
+            accent: 'violet',
         },
         {
             name: 'Analytics',
@@ -236,9 +254,16 @@ export default function Dashboard({ user }) {
                                     </div>
                                 </div>
 
-                                <h3 className="relative text-xl font-bold text-zinc-100 mb-2 group-hover:text-white transition-colors duration-500">
-                                    {module.name}
-                                </h3>
+                                <div className="relative flex items-center gap-2 mb-2">
+                                    <h3 className="text-xl font-bold text-zinc-100 group-hover:text-white transition-colors duration-500">
+                                        {module.name}
+                                    </h3>
+                                    {module.badge && (
+                                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${module.badge.style}`}>
+                                            {module.badge.label}
+                                        </span>
+                                    )}
+                                </div>
 
                                 <p className="relative text-sm text-zinc-500 group-hover:text-zinc-400 transition-colors duration-500">
                                     {module.description}

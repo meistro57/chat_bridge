@@ -7,6 +7,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TranscriptChatController;
+use App\Models\ApiKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -37,8 +38,14 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', function () {
+        $hasOpenAiKey = ApiKey::where('user_id', auth()->id())
+            ->where('provider', 'openai')
+            ->where('is_active', true)
+            ->exists();
+
         return \Inertia\Inertia::render('Dashboard', [
             'user' => auth()->user(),
+            'hasOpenAiKey' => $hasOpenAiKey,
         ]);
     })->name('dashboard');
     // Admin routes

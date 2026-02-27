@@ -381,14 +381,20 @@ docker compose logs qdrant
 ### Queue Not Processing
 
 ```bash
-# Check queue worker logs
+# Check queue worker logs (shows all 4 workers)
 docker compose logs -f queue
 
-# Restart queue worker
+# Restart queue workers
 docker compose restart queue
 
 # Process jobs manually
 docker compose exec app php artisan queue:work --once
+```
+
+The queue container runs **4 parallel workers** via supervisord. To adjust concurrency, edit `docker/supervisor/queue-workers.conf` and change `numprocs`, then restart:
+
+```bash
+docker compose restart queue
 ```
 
 ### Clear Caches
@@ -416,8 +422,9 @@ docker compose exec app php artisan view:clear
 ### Performance Optimization
 
 ```bash
-# Scale queue workers
-docker compose up -d --scale queue=5
+# Increase parallel queue workers (edit numprocs, then restart)
+# docker/supervisor/queue-workers.conf → numprocs=8
+docker compose restart queue
 
 # Optimize caches
 docker compose exec app php artisan optimize

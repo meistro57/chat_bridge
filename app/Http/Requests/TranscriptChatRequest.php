@@ -19,6 +19,12 @@ class TranscriptChatRequest extends FormRequest
         return [
             'question' => ['required', 'string', 'min:3', 'max:2000'],
             'conversation_id' => ['nullable', 'uuid', 'exists:conversations,id'],
+            'system_prompt' => ['nullable', 'string', 'max:4000'],
+            'model' => ['nullable', 'string', 'in:gpt-4o-mini,gpt-4o,gpt-4o-2024-11-20'],
+            'temperature' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'max_tokens' => ['nullable', 'integer', 'min:256', 'max:4096'],
+            'source_limit' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'score_threshold' => ['nullable', 'numeric', 'min:0.05', 'max:1'],
         ];
     }
 

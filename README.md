@@ -240,6 +240,20 @@ Contextual AI with memory:
 - 📊 Automatic embeddings
 
 </td>
+<td width="50%">
+
+### 🤖 **AI Chatbot**
+
+Ask questions about your transcripts:
+
+- 💬 Natural-language Q&A over chat history
+- 🧠 Semantic retrieval via Qdrant embeddings
+- 🔑 Uses your stored OpenAI API key
+- ⚙️ Per-session settings (model, temperature, prompt, score threshold)
+- 📎 Source attribution with similarity scores
+- 🟢 Dashboard badge shows API key status
+
+</td>
 </tr>
 <tr>
 <td width="50%">
@@ -402,7 +416,7 @@ WebSocket Streaming
 </tr>
 </table>
 
-- Async job processing with Laravel Queue
+- Async job processing with **4 parallel queue workers** (supervisord)
 - Redis-backed queue system
 - Efficient database queries
 - Real-time streaming responses
@@ -712,7 +726,7 @@ docker compose exec -T app php artisan queue:restart
 The Docker deployment includes:
 
 - **app**: Laravel application (Nginx + PHP-FPM)
-- **queue**: Background worker for conversations
+- **queue**: 4 parallel background workers for conversations (supervisord)
 - **reverb**: WebSocket server for real-time updates
 - **postgres**: PostgreSQL database
 - **redis**: Redis for caching and queue
@@ -972,6 +986,11 @@ chat_bridge/
 - `PUT /api-keys/{id}` - Update API key
 - `DELETE /api-keys/{id}` - Delete API key
 - `POST /api-keys/{id}/test` - Validate API key with provider
+
+### AI Chatbot
+
+- `GET /transcript-chat` - Ask the Archive interface
+- `POST /transcript-chat/ask` - Submit a question (supports `system_prompt`, `model`, `temperature`, `max_tokens`, `source_limit`, `score_threshold`)
 
 ### Analytics
 
