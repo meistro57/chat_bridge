@@ -6,6 +6,8 @@ use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -217,5 +219,95 @@ class ConversationTemplateTest extends TestCase
         $this->assertDatabaseMissing('conversation_templates', [
             'id' => $template->id,
         ]);
+    }
+
+    public function test_user_can_create_template_with_rag_files_and_settings(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->post(route('templates.store'), [
+            'name' => 'RAG Template',
+            'description' => 'Template with retrieval attachments.',
+            'category' => 'RAG',
+            'starter_message' => 'Use the attached docs before replying.',
+            'max_rounds' => 7,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'is_public' => false,
+            'rag_enabled' => true,
+            'rag_source_limit' => 8,
+            'rag_score_threshold' => 0.45,
+            'rag_system_prompt' => 'Always cite attached evidence.',
+            'rag_files' => [
+                UploadedFile::fake()->create('handbook.md', 20, 'text/markdown'),
+                UploadedFile::fake()->create('policy.pdf', 30, 'application/pdf'),
+            ],
+        ]);
+
+        $response->assertRedirect();
+
+        $template = ConversationTemplate::query()
+            ->where('user_id', $user->id)
+            ->where('name', 'RAG Template')
+            ->firstOrFail();
+
+        $this->assertTrue((bool) $template->rag_enabled);
+        $this->assertSame(8, $template->rag_source_limit);
+        $this->assertEqualsWithDelta(0.45, (float) $template->rag_score_threshold, 0.0001);
+        $this->assertSame('Always cite attached evidence.', $template->rag_system_prompt);
+        $this->assertCount(2, $template->rag_files ?? []);
+        foreach ($template->rag_files as $path) {
+            Storage::disk('local')->assertExists($path);
+        }
+    }
+
+    public function test_user_can_remove_existing_rag_files_on_template_update(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'rag_enabled' => true,
+            'rag_files' => [],
+        ]);
+
+        $pathToKeep = "template-rag/{$user->id}/{$template->id}/keep.md";
+        $pathToDelete = "template-rag/{$user->id}/{$template->id}/delete.md";
+        Storage::disk('local')->put($pathToKeep, 'keep');
+        Storage::disk('local')->put($pathToDelete, 'delete');
+        $template->update(['rag_files' => [$pathToKeep, $pathToDelete]]);
+
+        $response = $this->actingAs($user)->patch(route('templates.update', $template), [
+            'name' => 'Template Updated',
+            'description' => 'Updated description',
+            'category' => 'RAG',
+            'starter_message' => 'Use attachments.',
+            'max_rounds' => 9,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'is_public' => false,
+            'rag_enabled' => true,
+            'rag_source_limit' => 5,
+            'rag_score_threshold' => 0.4,
+            'rag_system_prompt' => 'Keep context tight.',
+            'rag_files_to_delete' => [$pathToDelete],
+        ]);
+
+        $response->assertRedirect();
+
+        $template->refresh();
+        $this->assertSame([$pathToKeep], $template->rag_files);
+        Storage::disk('local')->assertExists($pathToKeep);
+        Storage::disk('local')->assertMissing($pathToDelete);
     }
 }

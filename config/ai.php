@@ -68,6 +68,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | RAG Search Driver
+    |--------------------------------------------------------------------------
+    |
+    | Controls transcript retrieval backend:
+    | - auto: use Qdrant when enabled, otherwise DB-vector fallback
+    | - qdrant: force Qdrant
+    | - database: force DB-vector fallback
+    |
+    */
+
+    'rag_driver' => env('AI_RAG_DRIVER', 'auto'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Pricing Estimates
     |--------------------------------------------------------------------------
     |

@@ -7,6 +7,7 @@ use App\Models\ApiKey;
 use App\Models\Conversation;
 use App\Services\AI\EmbeddingService;
 use App\Services\RagService;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -125,7 +126,30 @@ class TranscriptChatController extends Controller
     }
 
     /**
-     * Generate an AI answer using OpenAI with the retrieved context.
+     * Resolve the OpenRouter API key, preferring the authenticated user's stored key
+     * before falling back to the global config value.
+     */
+    protected function resolveOpenRouterKey(): ?string
+    {
+        $userId = auth()->id();
+
+        if ($userId) {
+            $dbKey = ApiKey::where('provider', 'openrouter')
+                ->where('user_id', $userId)
+                ->where('is_active', true)
+                ->latest()
+                ->value('key');
+
+            if (! empty($dbKey)) {
+                return $dbKey;
+            }
+        }
+
+        return config('services.openrouter.key') ?: null;
+    }
+
+    /**
+     * Generate an AI answer using OpenAI with OpenRouter fallback when quota is exhausted.
      *
      * @param  array<string, mixed>  $settings
      */
@@ -177,18 +201,174 @@ MSG;
                     'max_tokens' => (int) ($settings['max_tokens'] ?? 1024),
                 ]);
 
-            if ($response->failed()) {
-                Log::error('TranscriptChat OpenAI error', ['response' => $response->body()]);
-
-                return 'An error occurred while generating the answer. Please try again.';
+            if ($response->successful()) {
+                return $response->json('choices.0.message.content', 'No answer could be generated.');
             }
 
-            return $response->json('choices.0.message.content', 'No answer could be generated.');
+            Log::error('TranscriptChat OpenAI error', [
+                'status' => $response->status(),
+                'response' => $response->body(),
+            ]);
+
+            if ($this->shouldAttemptOpenRouterFallback($response)) {
+                $openRouterKey = $this->resolveOpenRouterKey();
+
+                if (empty($openRouterKey)) {
+                    if ($this->shouldFallbackToOpenRouter($response)) {
+                        return 'OpenAI credits are exhausted and no OpenRouter API key is configured. Please add an OpenRouter key in API Keys.';
+                    }
+
+                    return $this->messageForFailedResponse(
+                        $response,
+                        'OpenAI request failed and no OpenRouter API key is configured.'
+                    );
+                }
+
+                try {
+                    $fallbackResponse = Http::withToken($openRouterKey)
+                        ->withHeaders([
+                            'HTTP-Referer' => (string) config('services.openrouter.referer'),
+                            'X-Title' => (string) config('services.openrouter.app_name'),
+                        ])
+                        ->timeout(30)
+                        ->post('https://openrouter.ai/api/v1/chat/completions', [
+                            'model' => $this->toOpenRouterModel((string) ($settings['model'] ?? config('services.openai.model', 'gpt-4o-mini'))),
+                            'messages' => [
+                                ['role' => 'system', 'content' => $systemPrompt],
+                                ['role' => 'user', 'content' => $userMessage],
+                            ],
+                            'temperature' => (float) ($settings['temperature'] ?? 0.3),
+                            'max_tokens' => (int) ($settings['max_tokens'] ?? 1024),
+                        ]);
+
+                    if ($fallbackResponse->successful()) {
+                        return $fallbackResponse->json('choices.0.message.content', 'No answer could be generated.');
+                    }
+
+                    Log::error('TranscriptChat OpenRouter fallback error', [
+                        'status' => $fallbackResponse->status(),
+                        'response' => $fallbackResponse->body(),
+                    ]);
+
+                    return $this->messageForFailedResponse(
+                        $fallbackResponse,
+                        'OpenRouter fallback failed after OpenAI quota exhaustion.'
+                    );
+                } catch (\Throwable $fallbackException) {
+                    Log::error('TranscriptChat OpenRouter fallback exception', [
+                        'error' => $fallbackException->getMessage(),
+                    ]);
+
+                    return $this->messageForFailedResponse(
+                        $response,
+                        'OpenAI request failed and OpenRouter fallback could not be reached.'
+                    );
+                }
+            }
+
+            return $this->messageForFailedResponse(
+                $response,
+                'An error occurred while generating the answer. Please try again.'
+            );
         } catch (\Exception $e) {
             Log::error('TranscriptChat exception', ['error' => $e->getMessage()]);
 
             return 'An unexpected error occurred. Please try again.';
         }
+    }
+
+    protected function shouldFallbackToOpenRouter(Response $response): bool
+    {
+        if ($response->status() === 429) {
+            return true;
+        }
+
+        $body = strtolower($response->body());
+        $patterns = [
+            'insufficient_quota',
+            'exceeded your current quota',
+            'billing_hard_limit_reached',
+            'billing hard limit',
+            'credit balance is too low',
+            'not enough credits',
+            'quota exceeded',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (str_contains($body, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function shouldAttemptOpenRouterFallback(Response $response): bool
+    {
+        return $this->shouldFallbackToOpenRouter($response)
+            || $response->unauthorized()
+            || $response->forbidden()
+            || $response->serverError();
+    }
+
+    protected function toOpenRouterModel(string $openAiModel): string
+    {
+        if (str_contains($openAiModel, '/')) {
+            return $openAiModel;
+        }
+
+        return 'openai/'.$openAiModel;
+    }
+
+    protected function messageForFailedResponse(Response $response, string $default): string
+    {
+        $message = $this->extractApiErrorMessage($response);
+        $messageLower = strtolower($message);
+
+        if (
+            $response->unauthorized()
+            || str_contains($messageLower, 'unauthorized')
+            || str_contains($messageLower, 'invalid api key')
+        ) {
+            return 'API authentication failed. Please verify your OpenAI API key.';
+        }
+
+        if ($this->shouldFallbackToOpenRouter($response)) {
+            return 'OpenAI credits appear exhausted. Please top up billing or configure OpenRouter fallback.';
+        }
+
+        if ($message !== '') {
+            return 'Provider error: '.$message;
+        }
+
+        if ($response->failed()) {
+            return 'Provider request failed with status '.$response->status().'. Please try again or switch model/provider settings.';
+        }
+
+        return $default;
+    }
+
+    protected function extractApiErrorMessage(Response $response): string
+    {
+        $errorPayload = $response->json('error');
+
+        if (is_string($errorPayload) && trim($errorPayload) !== '') {
+            return trim($errorPayload);
+        }
+
+        if (is_array($errorPayload)) {
+            $message = trim((string) ($errorPayload['message'] ?? ''));
+            if ($message !== '') {
+                return $message;
+            }
+
+            $code = trim((string) ($errorPayload['code'] ?? ''));
+            if ($code !== '') {
+                return $code;
+            }
+        }
+
+        return '';
     }
 
     protected function truncate(string $text, int $limit): string

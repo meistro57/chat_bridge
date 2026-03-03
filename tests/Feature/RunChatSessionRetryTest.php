@@ -291,4 +291,21 @@ class RunChatSessionRetryTest extends TestCase
         $conversation->refresh();
         $this->assertSame('completed', $conversation->status);
     }
+
+    public function test_failed_handler_stores_error_details_in_metadata(): void
+    {
+        $conversation = Conversation::factory()->create([
+            'status' => 'active',
+            'metadata' => ['notifications_enabled' => false],
+        ]);
+
+        $job = new RunChatSession($conversation->id, 1);
+        $job->failed(new \RuntimeException('Discourse API rejected post'));
+
+        $conversation->refresh();
+
+        $this->assertSame('failed', $conversation->status);
+        $this->assertSame('Discourse API rejected post', $conversation->metadata['last_error_message'] ?? null);
+        $this->assertNotEmpty($conversation->metadata['last_error_at'] ?? null);
+    }
 }

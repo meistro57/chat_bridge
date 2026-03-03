@@ -16,20 +16,16 @@ class RagService
 {
     protected QdrantConnector $qdrant;
 
-    protected EmbeddingService $embeddingService;
-
     protected string $collectionName = 'chat_messages';
 
-    protected int $vectorSize = 1536; // OpenAI embedding size
+    protected int $vectorSize = 1536;
 
-    public function __construct()
+    public function __construct(protected EmbeddingService $embeddingService)
     {
         $this->qdrant = new QdrantConnector(
-            host: config('services.qdrant.host', 'localhost'),
-            port: config('services.qdrant.port', 6333),
+            host: (string) config('services.qdrant.host', 'localhost'),
+            port: (int) config('services.qdrant.port', 6333),
         );
-
-        $this->embeddingService = app(EmbeddingService::class);
     }
 
     /**
@@ -88,7 +84,6 @@ class RagService
     public function storeMessage(Message $message): bool
     {
         try {
-            // Ensure message has an embedding
             if (empty($message->embedding)) {
                 Log::warning('Message has no embedding, generating...', ['message_id' => $message->id]);
                 $embedding = $this->embeddingService->getEmbedding($message->content);
@@ -102,13 +97,14 @@ class RagService
                 $message->update(['embedding' => $embedding]);
             }
 
-            // Prepare point for Qdrant
+            $conversation = $message->conversation()->first(['id', 'user_id']);
             $point = [
                 'id' => $message->id,
                 'vector' => $message->embedding,
                 'payload' => [
                     'message_id' => $message->id,
                     'conversation_id' => $message->conversation_id,
+                    'user_id' => $conversation?->user_id,
                     'persona_id' => $message->persona_id,
                     'role' => $message->role,
                     'content' => $message->content,
@@ -117,7 +113,6 @@ class RagService
                 ],
             ];
 
-            // Upsert to Qdrant
             $response = $this->qdrant->send(
                 new UpsertPointsRequest($this->collectionName, [$point])
             );
@@ -159,8 +154,9 @@ class RagService
         ?array $filter = null,
         float $scoreThreshold = 0.7
     ): Collection {
+        $filter = $filter ?? [];
+
         try {
-            // Generate embedding for the query
             $queryEmbedding = $this->embeddingService->getEmbedding($query);
 
             if (! $queryEmbedding) {
@@ -169,38 +165,98 @@ class RagService
                 return collect();
             }
 
-            // Build Qdrant filter if provided
-            $qdrantFilter = null;
-            if ($filter) {
-                $must = [];
+            $driver = $this->resolveSearchDriver();
 
-                if (isset($filter['conversation_id'])) {
-                    $must[] = [
-                        'key' => 'conversation_id',
-                        'match' => ['value' => $filter['conversation_id']],
-                    ];
-                }
-
-                if (isset($filter['persona_id'])) {
-                    $must[] = [
-                        'key' => 'persona_id',
-                        'match' => ['value' => $filter['persona_id']],
-                    ];
-                }
-
-                if (isset($filter['role'])) {
-                    $must[] = [
-                        'key' => 'role',
-                        'match' => ['value' => $filter['role']],
-                    ];
-                }
-
-                if (! empty($must)) {
-                    $qdrantFilter = ['must' => $must];
-                }
+            if ($driver === 'database') {
+                return $this->searchSimilarMessagesInDatabase($queryEmbedding, $limit, $filter, $scoreThreshold);
             }
 
-            // Search in Qdrant
+            $qdrantResults = $this->searchSimilarMessagesInQdrant(
+                $queryEmbedding,
+                $limit,
+                $filter,
+                $scoreThreshold
+            );
+
+            if ($qdrantResults !== null) {
+                if ($qdrantResults->isNotEmpty() || $driver === 'qdrant') {
+                    return $qdrantResults;
+                }
+
+                Log::info('Qdrant returned no RAG matches; using database fallback', [
+                    'query' => $query,
+                    'filter' => $filter,
+                ]);
+
+                return $this->searchSimilarMessagesInDatabase($queryEmbedding, $limit, $filter, $scoreThreshold);
+            }
+
+            Log::warning('Qdrant RAG search failed; using database fallback', [
+                'query' => $query,
+                'filter' => $filter,
+            ]);
+
+            return $this->searchSimilarMessagesInDatabase($queryEmbedding, $limit, $filter, $scoreThreshold);
+        } catch (\Exception $e) {
+            Log::error('Exception searching RAG index', [
+                'query' => $query,
+                'error' => $e->getMessage(),
+            ]);
+
+            return collect();
+        }
+    }
+
+    /**
+     * @param  array<int, float|int>  $queryEmbedding
+     * @param  array<string, mixed>  $filter
+     */
+    protected function searchSimilarMessagesInDatabase(
+        array $queryEmbedding,
+        int $limit,
+        array $filter,
+        float $scoreThreshold
+    ): Collection {
+        $query = Message::query()
+            ->whereNotNull('embedding')
+            ->with(['persona', 'conversation']);
+
+        $query = $this->applyDatabaseFilter($query, $filter);
+
+        $messages = $query->latest()->limit(500)->get();
+
+        if ($messages->isEmpty()) {
+            return collect();
+        }
+
+        return $messages
+            ->map(function (Message $message) use ($queryEmbedding) {
+                $message->similarity_score = $this->cosineSimilarity(
+                    $queryEmbedding,
+                    is_array($message->embedding) ? $message->embedding : []
+                );
+
+                return $message;
+            })
+            ->filter(fn (Message $message) => $message->similarity_score >= $scoreThreshold)
+            ->sortByDesc('similarity_score')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * @param  array<int, float|int>  $queryEmbedding
+     * @param  array<string, mixed>  $filter
+     */
+    protected function searchSimilarMessagesInQdrant(
+        array $queryEmbedding,
+        int $limit,
+        array $filter,
+        float $scoreThreshold
+    ): ?Collection {
+        $qdrantFilter = $this->buildQdrantFilter($filter);
+
+        try {
             $response = $this->qdrant->send(
                 new SearchPointsRequest(
                     collectionName: $this->collectionName,
@@ -214,45 +270,158 @@ class RagService
             if (! $response->successful()) {
                 Log::error('Failed to search Qdrant', ['response' => $response->body()]);
 
-                return collect();
+                return null;
             }
-
-            Log::info('Qdrant search response', [
-                'status' => $response->status(),
-                'result_count' => count($response->json('result', [])),
-                'score_threshold' => $scoreThreshold,
-                'filter' => $qdrantFilter,
-                'query' => $query,
-            ]);
 
             $results = $response->json('result', []);
 
-            // Map results to Message models with scores
-            return collect($results)->map(function ($result) {
-                $messageId = $result['id'];
-                $score = $result['score'];
-                $payload = $result['payload'];
+            if (! is_array($results) || $results === []) {
+                return collect();
+            }
 
-                // Load the full message from database
-                $message = Message::find($messageId);
+            $scoresByMessageId = [];
+            $messageIds = [];
+            foreach ($results as $result) {
+                $rawMessageId = $result['id'] ?? null;
+                if (! is_int($rawMessageId) && ! (is_string($rawMessageId) && ctype_digit($rawMessageId))) {
+                    continue;
+                }
+                $messageId = (int) $rawMessageId;
 
-                if ($message) {
-                    $message->similarity_score = $score;
+                $scoresByMessageId[$messageId] = (float) ($result['score'] ?? 0.0);
+                $messageIds[] = $messageId;
+            }
+
+            if ($messageIds === []) {
+                return collect();
+            }
+
+            $messagesQuery = Message::query()
+                ->whereIn('id', $messageIds)
+                ->with(['persona', 'conversation']);
+            $messages = $this->applyDatabaseFilter($messagesQuery, $filter)
+                ->get()
+                ->keyBy('id');
+
+            return collect($messageIds)
+                ->map(function (int $messageId) use ($messages, $scoresByMessageId) {
+                    $message = $messages->get($messageId);
+                    if (! $message) {
+                        return null;
+                    }
+
+                    $message->similarity_score = $scoresByMessageId[$messageId] ?? 0.0;
 
                     return $message;
-                }
-
-                return null;
-            })->filter();
-
-        } catch (\Exception $e) {
-            Log::error('Exception searching Qdrant', [
-                'query' => $query,
-                'error' => $e->getMessage(),
+                })
+                ->filter()
+                ->values();
+        } catch (\Throwable $exception) {
+            Log::warning('Qdrant search failed with exception', [
+                'error' => $exception->getMessage(),
             ]);
 
-            return collect();
+            return null;
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return \Illuminate\Database\Eloquent\Builder<Message>
+     */
+    protected function applyDatabaseFilter(\Illuminate\Database\Eloquent\Builder $query, array $filter): \Illuminate\Database\Eloquent\Builder
+    {
+        if (isset($filter['conversation_id'])) {
+            $query->where('conversation_id', (string) $filter['conversation_id']);
+        }
+
+        if (isset($filter['persona_id'])) {
+            $query->where('persona_id', (string) $filter['persona_id']);
+        }
+
+        if (isset($filter['role'])) {
+            $query->where('role', (string) $filter['role']);
+        }
+
+        if (isset($filter['user_id'])) {
+            $userId = (int) $filter['user_id'];
+            $query->whereHas('conversation', function ($conversationQuery) use ($userId) {
+                $conversationQuery->where('user_id', $userId);
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filter
+     * @return array<string, array<int, array<string, mixed>>>|null
+     */
+    protected function buildQdrantFilter(array $filter): ?array
+    {
+        $must = [];
+
+        foreach (['conversation_id', 'persona_id', 'role', 'user_id'] as $key) {
+            if (! array_key_exists($key, $filter)) {
+                continue;
+            }
+
+            $must[] = [
+                'key' => $key,
+                'match' => ['value' => $filter[$key]],
+            ];
+        }
+
+        if ($must === []) {
+            return null;
+        }
+
+        return ['must' => $must];
+    }
+
+    protected function resolveSearchDriver(): string
+    {
+        $configured = (string) config('ai.rag_driver', 'auto');
+
+        if ($configured === 'database') {
+            return 'database';
+        }
+
+        if ($configured === 'qdrant') {
+            return 'qdrant';
+        }
+
+        return (bool) config('services.qdrant.enabled', false) ? 'qdrant' : 'database';
+    }
+
+    /**
+     * @param  array<int, float|int>  $leftVector
+     * @param  array<int, float|int>  $rightVector
+     */
+    protected function cosineSimilarity(array $leftVector, array $rightVector): float
+    {
+        $dotProduct = 0.0;
+        $leftNorm = 0.0;
+        $rightNorm = 0.0;
+        $dimensions = min(count($leftVector), count($rightVector));
+
+        if ($dimensions === 0) {
+            return 0.0;
+        }
+
+        for ($index = 0; $index < $dimensions; $index++) {
+            $leftValue = (float) $leftVector[$index];
+            $rightValue = (float) $rightVector[$index];
+            $dotProduct += $leftValue * $rightValue;
+            $leftNorm += $leftValue ** 2;
+            $rightNorm += $rightValue ** 2;
+        }
+
+        if ($leftNorm <= 0.0 || $rightNorm <= 0.0) {
+            return 0.0;
+        }
+
+        return $dotProduct / (sqrt($leftNorm) * sqrt($rightNorm));
     }
 
     /**

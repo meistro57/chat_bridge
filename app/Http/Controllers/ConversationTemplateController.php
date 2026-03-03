@@ -8,7 +8,10 @@ use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -55,11 +58,14 @@ class ConversationTemplateController extends Controller
     public function store(StoreConversationTemplateRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $files = $request->file('rag_files', []);
 
         $template = ConversationTemplate::create([
-            ...$data,
+            ...$this->templateAttributes($data),
             'user_id' => $request->user()->id,
+            'rag_files' => [],
         ]);
+        $this->storeTemplateFiles($template, $files);
 
         return Redirect::route('templates.edit', $template)
             ->with('success', 'Template created successfully.');
@@ -68,11 +74,14 @@ class ConversationTemplateController extends Controller
     public function storeFromChat(StoreConversationTemplateRequest $request): RedirectResponse
     {
         $data = $request->validated();
+        $files = $request->file('rag_files', []);
 
-        ConversationTemplate::create([
-            ...$data,
+        $template = ConversationTemplate::create([
+            ...$this->templateAttributes($data),
             'user_id' => $request->user()->id,
+            'rag_files' => [],
         ]);
+        $this->storeTemplateFiles($template, $files);
 
         $target = url()->previous() ?: route('chat.create');
 
@@ -94,7 +103,12 @@ class ConversationTemplateController extends Controller
     {
         $this->authorizeOwner($request, $template);
 
-        $template->update($request->validated());
+        $data = $request->validated();
+        $filesToDelete = collect($data['rag_files_to_delete'] ?? [])->filter()->values()->all();
+
+        $this->deleteTemplateFiles($template, $filesToDelete);
+        $template->update($this->templateAttributes($data));
+        $this->storeTemplateFiles($template, $request->file('rag_files', []));
 
         return Redirect::route('templates.edit', $template)
             ->with('success', 'Template updated successfully.');
@@ -103,6 +117,7 @@ class ConversationTemplateController extends Controller
     public function destroy(Request $request, ConversationTemplate $template): RedirectResponse
     {
         $this->authorizeOwner($request, $template);
+        $this->deleteTemplateFiles($template, $template->rag_files ?? []);
 
         $template->delete();
 
@@ -126,6 +141,7 @@ class ConversationTemplateController extends Controller
         $copy->starter_message = $template->starter_message;
         $copy->is_public = false;
         $copy->user_id = $request->user()->id;
+        $copy->rag_files = [];
         $copy->save();
 
         return Redirect::route('templates.edit', $copy)
@@ -166,5 +182,72 @@ class ConversationTemplateController extends Controller
             ->distinct()
             ->orderBy('category')
             ->pluck('category');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function templateAttributes(array $data): array
+    {
+        unset($data['rag_files'], $data['rag_files_to_delete']);
+
+        return array_merge($data, [
+            'rag_enabled' => (bool) ($data['rag_enabled'] ?? false),
+            'rag_source_limit' => (int) ($data['rag_source_limit'] ?? 6),
+            'rag_score_threshold' => (float) ($data['rag_score_threshold'] ?? 0.3),
+        ]);
+    }
+
+    /**
+     * @param  array<int, UploadedFile>|UploadedFile|null  $files
+     */
+    private function storeTemplateFiles(ConversationTemplate $template, array|UploadedFile|null $files): void
+    {
+        $uploads = is_array($files) ? $files : ($files ? [$files] : []);
+        if ($uploads === []) {
+            return;
+        }
+
+        $paths = collect($template->rag_files ?? []);
+
+        foreach ($uploads as $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $safeFilename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+            $filename = trim($safeFilename) !== '' ? $safeFilename : 'rag-document';
+            $storedPath = $file->storeAs(
+                "template-rag/{$template->user_id}/{$template->id}",
+                $filename.'-'.Str::uuid().'.'.$file->getClientOriginalExtension()
+            );
+
+            $paths->push($storedPath);
+        }
+
+        $template->update(['rag_files' => $paths->unique()->values()->all()]);
+    }
+
+    /**
+     * @param  array<int, string>  $paths
+     */
+    private function deleteTemplateFiles(ConversationTemplate $template, array $paths): void
+    {
+        if ($paths === []) {
+            return;
+        }
+
+        $current = collect($template->rag_files ?? []);
+        $deleteSet = collect($paths)->filter(fn ($path) => is_string($path) && $path !== '');
+        $basePrefix = "template-rag/{$template->user_id}/{$template->id}/";
+        $safeDeleteSet = $deleteSet->filter(fn (string $path) => str_starts_with($path, $basePrefix))->values();
+
+        foreach ($safeDeleteSet as $path) {
+            Storage::disk('local')->delete($path);
+        }
+
+        $remaining = $current->reject(fn (string $path) => $safeDeleteSet->contains($path))->values()->all();
+        $template->update(['rag_files' => $remaining]);
     }
 }

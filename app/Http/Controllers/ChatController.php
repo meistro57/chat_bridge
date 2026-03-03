@@ -112,6 +112,17 @@ class ChatController extends Controller
     public function store(StoreChatRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $selectedTemplate = null;
+
+        if (! empty($validated['template_id'])) {
+            $selectedTemplate = ConversationTemplate::query()
+                ->where('id', $validated['template_id'])
+                ->where(function ($query) use ($request) {
+                    $query->where('is_public', true)
+                        ->orWhere('user_id', $request->user()->id);
+                })
+                ->first();
+        }
 
         $personaA = Persona::findOrFail($validated['persona_a_id']);
         $personaB = Persona::findOrFail($validated['persona_b_id']);
@@ -143,6 +154,14 @@ class ChatController extends Controller
                 'persona_a_name' => $personaA->name,
                 'persona_b_name' => $personaB->name,
                 'notifications_enabled' => $request->boolean('notifications_enabled', false),
+                'template_id' => $selectedTemplate?->id,
+                'rag' => [
+                    'enabled' => (bool) ($selectedTemplate?->rag_enabled ?? false),
+                    'source_limit' => (int) ($selectedTemplate?->rag_source_limit ?? 6),
+                    'score_threshold' => (float) ($selectedTemplate?->rag_score_threshold ?? 0.3),
+                    'system_prompt' => (string) ($selectedTemplate?->rag_system_prompt ?? ''),
+                    'files' => $selectedTemplate?->rag_files ?? [],
+                ],
             ],
             'discord_streaming_enabled' => $request->has('discord_streaming_enabled')
                 ? $request->boolean('discord_streaming_enabled')
@@ -202,6 +221,47 @@ class ChatController extends Controller
         Cache::put("conversation.stop.{$conversation->id}", true, now()->addHour());
 
         return back()->with('success', 'Stop signal sent.');
+    }
+
+    public function resume(Conversation $conversation): RedirectResponse
+    {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($conversation->status !== 'failed') {
+            return back()->with('error', 'Only failed conversations can be resumed.');
+        }
+
+        $assistantTurns = (int) $conversation->messages()
+            ->where('role', 'assistant')
+            ->count();
+        $remainingRounds = $conversation->max_rounds - $assistantTurns;
+
+        if ($remainingRounds <= 0) {
+            return back()->with('error', 'No remaining rounds available to resume.');
+        }
+
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $metadata['resumed_at'] = now()->toIso8601String();
+        $metadata['resume_attempts'] = (int) ($metadata['resume_attempts'] ?? 0) + 1;
+
+        $conversation->update([
+            'status' => 'active',
+            'metadata' => $metadata,
+        ]);
+
+        Cache::forget("conversation.stop.{$conversation->id}");
+        dispatch(new RunChatSession($conversation->id, $remainingRounds));
+
+        Log::info('Conversation resumed', [
+            'conversation_id' => $conversation->id,
+            'user_id' => auth()->id(),
+            'assistant_turns' => $assistantTurns,
+            'remaining_rounds' => $remainingRounds,
+        ]);
+
+        return back()->with('success', 'Conversation resumed.');
     }
 
     public function destroy(Conversation $conversation): RedirectResponse

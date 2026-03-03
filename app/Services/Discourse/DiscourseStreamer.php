@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 
 class DiscourseStreamer
 {
+    protected const CHAT_WEBHOOK_MESSAGE_LIMIT = 1800;
+
     protected int $consecutiveFailures = 0;
 
     public function shouldStream(Conversation $conversation): bool
@@ -25,7 +27,7 @@ class DiscourseStreamer
             return false;
         }
 
-        return $this->hasCredentials();
+        return $this->hasTopicDelivery() || $this->hasChatDelivery();
     }
 
     public function startConversation(Conversation $conversation): ?int
@@ -34,35 +36,13 @@ class DiscourseStreamer
             return null;
         }
 
-        if ($conversation->discourse_topic_id !== null) {
-            return (int) $conversation->discourse_topic_id;
-        }
-
         return $this->safeCall(function () use ($conversation): ?int {
-            $response = $this->executePost([
-                'title' => $this->topicTitle($conversation),
-                'raw' => $this->starterMessageRaw($conversation),
-                'category' => config('discourse.default_category_id'),
-                'tags' => config('discourse.default_tags', ['chat-bridge']),
-            ]);
+            $topicId = $this->resolveTopicId($conversation);
 
-            if (! is_array($response)) {
-                return null;
+            if ($this->hasChatDelivery()) {
+                $this->sendChatMessage($this->starterMessageChat($conversation));
+                $this->sendChatMessage($this->conversationStartedChat($conversation));
             }
-
-            $topicId = isset($response['topic_id']) ? (int) $response['topic_id'] : null;
-            if ($topicId === null || $topicId < 1) {
-                return null;
-            }
-
-            $conversation->updateQuietly([
-                'discourse_topic_id' => $topicId,
-            ]);
-
-            $this->executePost([
-                'topic_id' => $topicId,
-                'raw' => $this->conversationStartedRaw($conversation),
-            ]);
 
             return $topicId;
         }, 'startConversation');
@@ -75,15 +55,19 @@ class DiscourseStreamer
         }
 
         $this->safeCall(function () use ($conversation, $message, $turnNumber): void {
-            $topicId = $conversation->discourse_topic_id ?? $this->startConversation($conversation);
-            if ($topicId === null) {
-                return;
+            if ($this->hasTopicDelivery()) {
+                $topicId = $this->resolveTopicId($conversation);
+                if ($topicId !== null) {
+                    $this->executePost([
+                        'topic_id' => $topicId,
+                        'raw' => $this->messageRaw($conversation, $message, $turnNumber),
+                    ]);
+                }
             }
 
-            $this->executePost([
-                'topic_id' => $topicId,
-                'raw' => $this->messageRaw($conversation, $message, $turnNumber),
-            ]);
+            if ($this->hasChatDelivery()) {
+                $this->sendChatMessage($this->messageChat($conversation, $message, $turnNumber));
+            }
         }, 'postMessage');
     }
 
@@ -98,15 +82,19 @@ class DiscourseStreamer
         }
 
         $this->safeCall(function () use ($conversation, $totalMessages, $totalRounds, $durationSeconds): void {
-            $topicId = $conversation->discourse_topic_id ?? $this->startConversation($conversation);
-            if ($topicId === null) {
-                return;
+            if ($this->hasTopicDelivery()) {
+                $topicId = $this->resolveTopicId($conversation);
+                if ($topicId !== null) {
+                    $this->executePost([
+                        'topic_id' => $topicId,
+                        'raw' => $this->completedRaw($totalMessages, $totalRounds, $durationSeconds),
+                    ]);
+                }
             }
 
-            $this->executePost([
-                'topic_id' => $topicId,
-                'raw' => $this->completedRaw($totalMessages, $totalRounds, $durationSeconds),
-            ]);
+            if ($this->hasChatDelivery()) {
+                $this->sendChatMessage($this->completedChat($totalMessages, $totalRounds, $durationSeconds));
+            }
         }, 'conversationCompleted');
     }
 
@@ -120,21 +108,63 @@ class DiscourseStreamer
             return;
         }
 
-        if (! $this->hasCredentials()) {
+        if (! ($this->hasTopicDelivery() || $this->hasChatDelivery())) {
             return;
         }
 
         $this->safeCall(function () use ($conversation, $error): void {
-            $topicId = $conversation->discourse_topic_id ?? $this->startConversation($conversation);
-            if ($topicId === null) {
-                return;
+            if ($this->hasTopicDelivery()) {
+                $topicId = $this->resolveTopicId($conversation);
+                if ($topicId !== null) {
+                    $this->executePost([
+                        'topic_id' => $topicId,
+                        'raw' => $this->failedRaw($error),
+                    ]);
+                }
             }
 
-            $this->executePost([
-                'topic_id' => $topicId,
-                'raw' => $this->failedRaw($error),
-            ]);
+            if ($this->hasChatDelivery()) {
+                $this->sendChatMessage($this->failedChat($error));
+            }
         }, 'conversationFailed');
+    }
+
+    protected function resolveTopicId(Conversation $conversation): ?int
+    {
+        if (! $this->hasTopicDelivery()) {
+            return null;
+        }
+
+        if ($conversation->discourse_topic_id !== null) {
+            return (int) $conversation->discourse_topic_id;
+        }
+
+        $response = $this->executePost([
+            'title' => $this->topicTitle($conversation),
+            'raw' => $this->starterMessageRaw($conversation),
+            'category' => config('discourse.default_category_id'),
+            'tags' => config('discourse.default_tags', ['chat-bridge']),
+        ]);
+
+        if (! is_array($response)) {
+            return null;
+        }
+
+        $topicId = isset($response['topic_id']) ? (int) $response['topic_id'] : null;
+        if ($topicId === null || $topicId < 1) {
+            return null;
+        }
+
+        $conversation->updateQuietly([
+            'discourse_topic_id' => $topicId,
+        ]);
+
+        $this->executePost([
+            'topic_id' => $topicId,
+            'raw' => $this->conversationStartedRaw($conversation),
+        ]);
+
+        return $topicId;
     }
 
     /**
@@ -181,6 +211,62 @@ class DiscourseStreamer
         return filled(config('discourse.base_url'))
             && filled(config('discourse.api_key'))
             && filled(config('discourse.api_username'));
+    }
+
+    protected function hasTopicDelivery(): bool
+    {
+        return $this->hasCredentials();
+    }
+
+    protected function hasChatDelivery(): bool
+    {
+        return (bool) config('discourse.chat_enabled', false)
+            && filled(config('discourse.chat_webhook_url'));
+    }
+
+    protected function sendChatMessage(string $text): void
+    {
+        foreach ($this->splitChatMessage($text) as $part) {
+            $this->executeChatWebhook($part);
+        }
+    }
+
+    protected function executeChatWebhook(string $text): bool
+    {
+        $url = (string) config('discourse.chat_webhook_url');
+        if ($url === '') {
+            return false;
+        }
+
+        $request = Http::timeout((int) config('discourse.timeout', 15))
+            ->connectTimeout((int) config('discourse.connect_timeout', 5))
+            ->asForm();
+
+        $response = $request->post($url, [
+            'text' => $text,
+        ]);
+
+        if ($response->status() === 429) {
+            $retryAfter = (int) ($response->header('Retry-After') ?? 1);
+            usleep(max(1, $retryAfter) * 1_000_000);
+            $response = $request->post($url, [
+                'text' => $text,
+            ]);
+        }
+
+        if ($response->failed()) {
+            $this->recordFailure();
+            Log::warning('Discourse chat webhook failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return false;
+        }
+
+        $this->recordSuccess();
+
+        return true;
     }
 
     protected function safeCall(callable $operation, string $context): mixed
@@ -272,6 +358,33 @@ class DiscourseStreamer
         return $this->limitRaw($raw);
     }
 
+    protected function starterMessageChat(Conversation $conversation): string
+    {
+        $raw = $this->starterMessageRaw($conversation);
+
+        return $this->limitChat("Chat Bridge session started\n\n{$raw}");
+    }
+
+    protected function conversationStartedChat(Conversation $conversation): string
+    {
+        return $this->limitChat($this->conversationStartedRaw($conversation));
+    }
+
+    protected function messageChat(Conversation $conversation, Message $message, int $turnNumber): string
+    {
+        return $this->limitChat($this->messageRaw($conversation, $message, $turnNumber));
+    }
+
+    protected function completedChat(int $totalMessages, int $totalRounds, float $durationSeconds): string
+    {
+        return $this->limitChat($this->completedRaw($totalMessages, $totalRounds, $durationSeconds));
+    }
+
+    protected function failedChat(string $error): string
+    {
+        return $this->limitChat($this->failedRaw($error));
+    }
+
     protected function completedRaw(int $totalMessages, int $totalRounds, float $durationSeconds): string
     {
         $duration = $this->formatDuration($durationSeconds);
@@ -330,5 +443,41 @@ class DiscourseStreamer
         }
 
         return mb_substr($sanitized, 0, 27997).'...';
+    }
+
+    protected function limitChat(string $raw): string
+    {
+        $sanitized = trim($raw);
+
+        if (mb_strlen($sanitized) <= self::CHAT_WEBHOOK_MESSAGE_LIMIT) {
+            return $sanitized;
+        }
+
+        return mb_substr($sanitized, 0, self::CHAT_WEBHOOK_MESSAGE_LIMIT - 3).'...';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function splitChatMessage(string $text): array
+    {
+        $content = trim($text);
+        if ($content === '') {
+            return [];
+        }
+
+        $chunks = [];
+        $remaining = $content;
+
+        while (mb_strlen($remaining) > self::CHAT_WEBHOOK_MESSAGE_LIMIT) {
+            $chunks[] = mb_substr($remaining, 0, self::CHAT_WEBHOOK_MESSAGE_LIMIT);
+            $remaining = mb_substr($remaining, self::CHAT_WEBHOOK_MESSAGE_LIMIT);
+        }
+
+        if ($remaining !== '') {
+            $chunks[] = $remaining;
+        }
+
+        return $chunks;
     }
 }

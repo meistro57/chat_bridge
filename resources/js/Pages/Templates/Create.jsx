@@ -11,11 +11,17 @@ export default function Create({ personas, categories }) {
         persona_a_id: '',
         persona_b_id: '',
         is_public: false,
+        rag_enabled: false,
+        rag_source_limit: 6,
+        rag_score_threshold: 0.3,
+        rag_system_prompt: '',
+        rag_files: [],
+        rag_files_to_delete: [],
     });
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        post(route('templates.store'));
+        post(route('templates.store'), { forceFormData: true });
     };
 
     return (
@@ -141,6 +147,89 @@ export default function Create({ personas, categories }) {
                                     className="h-4 w-4 rounded border-white/20 bg-zinc-900/60 text-indigo-500 focus:ring-indigo-500"
                                 />
                                 <label htmlFor="is_public" className="text-sm text-zinc-300">Make template public</label>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-zinc-900/30 p-5 space-y-5">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-widest text-zinc-400">Template RAG</p>
+                                    <p className="text-sm text-zinc-500 mt-1">Attach source files and retrieval settings for agents.</p>
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(data.rag_enabled)}
+                                        onChange={(event) => setData('rag_enabled', event.target.checked)}
+                                        className="h-4 w-4 rounded border-white/20 bg-zinc-900/60 text-indigo-500 focus:ring-indigo-500"
+                                    />
+                                    Enable RAG
+                                </label>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-widest text-zinc-400">Source Limit</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value={data.rag_source_limit}
+                                        onChange={(event) => setData('rag_source_limit', event.target.value)}
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                    {errors.rag_source_limit && <p className="text-xs text-red-400">{errors.rag_source_limit}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-widest text-zinc-400">Score Threshold (0-1)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        value={data.rag_score_threshold}
+                                        onChange={(event) => setData('rag_score_threshold', event.target.value)}
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                    {errors.rag_score_threshold && <p className="text-xs text-red-400">{errors.rag_score_threshold}</p>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-widest text-zinc-400">RAG System Prompt</label>
+                                <textarea
+                                    value={data.rag_system_prompt}
+                                    onChange={(event) => setData('rag_system_prompt', event.target.value)}
+                                    rows={4}
+                                    className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    placeholder="Optional instructions for how the agent should use retrieved context."
+                                />
+                                {errors.rag_system_prompt && <p className="text-xs text-red-400">{errors.rag_system_prompt}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-widest text-zinc-400">Attach RAG Files</label>
+                                <input
+                                    type="file"
+                                    multiple
+                                    onChange={(event) => setData('rag_files', Array.from(event.target.files ?? []))}
+                                    className="w-full rounded-xl border border-dashed border-white/20 bg-zinc-900/50 px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-widest file:text-indigo-200 hover:file:bg-indigo-500/30"
+                                />
+                                <p className="text-xs text-zinc-500">Accepted: .txt, .md, .pdf, .doc, .docx, .csv, .json. Max 10 files, 10MB each.</p>
+                                {errors.rag_files && <p className="text-xs text-red-400">{errors.rag_files}</p>}
+                                {Array.isArray(data.rag_files) && data.rag_files.length > 0 && (
+                                    <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                                        <p className="text-[11px] uppercase tracking-widest text-zinc-400">Queued files</p>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {data.rag_files.map((file) => (
+                                                <span key={`${file.name}-${file.size}`} className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-300">
+                                                    {file.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

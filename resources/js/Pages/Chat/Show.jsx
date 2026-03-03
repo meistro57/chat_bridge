@@ -86,6 +86,7 @@ export default function Show({ conversation, stopSignal }) {
     const [streamingSpeaker, setStreamingSpeaker] = useState(null);
     const [status, setStatus] = useState(conversation.status);
     const [isStopping, setIsStopping] = useState(stopSignal);
+    const [isResuming, setIsResuming] = useState(false);
     const [liveLogs, setLiveLogs] = useState([]);
     const [isLogOpen, setIsLogOpen] = useState(true);
     const scrollRef = useRef(null);
@@ -95,6 +96,12 @@ export default function Show({ conversation, stopSignal }) {
     const terminalStatusRef = useRef(['failed', 'completed'].includes(conversation.status));
 
     const isTerminalStatus = (nextStatus) => ['failed', 'completed'].includes(nextStatus);
+    const lastErrorMessage = typeof conversation.metadata?.last_error_message === 'string'
+        ? conversation.metadata.last_error_message
+        : '';
+    const lastErrorAt = typeof conversation.metadata?.last_error_at === 'string'
+        ? conversation.metadata.last_error_at
+        : null;
 
     const appendLiveLog = (level, event, details = '') => {
         const nextId = logCounterRef.current + 1;
@@ -186,6 +193,12 @@ export default function Show({ conversation, stopSignal }) {
     }, [conversation.id]);
 
     useEffect(() => {
+        if (status === 'failed' && lastErrorMessage) {
+            appendLiveLog('error', 'conversation.failed', lastErrorMessage);
+        }
+    }, [status, lastErrorMessage]);
+
+    useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
@@ -197,6 +210,17 @@ export default function Show({ conversation, stopSignal }) {
                 onSuccess: () => setIsStopping(true)
             });
         }
+    };
+
+    const handleResume = () => {
+        if (isResuming) {
+            return;
+        }
+
+        router.post(`/chat/${conversation.id}/resume`, {}, {
+            onStart: () => setIsResuming(true),
+            onFinish: () => setIsResuming(false),
+        });
     };
 
     return (
@@ -248,6 +272,15 @@ export default function Show({ conversation, stopSignal }) {
                                 HALT
                             </button>
                         )}
+                        {status === 'failed' && (
+                            <button
+                                onClick={handleResume}
+                                disabled={isResuming}
+                                className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {isResuming ? 'RESUMING...' : 'RESUME'}
+                            </button>
+                        )}
                         {isStopping && (
                             <span className="text-red-400 text-xs font-mono animate-pulse">STOPPING...</span>
                         )}
@@ -274,6 +307,24 @@ export default function Show({ conversation, stopSignal }) {
                             <p className="text-zinc-300 text-lg font-light leading-relaxed">"{conversation.starter_message}"</p>
                         </div>
                     </div>
+
+                    {status === 'failed' && lastErrorMessage && (
+                        <div className="glass-panel glass-butter rounded-2xl border border-red-500/30 bg-red-500/10 p-5">
+                            <div className="flex items-center justify-between gap-3">
+                                <h2 className="text-xs font-bold uppercase tracking-widest text-red-300">
+                                    Session Error
+                                </h2>
+                                {lastErrorAt && (
+                                    <span className="text-[10px] font-mono text-red-200/80">
+                                        {new Date(lastErrorAt).toLocaleString()}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="mt-3 whitespace-pre-wrap break-words rounded-xl border border-red-400/20 bg-black/20 p-3 font-mono text-xs text-red-100">
+                                {lastErrorMessage}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Messages */}
                     {messages.map((msg, idx) => {

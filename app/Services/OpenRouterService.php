@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -121,13 +122,15 @@ class OpenRouterService
     {
         $credits = $this->getCredits();
         $activity = $this->getActivity();
+        $keyInfo = $this->getKeyInfo();
+        $activitySummary = $this->summarizeActivity($activity);
 
         // Aggregate spend by model from activity
         $byModel = [];
         if (is_array($activity)) {
             foreach ($activity as $item) {
-                $model = $item['model'] ?? 'unknown';
-                $cost = $item['cost'] ?? 0;
+                $model = (string) ($item['model'] ?? 'unknown');
+                $cost = $this->toFloat($item['cost'] ?? 0);
                 $byModel[$model] = ($byModel[$model] ?? 0) + $cost;
             }
             arsort($byModel);
@@ -140,15 +143,129 @@ class OpenRouterService
         $todaySpend = 0;
         if (is_array($todayActivity)) {
             foreach ($todayActivity as $item) {
-                $todaySpend += $item['cost'] ?? 0;
+                $todaySpend += $this->toFloat($item['cost'] ?? 0);
             }
         }
+
+        $topModelName = array_key_first($byModel);
+        $topModelCost = is_string($topModelName) ? (float) ($byModel[$topModelName] ?? 0) : 0.0;
+        $topModelShare = $activitySummary['spend_30d'] > 0
+            ? round(($topModelCost / $activitySummary['spend_30d']) * 100, 2)
+            : 0.0;
 
         return [
             'credits' => $credits,
             'today_spend' => round($todaySpend, 6),
             'top_models' => $byModel,
             'activity_days' => is_array($activity) ? count($activity) : 0,
+            'activity_summary' => $activitySummary,
+            'top_model' => [
+                'name' => $topModelName,
+                'cost' => round($topModelCost, 6),
+                'share_percent' => $topModelShare,
+            ],
+            'key_limits' => [
+                'limit' => $this->toFloat($keyInfo['limit'] ?? 0),
+                'usage' => $this->toFloat($keyInfo['usage'] ?? 0),
+                'is_free_tier' => (bool) ($keyInfo['is_free_tier'] ?? false),
+            ],
+            'last_updated_at' => now()->toIso8601String(),
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>|null  $activity
+     * @return array{requests_30d:int,requests_7d:int,spend_30d:float,spend_7d:float,active_days:int,avg_daily_spend:float,avg_cost_per_request:float}
+     */
+    protected function summarizeActivity(?array $activity): array
+    {
+        if (! is_array($activity)) {
+            return [
+                'requests_30d' => 0,
+                'requests_7d' => 0,
+                'spend_30d' => 0.0,
+                'spend_7d' => 0.0,
+                'active_days' => 0,
+                'avg_daily_spend' => 0.0,
+                'avg_cost_per_request' => 0.0,
+            ];
+        }
+
+        $requests30d = 0;
+        $requests7d = 0;
+        $spend30d = 0.0;
+        $spend7d = 0.0;
+        $activeDays = [];
+        $windowStart = CarbonImmutable::now()->subDays(6)->startOfDay();
+
+        foreach ($activity as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $cost = $this->toFloat($item['cost'] ?? 0);
+            $requestCount = (int) ($item['request_count'] ?? $item['requests'] ?? 1);
+            if ($requestCount < 1) {
+                $requestCount = 1;
+            }
+
+            $requests30d += $requestCount;
+            $spend30d += $cost;
+
+            $entryDate = $this->extractActivityDate($item);
+            if ($entryDate !== null) {
+                $activeDays[$entryDate->toDateString()] = true;
+                if ($entryDate->greaterThanOrEqualTo($windowStart)) {
+                    $requests7d += $requestCount;
+                    $spend7d += $cost;
+                }
+            }
+        }
+
+        $activeDaysCount = count($activeDays);
+
+        return [
+            'requests_30d' => $requests30d,
+            'requests_7d' => $requests7d,
+            'spend_30d' => round($spend30d, 6),
+            'spend_7d' => round($spend7d, 6),
+            'active_days' => $activeDaysCount,
+            'avg_daily_spend' => $activeDaysCount > 0 ? round($spend30d / $activeDaysCount, 6) : 0.0,
+            'avg_cost_per_request' => $requests30d > 0 ? round($spend30d / $requests30d, 6) : 0.0,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $activityItem
+     */
+    protected function extractActivityDate(array $activityItem): ?CarbonImmutable
+    {
+        $dateValue = $activityItem['created_at']
+            ?? $activityItem['date']
+            ?? $activityItem['timestamp']
+            ?? null;
+
+        if (! is_string($dateValue) || trim($dateValue) === '') {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($dateValue);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function toFloat(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        if (is_string($value) && is_numeric($value)) {
+            return (float) $value;
+        }
+
+        return 0.0;
     }
 }

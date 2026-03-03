@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chat/search', [ChatController::class, 'search'])->name('chat.search');
     Route::get('/chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{conversation}/stop', [ChatController::class, 'stop'])->name('chat.stop');
+    Route::post('/chat/{conversation}/resume', [ChatController::class, 'resume'])->name('chat.resume');
     Route::delete('/chat/{conversation}', [ChatController::class, 'destroy'])->name('chat.destroy');
     Route::get('/chat/{conversation}/transcript', [ChatController::class, 'transcript'])->name('chat.transcript');
 

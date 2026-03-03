@@ -21,6 +21,11 @@ class ConversationTemplate extends Model
         'persona_a_id',
         'persona_b_id',
         'is_public',
+        'rag_enabled',
+        'rag_source_limit',
+        'rag_score_threshold',
+        'rag_system_prompt',
+        'rag_files',
     ];
 
     protected function casts(): array
@@ -28,6 +33,10 @@ class ConversationTemplate extends Model
         return [
             'is_public' => 'boolean',
             'max_rounds' => 'integer',
+            'rag_enabled' => 'boolean',
+            'rag_source_limit' => 'integer',
+            'rag_score_threshold' => 'float',
+            'rag_files' => 'array',
         ];
     }
 

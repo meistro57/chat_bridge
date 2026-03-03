@@ -14,6 +14,8 @@ use App\Services\AI\TranscriptService;
 use App\Services\Broadcast\SafeBroadcaster;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ConversationService
 {
@@ -38,7 +40,7 @@ class ConversationService
         $settings = $conversation->settingsForPersona($persona);
         $driver = $this->ai->driverForProvider($settings['provider'], $settings['model']);
 
-        $messages = $this->buildMessages($persona, $history);
+        $messages = $this->buildMessages($conversation, $persona, $history);
 
         // Check if driver supports tools and tools are enabled
         if ($driver->supportsTools() && config('ai.tools_enabled', true)) {
@@ -90,7 +92,7 @@ class ConversationService
     /**
      * Build message collection with system prompts, guidelines, and history
      */
-    protected function buildMessages(Persona $persona, Collection $history): Collection
+    protected function buildMessages(Conversation $conversation, Persona $persona, Collection $history): Collection
     {
         $messages = collect();
 
@@ -116,10 +118,21 @@ class ConversationService
             $messages->push(new MessageData('system', "Guideline: $guideline"));
         }
 
-        // Add RAG context if available and enabled
-        if (config('services.qdrant.enabled', false) && $this->rag->isAvailable()) {
-            $relevantContext = $this->getRelevantContext($persona, $history);
+        $ragConfig = $this->conversationRagConfig($conversation);
+        $ragEnabled = (bool) ($ragConfig['enabled'] ?? true);
 
+        if ($ragEnabled) {
+            $ragSystemPrompt = trim((string) ($ragConfig['system_prompt'] ?? ''));
+            if ($ragSystemPrompt !== '') {
+                $messages->push(new MessageData('system', "RAG instruction: {$ragSystemPrompt}"));
+            }
+
+            $fileContext = $this->templateFileContextMessage($ragConfig);
+            if ($fileContext !== null) {
+                $messages->push(new MessageData('system', $fileContext));
+            }
+
+            $relevantContext = $this->getRelevantContext($persona, $history, $ragConfig);
             if ($relevantContext->isNotEmpty()) {
                 $contextMessage = "Relevant context from previous conversations:\n\n";
 
@@ -275,29 +288,111 @@ class ConversationService
     /**
      * Get relevant context from previous conversations using RAG
      */
-    protected function getRelevantContext(Persona $persona, Collection $history): Collection
+    protected function getRelevantContext(Persona $persona, Collection $history, array $ragConfig): Collection
     {
-        // Get the most recent user/assistant message to use as search query
+        if ((bool) ($ragConfig['enabled'] ?? true) === false) {
+            return collect();
+        }
+
+        $conversationId = (string) ($ragConfig['conversation_id'] ?? '');
+        if ($conversationId === '') {
+            return collect();
+        }
+
+        $ragSourceLimit = (int) ($ragConfig['source_limit'] ?? 6);
+        $ragSourceLimit = max(1, min(20, $ragSourceLimit));
+        $ragScoreThreshold = (float) ($ragConfig['score_threshold'] ?? 0.3);
+        $ragScoreThreshold = max(0.0, min(1.0, $ragScoreThreshold));
+        $ragUserId = (int) ($ragConfig['user_id'] ?? 0);
+
         $lastMessage = $history->last();
 
         if (! $lastMessage || empty($lastMessage->content)) {
             return collect();
         }
 
-        // Search for similar messages, excluding current conversation
         $relevantMessages = $this->rag->searchSimilarMessages(
             query: $lastMessage->content,
-            limit: 3,
-            filter: ['persona_id' => $persona->id],
-            scoreThreshold: 0.75
+            limit: $ragSourceLimit,
+            filter: array_filter([
+                'persona_id' => $persona->id,
+                'user_id' => $ragUserId > 0 ? $ragUserId : null,
+            ], fn ($value) => $value !== null),
+            scoreThreshold: $ragScoreThreshold
         );
 
-        // Filter out messages from the current history
-        $currentMessageIds = $history->pluck('id')->filter()->all();
+        return $relevantMessages
+            ->reject(fn ($message) => (string) $message->conversation_id === $conversationId)
+            ->values();
+    }
 
-        return $relevantMessages->filter(function ($message) use ($currentMessageIds) {
-            return ! in_array($message->id, $currentMessageIds);
-        });
+    protected function conversationRagConfig(Conversation $conversation): array
+    {
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $ragConfig = is_array($metadata['rag'] ?? null) ? $metadata['rag'] : [];
+
+        return [
+            ...$ragConfig,
+            'conversation_id' => $conversation->id,
+            'user_id' => $conversation->user_id,
+        ];
+    }
+
+    protected function templateFileContextMessage(array $ragConfig): ?string
+    {
+        $paths = collect($ragConfig['files'] ?? [])
+            ->filter(fn ($path) => is_string($path) && trim($path) !== '')
+            ->values();
+
+        if ($paths->isEmpty()) {
+            return null;
+        }
+
+        $userId = (int) ($ragConfig['user_id'] ?? 0);
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $maxFiles = max(1, min(10, (int) config('ai.rag_template_max_files', 3)));
+        $paths = $paths->take($maxFiles);
+        $maxChars = max(600, (int) config('ai.rag_template_max_chars', 3000));
+        $charsPerFile = max(200, (int) floor($maxChars / max(1, $paths->count())));
+        $prefix = "template-rag/{$userId}/";
+        $snippets = [];
+
+        foreach ($paths as $path) {
+            if (! str_starts_with($path, $prefix) || ! Storage::disk('local')->exists($path)) {
+                continue;
+            }
+
+            $snippet = $this->readTemplateFileSnippet($path, $charsPerFile);
+            if ($snippet === null) {
+                continue;
+            }
+
+            $snippets[] = 'File: '.basename($path)."\n".$snippet;
+        }
+
+        if ($snippets === []) {
+            return null;
+        }
+
+        return "Relevant template file excerpts:\n\n".implode("\n\n---\n\n", $snippets);
+    }
+
+    protected function readTemplateFileSnippet(string $path, int $maxChars): ?string
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (! in_array($extension, ['txt', 'md', 'csv', 'json'], true)) {
+            return null;
+        }
+
+        $content = trim((string) Storage::disk('local')->get($path));
+        if ($content === '') {
+            return null;
+        }
+
+        return Str::limit($content, $maxChars, '...');
     }
 
     /**

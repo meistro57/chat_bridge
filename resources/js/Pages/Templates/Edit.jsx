@@ -11,11 +11,17 @@ export default function Edit({ template, personas, categories }) {
         persona_a_id: template.persona_a_id ?? '',
         persona_b_id: template.persona_b_id ?? '',
         is_public: Boolean(template.is_public),
+        rag_enabled: Boolean(template.rag_enabled),
+        rag_source_limit: template.rag_source_limit ?? 6,
+        rag_score_threshold: template.rag_score_threshold ?? 0.3,
+        rag_system_prompt: template.rag_system_prompt ?? '',
+        rag_files: [],
+        rag_files_to_delete: [],
     });
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        patch(route('templates.update', template.id));
+        patch(route('templates.update', template.id), { forceFormData: true });
     };
 
     return (
@@ -142,6 +148,111 @@ export default function Edit({ template, personas, categories }) {
                                 />
                                 <label htmlFor="is_public" className="text-sm text-zinc-300">Make template public</label>
                             </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-zinc-900/30 p-5 space-y-5">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-widest text-zinc-400">Template RAG</p>
+                                    <p className="text-sm text-zinc-500 mt-1">Manage files and retrieval controls for this template.</p>
+                                </div>
+                                <label className="flex items-center gap-2 text-sm text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(data.rag_enabled)}
+                                        onChange={(event) => setData('rag_enabled', event.target.checked)}
+                                        className="h-4 w-4 rounded border-white/20 bg-zinc-900/60 text-indigo-500 focus:ring-indigo-500"
+                                    />
+                                    Enable RAG
+                                </label>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-widest text-zinc-400">Source Limit</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value={data.rag_source_limit}
+                                        onChange={(event) => setData('rag_source_limit', event.target.value)}
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                    {errors.rag_source_limit && <p className="text-xs text-red-400">{errors.rag_source_limit}</p>}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs uppercase tracking-widest text-zinc-400">Score Threshold (0-1)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        value={data.rag_score_threshold}
+                                        onChange={(event) => setData('rag_score_threshold', event.target.value)}
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    />
+                                    {errors.rag_score_threshold && <p className="text-xs text-red-400">{errors.rag_score_threshold}</p>}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-widest text-zinc-400">RAG System Prompt</label>
+                                <textarea
+                                    value={data.rag_system_prompt}
+                                    onChange={(event) => setData('rag_system_prompt', event.target.value)}
+                                    rows={4}
+                                    className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"
+                                    placeholder="Optional instructions for how the agent should use retrieved context."
+                                />
+                                {errors.rag_system_prompt && <p className="text-xs text-red-400">{errors.rag_system_prompt}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs uppercase tracking-widest text-zinc-400">Attach Additional RAG Files</label>
+                                <input
+                                    type="file"
+                                    multiple
+                                    onChange={(event) => setData('rag_files', Array.from(event.target.files ?? []))}
+                                    className="w-full rounded-xl border border-dashed border-white/20 bg-zinc-900/50 px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:px-3 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-widest file:text-indigo-200 hover:file:bg-indigo-500/30"
+                                />
+                                <p className="text-xs text-zinc-500">Accepted: .txt, .md, .pdf, .doc, .docx, .csv, .json. Max 10 files, 10MB each.</p>
+                                {errors.rag_files && <p className="text-xs text-red-400">{errors.rag_files}</p>}
+                            </div>
+
+                            {Array.isArray(template.rag_files) && template.rag_files.length > 0 && (
+                                <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                                    <p className="text-[11px] uppercase tracking-widest text-zinc-400">Existing files</p>
+                                    <div className="space-y-2">
+                                        {template.rag_files.map((path) => {
+                                            const isChecked = data.rag_files_to_delete.includes(path);
+                                            const filename = path.split('/').pop();
+
+                                            return (
+                                                <label key={path} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">
+                                                    <span className="truncate">{filename}</span>
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="text-zinc-500">Delete</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={(event) => {
+                                                                if (event.target.checked) {
+                                                                    setData('rag_files_to_delete', [...data.rag_files_to_delete, path]);
+                                                                    return;
+                                                                }
+
+                                                                setData('rag_files_to_delete', data.rag_files_to_delete.filter((item) => item !== path));
+                                                            }}
+                                                            className="h-4 w-4 rounded border-white/20 bg-zinc-900/60 text-red-500 focus:ring-red-500"
+                                                        />
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex items-center justify-end gap-3">

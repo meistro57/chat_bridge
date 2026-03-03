@@ -35,6 +35,7 @@ export default function Create({
     const { data, setData, post, processing, errors, transform } = useForm({
         persona_a_id: template?.persona_a_id ?? '',
         persona_b_id: template?.persona_b_id ?? '',
+        template_id: template?.id ?? null,
         provider_a: '',
         provider_b: '',
         model_a: '',
@@ -55,6 +56,7 @@ export default function Create({
 
     transform((payload) => ({
         ...payload,
+        template_id: payload.template_id || null,
         notifications_enabled: Boolean(payload.notifications_enabled),
         discord_streaming_enabled: Boolean(payload.discord_streaming_enabled),
         discourse_streaming_enabled: Boolean(payload.discourse_streaming_enabled),

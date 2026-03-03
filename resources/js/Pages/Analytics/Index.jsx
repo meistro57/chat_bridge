@@ -72,6 +72,8 @@ export default function Index({
     const averageLength = metrics?.average_length ?? 0;
 
     const orStats = openRouterStats ?? null;
+    const orActivitySummary = orStats?.activity_summary ?? null;
+    const orTopModel = orStats?.top_model ?? null;
 
     const trends = trendData ?? [];
     const providerTokens = tokenUsageByProvider ?? [];
@@ -153,8 +155,24 @@ export default function Index({
                             <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
                                 <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-pink-500/80 to-purple-500/80" />
                                 <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">Top Model</div>
-                                <div className="text-sm font-bold text-pink-200 truncate">{orStats.top_models && Object.keys(orStats.top_models)[0] ? Object.keys(orStats.top_models)[0].split('/').pop() : '—'}</div>
-                                <div className="text-xs text-zinc-500 mt-1">${orStats.top_models && Object.values(orStats.top_models)[0] ? Object.values(orStats.top_models)[0].toFixed(6) : '0'} spent</div>
+                                <div className="text-sm font-bold text-pink-200 truncate">{orTopModel?.name ? orTopModel.name.split('/').pop() : '—'}</div>
+                                <div className="text-xs text-zinc-500 mt-1">
+                                    ${Number(orTopModel?.cost ?? 0).toFixed(6)} spent ({Number(orTopModel?.share_percent ?? 0).toFixed(2)}%)
+                                </div>
+                            </div>
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500/80 to-fuchsia-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">OR Requests (30d)</div>
+                                <div className="text-2xl font-bold text-violet-300">{formatNumber(orActivitySummary?.requests_30d ?? 0)}</div>
+                                <div className="text-xs text-zinc-500 mt-1">{formatNumber(orActivitySummary?.active_days ?? 0)} active days</div>
+                            </div>
+                            <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-5 border border-pink-500/20 shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden">
+                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500/80 to-rose-500/80" />
+                                <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">OR Avg / Request</div>
+                                <div className="text-2xl font-bold text-amber-300">${Number(orActivitySummary?.avg_cost_per_request ?? 0).toFixed(6)}</div>
+                                <div className="text-xs text-zinc-500 mt-1">
+                                    7d: ${Number(orActivitySummary?.spend_7d ?? 0).toFixed(6)} across {formatNumber(orActivitySummary?.requests_7d ?? 0)} reqs
+                                </div>
                             </div>
                         </div>
                     )}

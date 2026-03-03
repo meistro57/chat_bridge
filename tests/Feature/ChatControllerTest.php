@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
+use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,56 @@ use Tests\TestCase;
 class ChatControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_store_includes_template_rag_metadata_when_template_selected(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'rag_enabled' => true,
+            'rag_source_limit' => 9,
+            'rag_score_threshold' => 0.42,
+            'rag_system_prompt' => 'Cite retrieved context before conclusions.',
+            'rag_files' => ['template-rag/1/template-1/notes.txt'],
+        ]);
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'template_id' => $template->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'Begin with retrieval context.',
+            'max_rounds' => 4,
+            'stop_word_detection' => false,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $this->assertSame($template->id, $conversation->metadata['template_id'] ?? null);
+        $this->assertTrue($conversation->metadata['rag']['enabled'] ?? false);
+        $this->assertSame(9, $conversation->metadata['rag']['source_limit'] ?? null);
+        $this->assertEqualsWithDelta(0.42, (float) ($conversation->metadata['rag']['score_threshold'] ?? 0), 0.0001);
+        $this->assertSame('Cite retrieved context before conclusions.', $conversation->metadata['rag']['system_prompt'] ?? null);
+        $this->assertSame(['template-rag/1/template-1/notes.txt'], $conversation->metadata['rag']['files'] ?? null);
+    }
 
     public function test_store_persists_ui_settings_and_dispatches_job(): void
     {
@@ -276,5 +327,69 @@ class ChatControllerTest extends TestCase
             ->has('conversation.messages', 1)
             ->where('conversation.messages.0.content', $markdown)
         );
+    }
+
+    public function test_resume_reactivates_failed_conversation_and_dispatches_remaining_rounds(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'status' => 'failed',
+            'max_rounds' => 5,
+            'metadata' => ['notifications_enabled' => false],
+        ]);
+
+        $conversation->messages()->create([
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => 'Turn one',
+        ]);
+
+        $conversation->messages()->create([
+            'persona_id' => $personaB->id,
+            'role' => 'assistant',
+            'content' => 'Turn two',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('chat.resume', $conversation));
+
+        $response->assertRedirect();
+
+        $conversation->refresh();
+        $this->assertSame('active', $conversation->status);
+        $this->assertNotEmpty($conversation->metadata['resumed_at'] ?? null);
+        $this->assertSame(1, $conversation->metadata['resume_attempts'] ?? 0);
+
+        Bus::assertDispatched(RunChatSession::class, function (RunChatSession $job) use ($conversation) {
+            return $job->conversationId === $conversation->id
+                && $job->maxRounds === 3;
+        });
+    }
+
+    public function test_resume_rejects_non_failed_conversation(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+            'max_rounds' => 4,
+        ]);
+
+        $response = $this->actingAs($user)->post(route('chat.resume', $conversation));
+
+        $response->assertRedirect();
+
+        $conversation->refresh();
+        $this->assertSame('completed', $conversation->status);
+        Bus::assertNotDispatched(RunChatSession::class);
     }
 }

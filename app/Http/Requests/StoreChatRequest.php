@@ -24,6 +24,7 @@ class StoreChatRequest extends FormRequest
         return [
             'persona_a_id' => ['required', 'uuid', 'exists:personas,id'],
             'persona_b_id' => ['required', 'uuid', 'exists:personas,id'],
+            'template_id' => ['nullable', 'integer', 'exists:conversation_templates,id'],
             'provider_a' => ['required', 'string'],
             'provider_b' => ['required', 'string'],
             'model_a' => ['required', 'string'],

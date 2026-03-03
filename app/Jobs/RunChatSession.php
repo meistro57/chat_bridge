@@ -361,7 +361,7 @@ class RunChatSession implements ShouldQueue
                 'line' => $e->getLine(),
                 'round' => $round,
             ]);
-            $conversation->update(['status' => 'failed']);
+            $this->markConversationFailed($conversation, $e->getMessage());
             app(SafeBroadcaster::class)->broadcast(
                 new \App\Events\ConversationStatusUpdated($conversation),
                 [
@@ -385,7 +385,7 @@ class RunChatSession implements ShouldQueue
     {
         $conversation = Conversation::find($this->conversationId);
         if ($conversation) {
-            $conversation->update(['status' => 'failed']);
+            $this->markConversationFailed($conversation, $exception->getMessage());
             app(SafeBroadcaster::class)->broadcast(
                 new \App\Events\ConversationStatusUpdated($conversation),
                 [
@@ -440,6 +440,18 @@ class RunChatSession implements ShouldQueue
         }
 
         return (bool) $metadata['notifications_enabled'];
+    }
+
+    protected function markConversationFailed(Conversation $conversation, string $errorMessage): void
+    {
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $metadata['last_error_message'] = mb_substr($errorMessage, 0, 2000);
+        $metadata['last_error_at'] = now()->toIso8601String();
+
+        $conversation->update([
+            'status' => 'failed',
+            'metadata' => $metadata,
+        ]);
     }
 
     private function isRetryableTurnException(\Throwable $exception): bool

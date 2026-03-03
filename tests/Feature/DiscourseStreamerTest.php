@@ -90,4 +90,54 @@ class DiscourseStreamerTest extends TestCase
                 && str_contains((string) ($payload['raw'] ?? ''), 'Discourse response body');
         });
     }
+
+    public function test_it_posts_to_chat_webhook_without_topic_credentials(): void
+    {
+        config()->set('discourse.enabled', true);
+        config()->set('discourse.base_url', null);
+        config()->set('discourse.api_key', null);
+        config()->set('discourse.api_username', null);
+        config()->set('discourse.chat_enabled', true);
+        config()->set('discourse.chat_webhook_url', 'https://forum.example.com/chat/hooks/test-key.json');
+
+        Http::fake([
+            'https://forum.example.com/chat/hooks/test-key.json' => Http::response(['ok' => true], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'starter_message' => 'Kick this off.',
+            'discourse_streaming_enabled' => true,
+            'max_rounds' => 2,
+        ]);
+
+        app(DiscourseStreamer::class)->startConversation($conversation);
+
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => 'Hello from webhook mode',
+        ]);
+
+        app(DiscourseStreamer::class)->postMessage($conversation, $message, 1);
+        app(DiscourseStreamer::class)->conversationCompleted($conversation, 3, 1, 4.1);
+
+        Http::assertSent(function ($request): bool {
+            if ($request->url() !== 'https://forum.example.com/chat/hooks/test-key.json') {
+                return false;
+            }
+
+            $payload = $request->data();
+
+            return is_string($payload['text'] ?? null)
+                && $payload['text'] !== '';
+        });
+    }
 }
