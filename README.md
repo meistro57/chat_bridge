@@ -201,6 +201,7 @@ Orchestrate AI discussions with:
 - 🧾 Floating live event log panel on session view (chunks, status, completion, errors)
 - 🔄 Automated multi-turn dialogues (configurable max rounds)
 - 🎯 Manual stop/resume controls
+- ▶️ Resume failed sessions from both the session detail page and the main chat list
 - 🛑 **Smart stop-word detection with thresholds**
 - 🤖 **Per-conversation provider/model selection**
 - 💰 **Live pricing display for 344+ models**
@@ -808,6 +809,9 @@ Docker troubleshooting highlights:
 
 - If Docker builds fail with `permission denied` on `storage/postgres`, see the new troubleshooting section in `DOCKER.md`.
 - After changing PHP dependencies (`composer.json` / `composer.lock`), rebuild images: `docker compose build app queue reverb && docker compose up -d app queue reverb`.
+- If `docker compose exec -T app npm run build` fails with `sh: vite: not found`, install frontend dev dependencies in the app container first:
+  - `docker compose exec -T app npm install --include=dev`
+  - then rerun `docker compose exec -T app npm run build`
 
 For RAG functionality guide, see **[RAG_GUIDE.md](RAG_GUIDE.md)**
 
@@ -1098,11 +1102,15 @@ DISCORD_CIRCUIT_BREAKER_THRESHOLD=5
 
 # Discourse conversation broadcasting
 DISCOURSE_STREAMING_ENABLED=false
+# Topic-post mode (Discourse API key)
 # DISCOURSE_BASE_URL=https://your-discourse.example.com
 # DISCOURSE_API_KEY=your-discourse-api-key
-# DISCOURSE_API_USERNAME=system
+# DISCOURSE_API_USERNAME=chat-bridge
 # DISCOURSE_DEFAULT_CATEGORY_ID=12
 # DISCOURSE_DEFAULT_TAGS=chat-bridge,ai-session
+# Discourse Chat plugin webhook mode
+DISCOURSE_CHAT_ENABLED=false
+# DISCOURSE_CHAT_WEBHOOK_URL=https://your-discourse.example.com/chat/hooks/your-key.json
 DISCOURSE_TIMEOUT_SECONDS=15
 DISCOURSE_CONNECT_TIMEOUT_SECONDS=5
 DISCOURSE_CIRCUIT_BREAKER_THRESHOLD=5
@@ -1204,9 +1212,11 @@ Use this checklist to make Discourse accept Chat Bridge messages.
 DISCOURSE_STREAMING_ENABLED=true
 DISCOURSE_BASE_URL=https://your-discourse.example.com
 DISCOURSE_API_KEY=your-generated-api-key
-DISCOURSE_API_USERNAME=system
+DISCOURSE_API_USERNAME=chat-bridge
 DISCOURSE_DEFAULT_CATEGORY_ID=12
 DISCOURSE_DEFAULT_TAGS=chat-bridge,ai-session
+DISCOURSE_CHAT_ENABLED=false
+# DISCOURSE_CHAT_WEBHOOK_URL=https://your-discourse.example.com/chat/hooks/your-key.json
 DISCOURSE_TIMEOUT_SECONDS=15
 DISCOURSE_CONNECT_TIMEOUT_SECONDS=5
 DISCOURSE_CIRCUIT_BREAKER_THRESHOLD=5
@@ -1231,6 +1241,27 @@ php artisan queue:restart
      - live turn posts,
      - completion or failure post.
 
+### Discourse Chat Plugin Mode
+
+If you prefer Discourse Chat channels instead of forum topics:
+
+1. In Discourse Admin, open the Chat plugin webhook settings and create an incoming webhook for the target channel.
+2. Set environment variables:
+
+```bash
+DISCOURSE_STREAMING_ENABLED=true
+DISCOURSE_CHAT_ENABLED=true
+DISCOURSE_CHAT_WEBHOOK_URL=https://your-discourse.example.com/chat/hooks/your-key.json
+```
+
+3. Optional: keep topic mode enabled at the same time by also setting `DISCOURSE_BASE_URL`, `DISCOURSE_API_KEY`, and `DISCOURSE_API_USERNAME`.
+4. Run:
+
+```bash
+php artisan optimize:clear
+php artisan queue:restart
+```
+
 ### Discourse Broadcast Not Posting
 
 If messages are not showing in Discourse:
@@ -1248,7 +1279,7 @@ If messages are not showing in Discourse:
 tail -f storage/logs/laravel.log
 ```
 
-Look for entries containing `Discourse post failed` or `Discourse streaming failed`.
+Look for entries containing `Discourse post failed`, `Discourse chat webhook failed`, or `Discourse streaming failed`.
 
 ### Broadcast Payload Too Large
 

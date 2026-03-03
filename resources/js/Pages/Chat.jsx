@@ -1,6 +1,6 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 export default function Chat({ personas, conversations, debug_info }) {
     const { auth } = usePage().props;
@@ -100,7 +100,11 @@ export default function Chat({ personas, conversations, debug_info }) {
                                                 {conv.provider_a} <span className="text-zinc-500 text-sm font-normal">vs</span> {conv.provider_b}
                                             </span>
                                             <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-bold ${
-                                                conv.status === 'completed' ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                conv.status === 'completed'
+                                                    ? 'bg-zinc-800 text-zinc-400'
+                                                    : conv.status === 'failed'
+                                                        ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                                             }`}>
                                                 {conv.status}
                                             </span>
@@ -112,15 +116,30 @@ export default function Chat({ personas, conversations, debug_info }) {
 
                                         <div className="flex justify-between items-center pl-11 mt-2">
                                             <span className="text-xs text-zinc-600 font-mono">ID: {conv.id.substring(0,8)}...</span>
-                                            <Link 
-                                                href={route('chat.destroy', conv.id)} 
-                                                method="delete"
-                                                as="button"
-                                                onClick={(e) => { e.stopPropagation(); if(!confirm('Delete this session?')) e.preventDefault(); }}
-                                                className="text-xs text-zinc-600 hover:text-red-400 transition-colors z-10 p-2"
-                                            >
-                                                Delete
-                                            </Link>
+                                            <div className="flex items-center gap-2">
+                                                {conv.status === 'failed' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => {
+                                                            event.preventDefault();
+                                                            event.stopPropagation();
+                                                            router.post(route('chat.resume', conv.id));
+                                                        }}
+                                                        className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/20 hover:text-emerald-200"
+                                                    >
+                                                        Resume
+                                                    </button>
+                                                )}
+                                                <Link
+                                                    href={route('chat.destroy', conv.id)}
+                                                    method="delete"
+                                                    as="button"
+                                                    onClick={(e) => { e.stopPropagation(); if(!confirm('Delete this session?')) e.preventDefault(); }}
+                                                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors z-10 p-2"
+                                                >
+                                                    Delete
+                                                </Link>
+                                            </div>
                                         </div>
                                     </div>
                                 </Link>

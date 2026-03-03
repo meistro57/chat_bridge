@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiKey;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Persona;
@@ -181,7 +182,10 @@ class TranscriptChatControllerTest extends TestCase
             ], 200),
         ]);
 
-        config(['services.openai.key' => 'sk-test-key']);
+        config([
+            'services.openai.key' => 'sk-test-key',
+            'services.openrouter.key' => null,
+        ]);
 
         $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
             'question' => 'How did we deploy to production?',
@@ -246,7 +250,7 @@ class TranscriptChatControllerTest extends TestCase
     // ask – OpenAI error handling
     // -------------------------------------------------------------------------
 
-    public function test_ask_returns_error_message_when_openai_fails(): void
+    public function test_ask_falls_back_to_openrouter_when_openai_returns_unauthorized(): void
     {
         $user = User::factory()->create();
         $persona = Persona::factory()->create(['user_id' => $user->id]);
@@ -269,18 +273,198 @@ class TranscriptChatControllerTest extends TestCase
 
         $this->mock(EmbeddingService::class);
 
-        Http::fake([
-            'api.openai.com/v1/chat/completions' => Http::response(['error' => 'Unauthorized'], 401),
+        ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openrouter',
+            'key' => 'test-user-openrouter-key',
+            'is_active' => true,
         ]);
 
-        config(['services.openai.key' => 'sk-test-key']);
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response(['error' => 'Unauthorized'], 401),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Fallback answer for unauthorized OpenAI.']],
+                ],
+            ], 200),
+        ]);
+
+        config([
+            'services.openai.key' => 'sk-test-key',
+            'services.openrouter.key' => 'test-openrouter-key',
+        ]);
 
         $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
             'question' => 'Tell me about the conversation?',
         ]);
 
         $response->assertOk();
-        $this->assertStringContainsString('error', strtolower($response->json('answer')));
+        $response->assertJsonPath('answer', 'Fallback answer for unauthorized OpenAI.');
+    }
+
+    public function test_ask_falls_back_to_openrouter_when_openai_quota_is_exhausted(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create(['user_id' => $user->id]);
+
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'role' => 'assistant',
+            'content' => 'We used queue workers for throughput improvements.',
+            'embedding' => array_fill(0, 1536, 0.1),
+        ]);
+        $message->similarity_score = 0.89;
+
+        $this->mock(RagService::class, function ($mock) use ($message) {
+            $mock->shouldReceive('searchSimilarMessages')
+                ->once()
+                ->andReturn(collect([$message]));
+        });
+
+        $this->mock(EmbeddingService::class);
+
+        ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openrouter',
+            'key' => 'test-user-openrouter-key',
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response([
+                'error' => [
+                    'message' => 'You exceeded your current quota, please check your plan and billing details.',
+                    'type' => 'insufficient_quota',
+                    'code' => 'insufficient_quota',
+                ],
+            ], 429),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Fallback answer from OpenRouter.']],
+                ],
+            ], 200),
+        ]);
+
+        config(['services.openai.key' => 'sk-test-key']);
+        config(['services.openrouter.key' => null]);
+
+        $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
+            'question' => 'How did we improve chat throughput?',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('answer', 'Fallback answer from OpenRouter.');
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->url() !== 'https://openrouter.ai/api/v1/chat/completions') {
+                return false;
+            }
+
+            $authorization = $request->header('Authorization');
+
+            return isset($authorization[0]) && $authorization[0] === 'Bearer test-user-openrouter-key';
+        });
+    }
+
+    public function test_ask_falls_back_to_openrouter_when_openai_is_unauthorized_and_openrouter_key_exists(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create(['user_id' => $user->id]);
+
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'role' => 'assistant',
+            'content' => 'Auth fallback should still answer.',
+            'embedding' => array_fill(0, 1536, 0.1),
+        ]);
+        $message->similarity_score = 0.89;
+
+        $this->mock(RagService::class, function ($mock) use ($message) {
+            $mock->shouldReceive('searchSimilarMessages')
+                ->once()
+                ->andReturn(collect([$message]));
+        });
+
+        $this->mock(EmbeddingService::class);
+
+        ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openrouter',
+            'key' => 'test-user-openrouter-key',
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response([
+                'error' => [
+                    'message' => 'Unauthorized',
+                    'code' => 'invalid_api_key',
+                ],
+            ], 401),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Recovered with OpenRouter fallback.']],
+                ],
+            ], 200),
+        ]);
+
+        config(['services.openai.key' => 'sk-test-key']);
+        config(['services.openrouter.key' => null]);
+
+        $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
+            'question' => 'Can we recover from auth errors?',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('answer', 'Recovered with OpenRouter fallback.');
+    }
+
+    public function test_ask_returns_quota_guidance_when_openai_quota_is_exhausted_and_no_openrouter_key_exists(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create(['user_id' => $user->id]);
+
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'role' => 'assistant',
+            'content' => 'We migrated workloads in phases.',
+            'embedding' => array_fill(0, 1536, 0.1),
+        ]);
+        $message->similarity_score = 0.9;
+
+        $this->mock(RagService::class, function ($mock) use ($message) {
+            $mock->shouldReceive('searchSimilarMessages')
+                ->once()
+                ->andReturn(collect([$message]));
+        });
+
+        $this->mock(EmbeddingService::class);
+
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response([
+                'error' => [
+                    'message' => 'You exceeded your current quota, please check your plan and billing details.',
+                    'type' => 'insufficient_quota',
+                    'code' => 'insufficient_quota',
+                ],
+            ], 429),
+        ]);
+
+        config(['services.openai.key' => 'sk-test-key']);
+        config(['services.openrouter.key' => null]);
+
+        $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
+            'question' => 'What was our migration approach?',
+        ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('openrouter api key', strtolower($response->json('answer')));
     }
 
     public function test_ask_returns_notice_when_openai_key_is_missing(): void
