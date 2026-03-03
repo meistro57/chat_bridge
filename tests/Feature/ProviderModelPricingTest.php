@@ -45,7 +45,7 @@ class ProviderModelPricingTest extends TestCase
         $this->assertTrue($ids->contains('gemini-2.0-flash'));
         $this->assertTrue($ids->contains('gemini-2.0-flash-lite'));
         $this->assertFalse($ids->contains('text-embedding-004'));
-        $this->assertSame('$0.10/$0.40', $response->json('models.0.cost'));
+        $this->assertSame('$0.10/$0.40', collect($response->json('models'))->firstWhere('id', 'gemini-2.0-flash')['cost']);
     }
 
     public function test_gemini_models_fall_back_to_defaults_when_no_key(): void
@@ -56,7 +56,7 @@ class ProviderModelPricingTest extends TestCase
 
         $response->assertOk();
         $ids = collect($response->json('models'))->pluck('id');
-        $this->assertTrue($ids->contains('gemini-2.0-flash'));
+        $this->assertTrue($ids->contains('gemini-2.5-flash'));
         $this->assertFalse($ids->contains('gemini-1.5-flash'));
     }
 

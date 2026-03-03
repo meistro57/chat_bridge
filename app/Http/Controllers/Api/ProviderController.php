@@ -217,6 +217,8 @@ class ProviderController extends Controller
     private function getGeminiPricingMap(): array
     {
         return [
+            'gemini-2.5-flash' => '$0.15/$0.60',
+            'gemini-2.5-pro' => '$1.25/$10.00',
             'gemini-2.5-pro-preview' => '$1.25/$10.00',
             'gemini-2.0-pro-exp' => 'FREE (exp)',
             'gemini-2.0-flash' => '$0.10/$0.40',
@@ -233,7 +235,7 @@ class ProviderController extends Controller
     private function getDefaultGeminiModels(): array
     {
         return [
-            ['id' => 'gemini-2.0-flash', 'name' => 'Gemini 2.0 Flash', 'cost' => '$0.10/$0.40'],
+            ['id' => 'gemini-2.5-flash', 'name' => 'Gemini 2.5 Flash', 'cost' => '$0.15/$0.60'],
             ['id' => 'gemini-2.0-flash-lite', 'name' => 'Gemini 2.0 Flash Lite', 'cost' => '$0.075/$0.30'],
             ['id' => 'gemini-1.5-pro', 'name' => 'Gemini 1.5 Pro', 'cost' => '$1.25/$5.00'],
             ['id' => 'gemini-1.5-flash-8b', 'name' => 'Gemini 1.5 Flash 8B', 'cost' => '$0.037/$0.15'],

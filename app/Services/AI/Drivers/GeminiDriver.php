@@ -15,7 +15,7 @@ class GeminiDriver implements AIDriverInterface
 
     public function __construct(
         protected string $apiKey,
-        protected string $model = 'gemini-2.0-flash',
+        protected string $model = 'gemini-2.5-flash',
         protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta'
     ) {}
 
@@ -201,7 +201,7 @@ class GeminiDriver implements AIDriverInterface
 
         if ($response->status() === 404 && str_contains($body, 'is not found for API version')) {
             throw new \Exception(
-                'Gemini model "'.$this->model.'" is not supported by endpoint '.$this->baseUrl.'. Use a supported model such as gemini-2.0-flash or query /api/providers/models?provider=gemini.'
+                'Gemini model "'.$this->model.'" is not supported by endpoint '.$this->baseUrl.'. Use a supported model such as gemini-2.5-flash or query /api/providers/models?provider=gemini.'
             );
         }
 
