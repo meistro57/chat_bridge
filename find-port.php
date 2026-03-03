@@ -1,8 +1,8 @@
 <?php
 
 $host = '127.0.0.1';
-$startPort = 8000;
-$endPort = 8100;
+$startPort = 20000;
+$endPort = 20100;
 
 function isPortFree($host, $port)
 {

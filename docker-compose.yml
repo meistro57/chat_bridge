@@ -38,7 +38,7 @@ services:
       - QDRANT_PORT=6333
       - CODEX_HOME=/var/www/html/.codex
     ports:
-      - "${APP_PORT:-8000}:80"
+      - "${APP_PORT:-18080}:80"
     command: sh -c "mkdir -p /var/log/supervisor && /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
     depends_on:
       - postgres
@@ -118,7 +118,7 @@ services:
       - VITE_REVERB_PORT=8080
       - VITE_REVERB_SCHEME=http
     ports:
-      - "${REVERB_PORT:-8080}:8080"
+      - "${REVERB_PORT:-18081}:8080"
     depends_on:
       - postgres
       - redis
@@ -137,7 +137,7 @@ services:
     volumes:
       - ./storage/postgres:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-15432}:5432"
     networks:
       - chatbridge-network
     healthcheck:
@@ -155,7 +155,7 @@ services:
     volumes:
       - redis-data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-16379}:6379"
     networks:
       - chatbridge-network
     healthcheck:
@@ -172,8 +172,8 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
     ports:
-      - "${QDRANT_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
+      - "${QDRANT_PORT:-16333}:6333"
+      - "${QDRANT_GRPC_PORT:-16334}:6334"
     environment:
       - QDRANT__SERVICE__HTTP_PORT=6333
       - QDRANT__SERVICE__GRPC_PORT=6334

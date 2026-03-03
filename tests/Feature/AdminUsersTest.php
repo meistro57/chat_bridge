@@ -25,4 +25,28 @@ class AdminUsersTest extends TestCase
             ->has('users')
         );
     }
+
+    public function test_admin_can_create_user(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.users.store'), [
+            'name' => 'Created User',
+            'email' => 'created-user@example.com',
+            'password' => 'Password123!',
+            'role' => 'user',
+            'is_active' => true,
+        ]);
+
+        $response->assertRedirect(route('admin.users.index'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'created-user@example.com',
+            'name' => 'Created User',
+            'role' => 'user',
+            'is_active' => 1,
+        ]);
+    }
 }

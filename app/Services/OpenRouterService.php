@@ -2,25 +2,26 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class OpenRouterService
 {
     protected string $apiKey;
+
     protected string $baseUrl = 'https://openrouter.ai/api/v1';
 
     public function __construct()
     {
-        $this->apiKey = config('services.openrouter.key', env('OPENROUTER_API_KEY', ''));
+        $this->apiKey = (string) (config('services.openrouter.key') ?? '');
     }
 
     protected function headers(): array
     {
         return [
-            'Authorization' => 'Bearer ' . $this->apiKey,
-            'Content-Type'  => 'application/json',
+            'Authorization' => 'Bearer '.$this->apiKey,
+            'Content-Type' => 'application/json',
         ];
     }
 
@@ -38,18 +39,21 @@ class OpenRouterService
                 if ($response->successful()) {
                     $data = $response->json('data', []);
                     $total = $data['total_credits'] ?? 0;
-                    $used  = $data['total_usage'] ?? 0;
+                    $used = $data['total_usage'] ?? 0;
+
                     return [
                         'total_credits' => round($total, 4),
-                        'total_usage'   => round($used, 4),
-                        'balance'       => round($total - $used, 4),
+                        'total_usage' => round($used, 4),
+                        'balance' => round($total - $used, 4),
                     ];
                 }
 
                 Log::warning('OpenRouter credits fetch failed', ['status' => $response->status()]);
+
                 return null;
             } catch (\Exception $e) {
                 Log::error('OpenRouter credits exception', ['error' => $e->getMessage()]);
+
                 return null;
             }
         });
@@ -60,7 +64,8 @@ class OpenRouterService
      */
     public function getActivity(?string $date = null): ?array
     {
-        $cacheKey = 'openrouter_activity_' . ($date ?? 'all');
+        $cacheKey = 'openrouter_activity_'.($date ?? 'all');
+
         return Cache::remember($cacheKey, 120, function () use ($date) {
             try {
                 $params = $date ? ['date' => $date] : [];
@@ -73,9 +78,11 @@ class OpenRouterService
                 }
 
                 Log::warning('OpenRouter activity fetch failed', ['status' => $response->status()]);
+
                 return null;
             } catch (\Exception $e) {
                 Log::error('OpenRouter activity exception', ['error' => $e->getMessage()]);
+
                 return null;
             }
         });
@@ -97,9 +104,11 @@ class OpenRouterService
                 }
 
                 Log::warning('OpenRouter key info fetch failed', ['status' => $response->status()]);
+
                 return null;
             } catch (\Exception $e) {
                 Log::error('OpenRouter key info exception', ['error' => $e->getMessage()]);
+
                 return null;
             }
         });
@@ -110,7 +119,7 @@ class OpenRouterService
      */
     public function getDashboardStats(): array
     {
-        $credits  = $this->getCredits();
+        $credits = $this->getCredits();
         $activity = $this->getActivity();
 
         // Aggregate spend by model from activity
@@ -118,7 +127,7 @@ class OpenRouterService
         if (is_array($activity)) {
             foreach ($activity as $item) {
                 $model = $item['model'] ?? 'unknown';
-                $cost  = $item['cost'] ?? 0;
+                $cost = $item['cost'] ?? 0;
                 $byModel[$model] = ($byModel[$model] ?? 0) + $cost;
             }
             arsort($byModel);
@@ -136,9 +145,9 @@ class OpenRouterService
         }
 
         return [
-            'credits'      => $credits,
-            'today_spend'  => round($todaySpend, 6),
-            'top_models'   => $byModel,
+            'credits' => $credits,
+            'today_spend' => round($todaySpend, 6),
+            'top_models' => $byModel,
             'activity_days' => is_array($activity) ? count($activity) : 0,
         ];
     }
