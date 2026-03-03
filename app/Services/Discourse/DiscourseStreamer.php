@@ -192,7 +192,9 @@ class DiscourseStreamer
         }
 
         if ($response->failed()) {
-            $this->recordFailure();
+            if (! $response->clientError()) {
+                $this->recordFailure();
+            }
             Log::warning('Discourse post failed', [
                 'status' => $response->status(),
                 'body' => $response->body(),
@@ -255,7 +257,9 @@ class DiscourseStreamer
         }
 
         if ($response->failed()) {
-            $this->recordFailure();
+            if (! $response->clientError()) {
+                $this->recordFailure();
+            }
             Log::warning('Discourse chat webhook failed', [
                 'status' => $response->status(),
                 'body' => $response->body(),

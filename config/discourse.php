@@ -41,7 +41,7 @@ return [
     | HTTP + Circuit Breaker
     |--------------------------------------------------------------------------
     */
-    'timeout' => (int) env('DISCOURSE_TIMEOUT_SECONDS', 15),
+    'timeout' => (int) env('DISCOURSE_TIMEOUT_SECONDS', 30),
     'connect_timeout' => (int) env('DISCOURSE_CONNECT_TIMEOUT_SECONDS', 5),
     'circuit_breaker_threshold' => (int) env('DISCOURSE_CIRCUIT_BREAKER_THRESHOLD', 5),
 ];

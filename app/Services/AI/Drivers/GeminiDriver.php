@@ -33,7 +33,12 @@ class GeminiDriver implements AIDriverInterface
         $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
         if ($content === null) {
-            throw new \Exception('Gemini API returned an unexpected response structure. Response: '.json_encode($data));
+            $finishReason = $data['candidates'][0]['finishReason'] ?? null;
+            if ($finishReason !== null) {
+                $content = '';
+            } else {
+                throw new \Exception('Gemini API returned an unexpected response structure. Response: '.json_encode($data));
+            }
         }
 
         // Extract token usage if available
@@ -140,7 +145,12 @@ class GeminiDriver implements AIDriverInterface
         // Otherwise extract text content
         $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
         if ($content === null) {
-            throw new \Exception('Gemini API returned unexpected response: '.json_encode($data));
+            $finishReason = $data['candidates'][0]['finishReason'] ?? null;
+            if ($finishReason !== null) {
+                $content = '';
+            } else {
+                throw new \Exception('Gemini API returned unexpected response: '.json_encode($data));
+            }
         }
 
         return [
