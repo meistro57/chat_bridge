@@ -18,7 +18,8 @@ class McpController extends Controller
 
         // Handle batch requests
         if (array_is_list($payload)) {
-            $responses = array_map(fn($req) => $this->processRequest($req), $payload);
+            $responses = array_map(fn ($req) => $this->processRequest($req), $payload);
+
             return response()->json($responses);
         }
 
@@ -34,7 +35,7 @@ class McpController extends Controller
         $method = $request['method'] ?? null;
         $params = $request['params'] ?? [];
 
-        if (!$method) {
+        if (! $method) {
             return $this->error($id, -32600, 'Invalid Request');
         }
 
@@ -51,7 +52,8 @@ class McpController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('MCP Error', ['error' => $e->getMessage(), 'method' => $method]);
-            return $this->error($id, -32603, 'Internal error: ' . $e->getMessage());
+
+            return $this->error($id, -32603, 'Internal error: '.$e->getMessage());
         }
     }
 
@@ -66,13 +68,13 @@ class McpController extends Controller
             'result' => [
                 'protocolVersion' => '2024-11-05',
                 'capabilities' => [
-                    'tools' => (object)[]
+                    'tools' => (object) [],
                 ],
                 'serverInfo' => [
                     'name' => 'chat-bridge',
-                    'version' => '1.0.0'
-                ]
-            ]
+                    'version' => '1.0.0',
+                ],
+            ],
         ];
     }
 
@@ -92,10 +94,10 @@ class McpController extends Controller
                         'inputSchema' => [
                             'type' => 'object',
                             'properties' => [
-                                'keyword' => ['type' => 'string']
+                                'keyword' => ['type' => 'string'],
                             ],
-                            'required' => ['keyword']
-                        ]
+                            'required' => ['keyword'],
+                        ],
                     ],
                     [
                         'name' => 'recent_chats',
@@ -103,9 +105,9 @@ class McpController extends Controller
                         'inputSchema' => [
                             'type' => 'object',
                             'properties' => [
-                                'limit' => ['type' => 'integer', 'default' => 10]
-                            ]
-                        ]
+                                'limit' => ['type' => 'integer', 'default' => 10],
+                            ],
+                        ],
                     ],
                     [
                         'name' => 'get_conversation',
@@ -113,21 +115,21 @@ class McpController extends Controller
                         'inputSchema' => [
                             'type' => 'object',
                             'properties' => [
-                                'conversation_id' => ['type' => 'string']
+                                'conversation_id' => ['type' => 'string'],
                             ],
-                            'required' => ['conversation_id']
-                        ]
+                            'required' => ['conversation_id'],
+                        ],
                     ],
                     [
                         'name' => 'get_stats',
                         'description' => 'Returns counts of conversations, messages, embeddings',
                         'inputSchema' => [
                             'type' => 'object',
-                            'properties' => []
-                        ]
-                    ]
-                ]
-            ]
+                            'properties' => [],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -139,7 +141,7 @@ class McpController extends Controller
         $name = $params['name'] ?? null;
         $arguments = $params['arguments'] ?? [];
 
-        if (!$name) {
+        if (! $name) {
             return $this->error($id, -32602, 'Invalid params: name is required');
         }
 
@@ -152,7 +154,7 @@ class McpController extends Controller
         };
 
         if ($result === null) {
-            return $this->error($id, -32601, 'Tool not found: ' . $name);
+            return $this->error($id, -32601, 'Tool not found: '.$name);
         }
 
         return [
@@ -162,10 +164,10 @@ class McpController extends Controller
                 'content' => [
                     [
                         'type' => 'text',
-                        'text' => json_encode($result, JSON_PRETTY_PRINT)
-                    ]
-                ]
-            ]
+                        'text' => json_encode($result, JSON_PRETTY_PRINT),
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -174,14 +176,16 @@ class McpController extends Controller
     protected function searchChats(array $args)
     {
         $keyword = $args['keyword'] ?? '';
-        if (!$keyword) return ['error' => 'Keyword is required'];
+        if (! $keyword) {
+            return ['error' => 'Keyword is required'];
+        }
 
         return Message::where('content', 'like', "%{$keyword}%")
             ->with(['conversation', 'persona'])
             ->latest()
             ->limit(10)
             ->get()
-            ->map(fn($m) => [
+            ->map(fn ($m) => [
                 'id' => $m->id,
                 'conversation_id' => $m->conversation_id,
                 'role' => $m->role,
@@ -194,10 +198,11 @@ class McpController extends Controller
     protected function recentChats(array $args)
     {
         $limit = $args['limit'] ?? 10;
+
         return Conversation::latest()
             ->limit($limit)
             ->get()
-            ->map(fn($c) => [
+            ->map(fn ($c) => [
                 'id' => $c->id,
                 'persona_a' => $c->personaA?->name,
                 'persona_b' => $c->personaB?->name,
@@ -209,21 +214,25 @@ class McpController extends Controller
     protected function getConversation(array $args)
     {
         $id = $args['conversation_id'] ?? null;
-        if (!$id) return ['error' => 'conversation_id is required'];
+        if (! $id) {
+            return ['error' => 'conversation_id is required'];
+        }
 
         $conversation = Conversation::with('messages.persona')->find($id);
-        if (!$conversation) return ['error' => 'Conversation not found'];
+        if (! $conversation) {
+            return ['error' => 'Conversation not found'];
+        }
 
         return [
             'id' => $conversation->id,
             'persona_a' => $conversation->personaA?->name,
             'persona_b' => $conversation->personaB?->name,
-            'messages' => $conversation->messages->map(fn($m) => [
+            'messages' => $conversation->messages->map(fn ($m) => [
                 'role' => $m->role,
                 'content' => $m->content,
                 'persona' => $m->persona?->name,
                 'created_at' => $m->created_at->toDateTimeString(),
-            ])
+            ]),
         ];
     }
 
@@ -245,8 +254,8 @@ class McpController extends Controller
             'id' => $id,
             'error' => [
                 'code' => $code,
-                'message' => $message
-            ]
+                'message' => $message,
+            ],
         ];
     }
 }

@@ -33,6 +33,8 @@ class Conversation extends Model
         'discord_webhook_url',
         'discord_thread_id',
         'discord_streaming_enabled',
+        'discourse_streaming_enabled',
+        'discourse_topic_id',
     ];
 
     protected $casts = [
@@ -44,6 +46,8 @@ class Conversation extends Model
         'stop_words' => 'json',
         'stop_word_threshold' => 'float',
         'discord_streaming_enabled' => 'boolean',
+        'discourse_streaming_enabled' => 'boolean',
+        'discourse_topic_id' => 'integer',
     ];
 
     public function messages(): HasMany

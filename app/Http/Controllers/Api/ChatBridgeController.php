@@ -19,12 +19,14 @@ class ChatBridgeController extends Controller
         $threadId = $request->input('bridge_thread_id');
         $userMessage = $request->input('message');
         $persona = $request->input('persona');
+        $metadata = $request->input('metadata');
 
         // 1. Get/Create Thread
         $thread = $this->historyStore->getOrCreateThread($threadId);
+        $this->historyStore->updatePersistentContext($thread, $metadata);
 
         // 2. Persist User Message
-        $this->historyStore->appendMessage($thread, 'user', $userMessage, $request->input('metadata'));
+        $this->historyStore->appendMessage($thread, 'user', $userMessage, $metadata);
 
         // 3. Prepare Agent
         $agent = app(ChatBridgeAgent::class);
@@ -33,7 +35,10 @@ class ChatBridgeController extends Controller
         // 4. Load History (Agent usually processes history internally if passed,
         // OR we manually feed it. Neuron Agent usually has run($messages) or interactions.
         // We will fetch history and prep it.)
-        $history = $this->historyStore->fetchRecentMessages($thread);
+        $history = $this->historyStore->fetchRecentMessages(
+            $thread,
+            (int) config('services.chat_bridge.history_limit', 120)
+        );
 
         // Note: fetchRecentMessages includes the just-saved user message?
         // Yes, if we saved it first.

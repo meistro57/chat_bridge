@@ -156,7 +156,7 @@ run_all_tests() {
 
     # Run core application tests
     echo -e "${CYAN}${BOLD}Running Core Application Tests...${NC}\n"
-    if run_in_app "php artisan test --colors=always"; then
+    if run_in_app "php artisan test --without-tty --colors=always"; then
         print_success "Core application tests passed!"
     else
         print_error "Some core application tests failed!"
@@ -180,7 +180,7 @@ run_all_tests() {
                     if [[ -d "Modules/$module/Tests" ]]; then
                         echo -e "${BLUE}Testing module: $module${NC}"
 
-                        if run_in_app "php artisan test \"Modules/$module/Tests\" --colors=always 2>/dev/null"; then
+                        if run_in_app "php artisan test --without-tty \"Modules/$module/Tests\" --colors=always 2>/dev/null"; then
                             print_success "Module $module tests passed!"
                         else
                             print_error "Module $module tests failed!"
@@ -210,7 +210,7 @@ run_feature_tests() {
 
     print_info "Executing feature test suite..."
 
-    if run_in_app "php artisan test --testsuite=Feature --colors=always"; then
+    if run_in_app "php artisan test --without-tty --testsuite=Feature --colors=always"; then
         print_success "Feature tests passed!"
     else
         print_error "Some feature tests failed!"
@@ -226,7 +226,7 @@ run_unit_tests() {
 
     print_info "Executing unit test suite..."
 
-    if run_in_app "php artisan test --testsuite=Unit --colors=always"; then
+    if run_in_app "php artisan test --without-tty --testsuite=Unit --colors=always"; then
         print_success "Unit tests passed!"
     else
         print_error "Some unit tests failed!"
@@ -267,7 +267,7 @@ run_specific_test() {
         local selected_file="${files[$((choice-1))]}"
         print_info "Running: $selected_file"
 
-        if run_in_app "php artisan test \"$selected_file\" --colors=always"; then
+        if run_in_app "php artisan test --without-tty \"$selected_file\" --colors=always"; then
             print_success "Test passed!"
         else
             print_error "Test failed!"
@@ -294,7 +294,7 @@ run_with_coverage() {
 
     mkdir -p "$COVERAGE_DIR"
 
-    if run_in_app "XDEBUG_MODE=coverage php artisan test --coverage --min=70 --colors=always"; then
+    if run_in_app "XDEBUG_MODE=coverage php artisan test --without-tty --coverage --min=70 --colors=always"; then
         print_success "Tests passed with sufficient coverage!"
     else
         print_warning "Check coverage report for details"
@@ -309,7 +309,7 @@ run_parallel_tests() {
 
     print_info "Executing tests in parallel mode..."
 
-    if run_in_app "php artisan test --parallel --colors=always"; then
+    if run_in_app "php artisan test --without-tty --parallel --colors=always"; then
         print_success "All parallel tests passed!"
     else
         print_error "Some parallel tests failed!"
@@ -333,9 +333,9 @@ run_failed_tests() {
 
     # Check for order-by support or fallback
     if run_in_app "php artisan test --help | grep -q \"order-by\""; then
-        CMD="php artisan test --order-by=defects --colors=always"
+        CMD="php artisan test --without-tty --order-by=defects --colors=always"
     else
-        CMD="php artisan test --colors=always"
+        CMD="php artisan test --without-tty --colors=always"
     fi
 
     if run_in_app "$CMD"; then
@@ -369,7 +369,7 @@ watch_tests() {
         clear
         print_section "Re-running Tests (File Changed)"
         if check_artisan_test; then
-            run_in_app "php artisan test --colors=always"
+            run_in_app "php artisan test --without-tty --colors=always"
         fi
         echo -e "\n${DIM}Waiting for changes...${NC}"
     done
@@ -388,7 +388,7 @@ run_docker_tests() {
     
     print_info "Using service: $SERVICE_NAME"
 
-    if run_in_app "php artisan test --colors=always"; then
+    if run_in_app "php artisan test --without-tty --colors=always"; then
         print_success "Docker tests passed!"
     else
         print_error "Docker tests failed!"
@@ -546,7 +546,7 @@ generate_coverage_html() {
 
     mkdir -p "$COVERAGE_DIR"
 
-    if run_in_app "XDEBUG_MODE=coverage php artisan test --coverage-html=\"$COVERAGE_DIR/html\" --colors=always"; then
+    if run_in_app "XDEBUG_MODE=coverage php artisan test --without-tty --coverage-html=\"$COVERAGE_DIR/html\" --colors=always"; then
         print_success "Coverage report generated!"
         print_info "Open: ${CYAN}$COVERAGE_DIR/html/index.html${NC}"
     else
@@ -645,7 +645,7 @@ run_quick_check() {
         print_warning "Check if 'nunomaduro/collision' is installed."
     else
         # Run in subshell to capture output without swallowing exit code
-        if run_in_app "php artisan test --testsuite=Unit --stop-on-failure --colors=always > /tmp/smoke_test.log 2>&1"; then
+        if run_in_app "php artisan test --without-tty --testsuite=Unit --stop-on-failure --colors=always > /tmp/smoke_test.log 2>&1"; then
             print_success "Basic tests working!"
         else
             print_error "Tests have issues"
@@ -678,7 +678,7 @@ run_filter_test() {
 
     print_info "Running tests matching: $filter"
 
-    if run_in_app "php artisan test --filter=\"$filter\" --colors=always"; then
+    if run_in_app "php artisan test --without-tty --filter=\"$filter\" --colors=always"; then
         print_success "Filtered tests passed!"
     else
         print_error "Filtered tests failed!"

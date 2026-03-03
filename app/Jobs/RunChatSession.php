@@ -13,10 +13,12 @@ use App\Services\AI\StreamingChunker;
 use App\Services\Broadcast\SafeBroadcaster;
 use App\Services\ConversationService;
 use App\Services\Discord\DiscordStreamer;
+use App\Services\Discourse\DiscourseStreamer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -37,6 +39,18 @@ class RunChatSession implements ShouldQueue
         public string $conversationId,
         public int $maxRounds = 20
     ) {}
+
+    /**
+     * Prevent overlapping workers from processing the same conversation.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping("run-chat-session:{$this->conversationId}"))->expireAfter($this->timeout + 60),
+        ];
+    }
 
     public function handle(
         ConversationService $service,
@@ -71,8 +85,13 @@ class RunChatSession implements ShouldQueue
             'persona_b' => $conversation->personaB->name,
         ]);
 
+        $discourseStreamer = app(DiscourseStreamer::class);
+
         if ($conversation->discord_thread_id === null) {
             $discordStreamer->startConversation($conversation);
+        }
+        if ($conversation->discourse_topic_id === null) {
+            $discourseStreamer->startConversation($conversation);
         }
 
         $round = 0;
@@ -297,6 +316,7 @@ class RunChatSession implements ShouldQueue
                 ]);
 
                 $discordStreamer->postMessage($conversation, $message, $round + 1);
+                $discourseStreamer->postMessage($conversation, $message, $round + 1);
 
                 // 6. Check Stop Words
                 if ($conversation->stop_word_detection && $stopWords->shouldStopWithThreshold(
@@ -332,6 +352,7 @@ class RunChatSession implements ShouldQueue
             ]);
 
             $discordStreamer->conversationCompleted($conversation, $totalMessages, $round, $duration);
+            $discourseStreamer->conversationCompleted($conversation, $totalMessages, $round, $duration);
             $this->notifyCompletion($conversation, $totalMessages, $round);
         } catch (\Throwable $e) {
             Log::error("Job failed for conversation {$this->conversationId}", [
@@ -351,6 +372,7 @@ class RunChatSession implements ShouldQueue
 
             $this->notifyFailure($conversation, $e->getMessage());
             $discordStreamer->conversationFailed($conversation, $e->getMessage());
+            $discourseStreamer->conversationFailed($conversation, $e->getMessage());
 
             throw $e;
         }
@@ -374,6 +396,7 @@ class RunChatSession implements ShouldQueue
 
             $this->notifyFailure($conversation, $exception->getMessage());
             app(DiscordStreamer::class)->conversationFailed($conversation, $exception->getMessage());
+            app(DiscourseStreamer::class)->conversationFailed($conversation, $exception->getMessage());
         }
     }
 

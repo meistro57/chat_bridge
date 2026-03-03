@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiKey;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,5 +107,117 @@ class PersonaTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('message', 'OpenAI service API key is not configured.');
+    }
+
+    public function test_generate_persona_falls_back_to_openrouter_when_openai_quota_is_exhausted(): void
+    {
+        config(['services.openai.key' => 'test-openai-key']);
+        config(['services.openai.model' => 'gpt-4o-mini']);
+        config(['services.openrouter.key' => 'test-openrouter-key']);
+
+        $user = User::factory()->create();
+
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response([
+                'error' => [
+                    'message' => 'You exceeded your current quota, please check your plan and billing details.',
+                    'type' => 'insufficient_quota',
+                    'code' => 'insufficient_quota',
+                ],
+            ], 429),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode([
+                            'name' => 'Fallback Architect',
+                            'system_prompt' => 'You are Fallback Architect. Evaluate architecture options, call out risks early, and keep guidance practical for production teams.',
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ]],
+                'usage' => [
+                    'prompt_tokens' => 40,
+                    'completion_tokens' => 55,
+                    'total_tokens' => 95,
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('personas.generate'), [
+            'idea' => 'A pragmatic system design reviewer.',
+            'tone' => 'Direct',
+            'audience' => 'Backend engineers',
+            'style' => 'Structured',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('name', 'Fallback Architect');
+        $response->assertJsonPath('system_prompt', 'You are Fallback Architect. Evaluate architecture options, call out risks early, and keep guidance practical for production teams.');
+
+        Http::assertSentCount(2);
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->url() !== 'https://openrouter.ai/api/v1/chat/completions') {
+                return false;
+            }
+
+            return ($request->data()['model'] ?? null) === 'openai/gpt-4o-mini';
+        });
+    }
+
+    public function test_generate_persona_uses_user_openrouter_key_for_fallback_when_service_key_missing(): void
+    {
+        config(['services.openai.key' => 'test-openai-key']);
+        config(['services.openai.model' => 'gpt-4o-mini']);
+        config(['services.openrouter.key' => null]);
+
+        $user = User::factory()->create();
+        ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openrouter',
+            'key' => 'test-user-openrouter-key',
+            'is_active' => true,
+        ]);
+
+        Http::fake([
+            'https://api.openai.com/v1/chat/completions' => Http::response([
+                'error' => [
+                    'message' => 'You exceeded your current quota, please check your plan and billing details.',
+                    'type' => 'insufficient_quota',
+                    'code' => 'insufficient_quota',
+                ],
+            ], 429),
+            'https://openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [[
+                    'message' => [
+                        'content' => json_encode([
+                            'name' => 'Context Navigator',
+                            'system_prompt' => 'You are Context Navigator. Build consistent summaries from complete source context and flag assumptions explicitly.',
+                        ], JSON_THROW_ON_ERROR),
+                    ],
+                ]],
+                'usage' => [
+                    'prompt_tokens' => 40,
+                    'completion_tokens' => 55,
+                    'total_tokens' => 95,
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('personas.generate'), [
+            'idea' => 'A consistent summarizer that avoids losing context.',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('name', 'Context Navigator');
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->url() !== 'https://openrouter.ai/api/v1/chat/completions') {
+                return false;
+            }
+
+            $authorization = $request->header('Authorization');
+
+            return isset($authorization[0]) && $authorization[0] === 'Bearer test-user-openrouter-key';
+        });
     }
 }

@@ -103,6 +103,9 @@ class ChatController extends Controller
                 'enabled' => (bool) $request->user()->discord_streaming_default,
                 'webhook_url' => $request->user()->discord_webhook_url,
             ],
+            'discourseDefaults' => [
+                'enabled' => (bool) $request->user()->discourse_streaming_default,
+            ],
         ]);
     }
 
@@ -145,6 +148,10 @@ class ChatController extends Controller
                 ? $request->boolean('discord_streaming_enabled')
                 : (bool) auth()->user()->discord_streaming_default,
             'discord_webhook_url' => $validated['discord_webhook_url'] ?? null,
+            'discourse_streaming_enabled' => $request->has('discourse_streaming_enabled')
+                ? $request->boolean('discourse_streaming_enabled')
+                : (bool) auth()->user()->discourse_streaming_default,
+            'discourse_topic_id' => $validated['discourse_topic_id'] ?? null,
         ]);
 
         $conversation->messages()->create([

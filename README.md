@@ -206,6 +206,7 @@ Orchestrate AI discussions with:
 - 💰 **Live pricing display for 344+ models**
 - 📡 Live status broadcasting
 - 🔔 Optional Discord broadcast per conversation (webhook + thread support)
+- 🗂️ Optional Discourse broadcast per conversation (auto-create topic or post into existing topic)
 - 💾 Complete conversation history
 - 📥 Transcript export (CSV)
 
@@ -732,6 +733,48 @@ The Docker deployment includes:
 - **redis**: Redis for caching and queue
 - **qdrant**: Vector database for RAG
 
+### Full System Refresh & Repair
+
+Use `refresh.sh` when you want a complete rebuild + validation pass.
+
+```bash
+# Full rebuild, startup checks, tests, and Codex verification
+./refresh.sh
+
+# Faster path (skip image rebuild)
+./refresh.sh --quick
+```
+
+What `refresh.sh` now guarantees before it exits successfully:
+
+1. Containers are started and dependencies become healthy (`postgres`, `redis`).
+2. Laravel caches are cleared and migrations are applied.
+3. Queue workers are restarted (`php artisan queue:restart`).
+4. Web endpoint responds on `http://localhost:8000`.
+5. Laravel boot check passes (`php artisan about`).
+6. Full test suite passes (`php artisan test --compact`), plus module tests under `Modules/*/Tests` when present.
+7. Built-in Codex integration passes checks:
+   - `boost.json` includes `codex`
+   - Codex CLI is executable in the app container
+   - `services.codex.home` exists
+   - OpenAI service key wiring is present
+
+Optional flags:
+
+```bash
+# Skip runtime frontend build check step
+./refresh.sh --skip-build
+
+# Skip tests (not recommended)
+./refresh.sh --skip-tests
+
+# Skip Codex internal verification
+./refresh.sh --skip-codex-check
+
+# Wipe Docker volumes (destructive)
+./refresh.sh --clean-volumes
+```
+
 ### Initialize RAG
 
 After starting Docker services:
@@ -850,6 +893,8 @@ This admin user is automatically created with full admin rights during installat
     - **Threshold**: Detection sensitivity (0.1-1.0)
     - **Discord Broadcast** (optional): Stream conversation updates to Discord
     - **Discord Webhook Override** (optional): Leave blank to use your profile/system default
+    - **Discourse Broadcast** (optional): Stream conversation updates to Discourse
+    - **Discourse Topic ID** (optional): Post into an existing topic; leave empty to auto-create
 6. Click "Begin Simulation"
 7. Watch the real-time conversation unfold!
 
@@ -1051,6 +1096,17 @@ DISCORD_STREAMING_ENABLED=true
 DISCORD_THREAD_AUTO_CREATE=true
 DISCORD_CIRCUIT_BREAKER_THRESHOLD=5
 
+# Discourse conversation broadcasting
+DISCOURSE_STREAMING_ENABLED=false
+# DISCOURSE_BASE_URL=https://your-discourse.example.com
+# DISCOURSE_API_KEY=your-discourse-api-key
+# DISCOURSE_API_USERNAME=system
+# DISCOURSE_DEFAULT_CATEGORY_ID=12
+# DISCOURSE_DEFAULT_TAGS=chat-bridge,ai-session
+DISCOURSE_TIMEOUT_SECONDS=15
+DISCOURSE_CONNECT_TIMEOUT_SECONDS=5
+DISCOURSE_CIRCUIT_BREAKER_THRESHOLD=5
+
 # Add your AI provider keys to database via UI
 # DO NOT store them in .env for security
 ```
@@ -1084,6 +1140,8 @@ php artisan test --coverage
 # Use the interactive test runner
 ./run_tests.sh
 ```
+
+`run_tests.sh` auto-detects Docker and executes tests inside the running app container when available.
 
 **Or use the System Diagnostics panel** at `/admin/system` to run tests via the web interface!
 
@@ -1127,6 +1185,70 @@ Also confirm the conversation has **Discord Broadcast** enabled and that either:
 - conversation webhook override is set, or
 - user profile default webhook is set, or
 - global `DISCORD_WEBHOOK_URL` is configured.
+
+### Discourse Broadcast Setup (Complete)
+
+Use this checklist to make Discourse accept Chat Bridge messages.
+
+1. In Discourse Admin, create a category for AI session logs (optional but recommended), and note its numeric category ID.
+2. Ensure tags are enabled in Discourse and create tags you want Chat Bridge to use (example: `chat-bridge`).
+3. Create or choose a service account user in Discourse that can post in the target category.
+4. Generate an API key in Discourse:
+   - Admin panel: `API` -> `New API Key`.
+   - Set a description like `Chat Bridge Stream`.
+   - Scope: `Global` (or category-limited scope if your Discourse version supports it).
+   - Allowed user: the service account from step 3.
+5. Set Chat Bridge environment variables:
+
+```bash
+DISCOURSE_STREAMING_ENABLED=true
+DISCOURSE_BASE_URL=https://your-discourse.example.com
+DISCOURSE_API_KEY=your-generated-api-key
+DISCOURSE_API_USERNAME=system
+DISCOURSE_DEFAULT_CATEGORY_ID=12
+DISCOURSE_DEFAULT_TAGS=chat-bridge,ai-session
+DISCOURSE_TIMEOUT_SECONDS=15
+DISCOURSE_CONNECT_TIMEOUT_SECONDS=5
+DISCOURSE_CIRCUIT_BREAKER_THRESHOLD=5
+```
+
+6. Clear and reload config, then restart queue workers:
+
+```bash
+php artisan optimize:clear
+php artisan queue:restart
+```
+
+7. In Chat Bridge `Create Session`:
+   - Enable `Discourse Broadcast`.
+   - Optional: fill `Discourse Topic ID` to append into an existing topic.
+   - Leave Topic ID blank to auto-create a new topic for the session.
+
+8. Validate connectivity with a real session:
+   - Start a short 1-2 round conversation.
+   - Confirm Discourse receives:
+     - starter topic post,
+     - live turn posts,
+     - completion or failure post.
+
+### Discourse Broadcast Not Posting
+
+If messages are not showing in Discourse:
+
+1. Verify base URL has no path suffix (use root forum URL only):
+   - Good: `https://forum.example.com`
+   - Bad: `https://forum.example.com/latest`
+2. Verify API user can post in the configured category.
+3. Verify API key is active and not revoked.
+4. Verify queue worker is running (`php artisan queue:work`).
+5. Verify conversation-level toggle is enabled on the session.
+6. Check logs for request failures:
+
+```bash
+tail -f storage/logs/laravel.log
+```
+
+Look for entries containing `Discourse post failed` or `Discourse streaming failed`.
 
 ### Broadcast Payload Too Large
 

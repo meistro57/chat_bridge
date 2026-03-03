@@ -92,6 +92,9 @@ export default function Show({ conversation, stopSignal }) {
     const streamingContentRef = useRef('');
     const streamingSpeakerRef = useRef(null);
     const logCounterRef = useRef(0);
+    const terminalStatusRef = useRef(['failed', 'completed'].includes(conversation.status));
+
+    const isTerminalStatus = (nextStatus) => ['failed', 'completed'].includes(nextStatus);
 
     const appendLiveLog = (level, event, details = '') => {
         const nextId = logCounterRef.current + 1;
@@ -112,6 +115,11 @@ export default function Show({ conversation, stopSignal }) {
         appendLiveLog('info', 'channel.subscribed', `conversation.${conversation.id}`);
         
         channel.listen('.message.chunk', (e) => {
+            if (terminalStatusRef.current) {
+                appendLiveLog('debug', 'message.chunk.ignored', 'terminal-status');
+                return;
+            }
+
             setStreamingSpeaker(e.personaName);
             streamingSpeakerRef.current = e.personaName;
             setStreamingContent(prev => prev + e.chunk);
@@ -120,6 +128,11 @@ export default function Show({ conversation, stopSignal }) {
         });
 
         channel.listen('.message.completed', (e) => {
+            if (terminalStatusRef.current) {
+                appendLiveLog('debug', 'message.completed.ignored', 'terminal-status');
+                return;
+            }
+
             const content = e?.message?.content ?? streamingContentRef.current;
             const personaName = e?.personaName ?? streamingSpeakerRef.current ?? null;
 
@@ -148,9 +161,16 @@ export default function Show({ conversation, stopSignal }) {
         });
 
         channel.listen('.conversation.status.updated', (e) => {
-            setStatus(e.conversation.status);
-            appendLiveLog('warn', 'conversation.status.updated', `status=${e.conversation.status}`);
-            if (e.conversation.status === 'completed') {
+            const nextStatus = e.conversation.status;
+            setStatus(nextStatus);
+            terminalStatusRef.current = isTerminalStatus(nextStatus);
+            appendLiveLog('warn', 'conversation.status.updated', `status=${nextStatus}`);
+
+            if (terminalStatusRef.current) {
+                setStreamingContent('');
+                setStreamingSpeaker(null);
+                streamingContentRef.current = '';
+                streamingSpeakerRef.current = null;
                 setIsStopping(false);
             }
         });

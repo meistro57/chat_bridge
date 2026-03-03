@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\GeneratePersonaRequest;
 use App\Models\Persona;
+use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
+use App\Services\AI\Drivers\MockDriver;
 use App\Services\AI\Drivers\OpenAIDriver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -113,6 +116,8 @@ class PersonaController extends Controller
             new MessageData('user', $context),
         ]);
 
+        $parsed = [];
+
         try {
             $driver = new OpenAIDriver(
                 apiKey: $openAiKey,
@@ -121,9 +126,38 @@ class PersonaController extends Controller
             $response = $driver->chat($messages, 0.7);
             $parsed = $this->extractPersonaJson($response->content);
         } catch (\Throwable $exception) {
-            return response()->json([
-                'message' => 'Failed to generate persona. '.$exception->getMessage(),
-            ], 422);
+            if ($this->shouldFallbackToOpenRouter($exception)) {
+                try {
+                    $openAiModel = (string) config('services.openai.model', 'gpt-4o-mini');
+                    $openRouterModel = $this->toOpenRouterModel($openAiModel);
+
+                    Log::warning('Persona generation falling back to OpenRouter after OpenAI quota error', [
+                        'openai_model' => $openAiModel,
+                        'openrouter_model' => $openRouterModel,
+                    ]);
+
+                    $fallbackDriver = app(AIManager::class)->createOpenRouterDriver($openRouterModel);
+
+                    if ($fallbackDriver instanceof MockDriver) {
+                        return response()->json([
+                            'message' => 'Failed to generate persona. OpenAI credits were exhausted and no OpenRouter API key is configured (user or system).',
+                        ], 422);
+                    }
+
+                    $response = $fallbackDriver->chat($messages, 0.7);
+                    $parsed = $this->extractPersonaJson($response->content);
+                } catch (\Throwable $fallbackException) {
+                    return response()->json([
+                        'message' => 'Failed to generate persona. OpenAI credits were exhausted and OpenRouter fallback failed. '.$fallbackException->getMessage(),
+                    ], 422);
+                }
+            }
+
+            if ($parsed === []) {
+                return response()->json([
+                    'message' => 'Failed to generate persona. '.$exception->getMessage(),
+                ], 422);
+            }
         }
 
         if (! isset($parsed['name'], $parsed['system_prompt'])) {
@@ -173,5 +207,48 @@ class PersonaController extends Controller
             'name' => mb_substr($name, 0, 80),
             'system_prompt' => mb_substr($systemPrompt, 0, 4000),
         ];
+    }
+
+    private function shouldFallbackToOpenRouter(\Throwable $exception): bool
+    {
+        $patterns = [
+            'insufficient_quota',
+            'exceeded your current quota',
+            'billing_hard_limit_reached',
+            'billing hard limit',
+            'credit balance is too low',
+            'not enough credits',
+            'quota exceeded',
+            'status code 429',
+            'http request returned status code 429',
+        ];
+
+        $current = $exception;
+        while ($current !== null) {
+            if ((int) $current->getCode() === 429) {
+                return true;
+            }
+
+            $message = strtolower($current->getMessage());
+
+            foreach ($patterns as $pattern) {
+                if (str_contains($message, $pattern)) {
+                    return true;
+                }
+            }
+
+            $current = $current->getPrevious();
+        }
+
+        return false;
+    }
+
+    private function toOpenRouterModel(string $openAiModel): string
+    {
+        if (str_contains($openAiModel, '/')) {
+            return $openAiModel;
+        }
+
+        return 'openai/'.$openAiModel;
     }
 }

@@ -99,6 +99,6 @@ class ProviderModelPricingTest extends TestCase
         $this->assertNotNull($storedPrice);
         $this->assertSame(0.15, $storedPrice->prompt_per_million);
         $this->assertSame(0.6, $storedPrice->completion_per_million);
-        $this->assertSame(2, Cache::get('analytics:pricing:version'));
+        $this->assertSame(2, (int) Cache::get('analytics:pricing:version'));
     }
 }

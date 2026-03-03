@@ -29,6 +29,7 @@ class User extends Authenticatable
         'notification_preferences',
         'discord_webhook_url',
         'discord_streaming_default',
+        'discourse_streaming_default',
     ];
 
     /**
@@ -61,6 +62,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'notification_preferences' => 'json',
             'discord_streaming_default' => 'boolean',
+            'discourse_streaming_default' => 'boolean',
         ];
     }
 

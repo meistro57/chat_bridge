@@ -37,6 +37,8 @@ class StoreChatRequest extends FormRequest
             'notifications_enabled' => ['boolean'],
             'discord_streaming_enabled' => ['boolean'],
             'discord_webhook_url' => ['nullable', 'string', 'url'],
+            'discourse_streaming_enabled' => ['boolean'],
+            'discourse_topic_id' => ['nullable', 'integer', 'min:1'],
         ];
     }
 
@@ -48,6 +50,10 @@ class StoreChatRequest extends FormRequest
 
         if ($this->has('discord_streaming_enabled')) {
             $payload['discord_streaming_enabled'] = $this->boolean('discord_streaming_enabled');
+        }
+
+        if ($this->has('discourse_streaming_enabled')) {
+            $payload['discourse_streaming_enabled'] = $this->boolean('discourse_streaming_enabled');
         }
 
         $this->merge($payload);

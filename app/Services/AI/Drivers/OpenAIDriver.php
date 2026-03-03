@@ -25,7 +25,7 @@ class OpenAIDriver implements AIDriverInterface
         $response = $this->sendChatRequest($messages, false);
 
         if ($response->failed()) {
-            throw new \Exception('OpenAI API Error: '.$response->body());
+            throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
         }
 
         $data = $response->json();
@@ -53,7 +53,7 @@ class OpenAIDriver implements AIDriverInterface
         $response = $this->sendChatRequest($messages, true);
 
         if ($response->failed()) {
-            throw new \Exception('OpenAI API Error: '.$response->body());
+            throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
         }
 
         $body = $response->toPsrResponse()->getBody();
@@ -94,7 +94,7 @@ class OpenAIDriver implements AIDriverInterface
         $response = $this->sendToolChatRequest($messages, $tools);
 
         if ($response->failed()) {
-            throw new \Exception('OpenAI API Error: '.$response->body());
+            throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
         }
 
         $data = $response->json();

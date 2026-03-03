@@ -84,6 +84,7 @@ return [
 
     'chat_bridge' => [
         'token' => env('CHAT_BRIDGE_TOKEN'),
+        'history_limit' => env('CHAT_BRIDGE_HISTORY_LIMIT', 120),
     ],
 
 ];

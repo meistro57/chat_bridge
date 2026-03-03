@@ -4,6 +4,8 @@ namespace App\Services\Discord;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -99,7 +101,7 @@ class DiscordStreamer
             );
 
             return $threadId;
-        }, 'startConversation');
+        }, 'startConversation', $conversation);
     }
 
     /**
@@ -154,7 +156,7 @@ class DiscordStreamer
                     }
                 }
             }
-        }, 'postMessage');
+        }, 'postMessage', $conversation);
     }
 
     /**
@@ -204,7 +206,7 @@ class DiscordStreamer
                     ]);
                 }
             }
-        }, 'conversationCompleted');
+        }, 'conversationCompleted', $conversation);
     }
 
     /**
@@ -249,7 +251,7 @@ class DiscordStreamer
                     ]);
                 }
             }
-        }, 'conversationFailed');
+        }, 'conversationFailed', $conversation);
     }
 
     /**
@@ -331,10 +333,24 @@ class DiscordStreamer
     /**
      * Wrap a Discord operation so failures never crash the conversation.
      */
-    protected function safeCall(callable $operation, string $context): mixed
+    protected function safeCall(callable $operation, string $context, ?Conversation $conversation = null): mixed
     {
         try {
-            return $operation();
+            if ($conversation === null) {
+                return $operation();
+            }
+
+            return Cache::lock("discord.stream.{$conversation->id}", 30)->block(5, function () use ($operation) {
+                return $operation();
+            });
+        } catch (LockTimeoutException $e) {
+            $this->recordFailure();
+            Log::warning("Discord streaming lock timeout: {$context}", [
+                'error' => $e->getMessage(),
+                'consecutive_failures' => $this->consecutiveFailures,
+            ]);
+
+            return null;
         } catch (\Throwable $e) {
             $this->recordFailure();
             Log::warning("Discord streaming failed: {$context}", [

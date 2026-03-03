@@ -22,7 +22,13 @@ const FALLBACK_MODELS_BY_PROVIDER = {
     ],
 };
 
-export default function Create({ personas, template, openRouterModels = [], discordDefaults = {} }) {
+export default function Create({
+    personas,
+    template,
+    openRouterModels = [],
+    discordDefaults = {},
+    discourseDefaults = {},
+}) {
     const { flash } = usePage().props;
     const selectedPersonaA = personas.find((persona) => persona.id === (template?.persona_a_id ?? ''));
     const selectedPersonaB = personas.find((persona) => persona.id === (template?.persona_b_id ?? ''));
@@ -43,12 +49,16 @@ export default function Create({ personas, template, openRouterModels = [], disc
         notifications_enabled: false,
         discord_streaming_enabled: Boolean(discordDefaults.enabled ?? false),
         discord_webhook_url: discordDefaults.webhook_url ?? '',
+        discourse_streaming_enabled: Boolean(discourseDefaults.enabled ?? false),
+        discourse_topic_id: '',
     });
 
     transform((payload) => ({
         ...payload,
         notifications_enabled: Boolean(payload.notifications_enabled),
         discord_streaming_enabled: Boolean(payload.discord_streaming_enabled),
+        discourse_streaming_enabled: Boolean(payload.discourse_streaming_enabled),
+        discourse_topic_id: payload.discourse_topic_id ? Number(payload.discourse_topic_id) : null,
         stop_words: payload.stop_word_detection && payload.stop_words
             ? payload.stop_words.split(',').map((word) => word.trim()).filter((word) => word.length > 0)
             : [],
@@ -497,6 +507,19 @@ export default function Create({ personas, template, openRouterModels = [], disc
                                 </label>
                                 <p className="text-xs text-zinc-600 ml-7">Broadcast conversation updates to Discord when enabled.</p>
                             </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.discourse_streaming_enabled}
+                                        onChange={e => setData('discourse_streaming_enabled', e.target.checked)}
+                                        className="w-5 h-5 rounded bg-zinc-900/50 border-white/10"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Discourse Broadcast</span>
+                                </label>
+                                <p className="text-xs text-zinc-600 ml-7">Post live conversation updates into Discourse topics.</p>
+                            </div>
                         </div>
 
                         {data.discord_streaming_enabled && (
@@ -511,6 +534,22 @@ export default function Create({ personas, template, openRouterModels = [], disc
                                 />
                                 {errors.discord_webhook_url && <div className="text-red-400 text-sm">{errors.discord_webhook_url}</div>}
                                 <p className="text-xs text-zinc-600">Leave blank to use your profile default or system webhook.</p>
+                            </div>
+                        )}
+
+                        {data.discourse_streaming_enabled && (
+                            <div className="pt-4 border-t border-white/5 space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Discourse Topic ID (optional)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={data.discourse_topic_id}
+                                    onChange={e => setData('discourse_topic_id', e.target.value)}
+                                    placeholder="123"
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
+                                />
+                                {errors.discourse_topic_id && <div className="text-red-400 text-sm">{errors.discourse_topic_id}</div>}
+                                <p className="text-xs text-zinc-600">Leave blank to create a new topic automatically.</p>
                             </div>
                         )}
 
