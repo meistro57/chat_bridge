@@ -2,7 +2,11 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
-export default function Edit({ apiKey, providers }) {
+const DEFAULT_PROVIDERS = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'bedrock', 'ollama', 'lmstudio'];
+
+export default function Edit({ apiKey, providers = [] }) {
+    const providerOptions = Array.isArray(providers) && providers.length > 0 ? providers : DEFAULT_PROVIDERS;
+
     const { data, setData, put, processing, errors } = useForm({
         provider: apiKey.provider,
         label: apiKey.label || '',
@@ -12,7 +16,7 @@ export default function Edit({ apiKey, providers }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        put(`/api-keys/${apiKey.id}`);
+        put(route('api-keys.update', apiKey.id));
     };
 
     return (
@@ -39,7 +43,9 @@ export default function Edit({ apiKey, providers }) {
                                     onChange={e => setData('provider', e.target.value)}
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 appearance-none outline-none focus:border-purple-500 transition-all uppercase"
                                 >
-                                    {providers.map(p => <option key={p} value={p}>{p}</option>)}
+                                    {providerOptions.map((p) => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
                                 </select>
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
@@ -85,7 +91,7 @@ export default function Edit({ apiKey, providers }) {
                         <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-6"></div>
 
                         <div className="flex items-center justify-end gap-4">
-                            <Link href="/api-keys" className="px-6 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium">
+                            <Link href={route('api-keys.index')} className="px-6 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors text-sm font-medium">
                                 Cancel
                             </Link>
                             <button 

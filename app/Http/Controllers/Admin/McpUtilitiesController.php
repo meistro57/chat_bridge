@@ -6,8 +6,11 @@ use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PopulateEmbeddingsRequest;
 use App\Models\Message;
+use App\Services\AI\AIManager;
 use App\Services\AI\EmbeddingService;
+use App\Support\McpTrafficMonitor;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +26,10 @@ class McpUtilitiesController extends Controller
         return Inertia::render('Admin/McpUtilities', [
             'health' => $health,
             'stats' => $stats,
+            'traffic' => [
+                'events' => app(McpTrafficMonitor::class)->recent(40),
+            ],
+            'ollamaToolsSupported' => $this->resolveOllamaToolsSupport(),
             'endpoints' => [
                 $this->endpointDefinition(
                     method: 'GET',
@@ -66,7 +73,25 @@ class McpUtilitiesController extends Controller
                     description: 'Generate embeddings for messages that are missing them.',
                     baseUrl: $baseUrl,
                 ),
+                $this->endpointDefinition(
+                    method: 'GET',
+                    path: '/admin/mcp-utilities/traffic?limit=40&provider=ollama',
+                    description: 'Recent in-app MCP tool traffic (filterable by provider).',
+                    baseUrl: $baseUrl,
+                ),
             ],
+        ]);
+    }
+
+    public function traffic(Request $request, McpTrafficMonitor $trafficMonitor): JsonResponse
+    {
+        $limit = max(1, min((int) $request->query('limit', 40), 250));
+        $provider = $request->query('provider');
+        $provider = is_string($provider) && trim($provider) !== '' ? trim($provider) : null;
+
+        return response()->json([
+            'ok' => true,
+            'events' => $trafficMonitor->recent($limit, $provider),
         ]);
     }
 
@@ -185,5 +210,19 @@ class McpUtilitiesController extends Controller
             'coverage_percent' => $coveragePercent,
             'checked_at' => now()->toIso8601String(),
         ];
+    }
+
+    private function resolveOllamaToolsSupport(): bool
+    {
+        try {
+            $driver = app(AIManager::class)->driverForProvider(
+                'ollama',
+                (string) config('services.ollama.model', 'llama3.1')
+            );
+
+            return $driver->supportsTools();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\AI\EmbeddingService;
+use App\Support\McpTrafficMonitor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -36,8 +37,34 @@ class AdminMcpUtilitiesTest extends TestCase
                 ->has('payload.messages_count')
                 ->has('payload.embeddings_count')
             )
-            ->has('endpoints', 7)
+            ->has('traffic.events')
+            ->has('ollamaToolsSupported')
+            ->has('endpoints', 8)
         );
+    }
+
+    public function test_admin_can_fetch_mcp_traffic_feed(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        app(McpTrafficMonitor::class)->record([
+            'tool_name' => 'get_mcp_stats',
+            'provider' => 'openai',
+            'model' => 'gpt-5',
+            'arguments' => [],
+            'result' => ['conversations_count' => 10],
+            'duration_ms' => 12.4,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->getJson(route('admin.mcp.utilities.traffic', ['provider' => 'openai', 'limit' => 10]));
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('events.0.tool_name', 'get_mcp_stats');
+        $response->assertJsonPath('events.0.provider', 'openai');
     }
 
     public function test_admin_can_compare_embedding_coverage(): void
@@ -122,6 +149,10 @@ class AdminMcpUtilitiesTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('admin.mcp.utilities.embeddings.populate'), ['limit' => 10])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->getJson(route('admin.mcp.utilities.traffic'))
             ->assertForbidden();
     }
 }

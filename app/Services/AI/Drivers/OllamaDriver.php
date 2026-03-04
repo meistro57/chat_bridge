@@ -4,6 +4,7 @@ namespace App\Services\AI\Drivers;
 
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Data\AIResponse;
+use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 
@@ -93,12 +94,89 @@ class OllamaDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        throw new \Exception(get_class($this).' does not support tool calling yet');
+        $response = Http::post("{$this->baseUrl}/api/chat", [
+            'model' => $this->model,
+            'messages' => $messages->map->toArray()->all(),
+            'tools' => $tools->map(fn (ToolDefinition $tool) => $tool->toOpenAISchema())->all(),
+            'stream' => false,
+        ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Ollama API Error: '.$response->body());
+        }
+
+        $data = $response->json();
+        $message = $data['message'] ?? null;
+        if (! is_array($message)) {
+            throw new \Exception('Ollama API returned an unexpected tool response structure. Response: '.json_encode($data));
+        }
+
+        $promptTokens = $data['prompt_eval_count'] ?? null;
+        $completionTokens = $data['eval_count'] ?? null;
+        $totalTokens = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+        $this->lastTokenUsage = $totalTokens;
+
+        $toolCalls = [];
+        $rawToolCalls = $message['tool_calls'] ?? [];
+        if (is_array($rawToolCalls)) {
+            foreach ($rawToolCalls as $rawToolCall) {
+                if (! is_array($rawToolCall)) {
+                    continue;
+                }
+
+                $function = $rawToolCall['function'] ?? [];
+                if (! is_array($function)) {
+                    continue;
+                }
+
+                $name = $function['name'] ?? '';
+                if (! is_string($name) || trim($name) === '') {
+                    continue;
+                }
+
+                $arguments = $function['arguments'] ?? [];
+                if (is_string($arguments)) {
+                    $decoded = json_decode($arguments, true);
+                    $arguments = is_array($decoded) ? $decoded : [];
+                }
+                if (! is_array($arguments)) {
+                    $arguments = [];
+                }
+
+                $toolCalls[] = [
+                    'id' => is_string($rawToolCall['id'] ?? null) ? $rawToolCall['id'] : uniqid('call_', true),
+                    'name' => $name,
+                    'arguments' => $arguments,
+                ];
+            }
+        }
+
+        if ($toolCalls !== []) {
+            return [
+                'response' => null,
+                'tool_calls' => $toolCalls,
+            ];
+        }
+
+        $content = $message['content'] ?? null;
+        if (! is_string($content)) {
+            throw new \Exception('Ollama API returned an unexpected tool response content. Response: '.json_encode($data));
+        }
+
+        return [
+            'response' => new AIResponse(
+                content: $content,
+                promptTokens: $promptTokens,
+                completionTokens: $completionTokens,
+                totalTokens: $totalTokens
+            ),
+            'tool_calls' => [],
+        ];
     }
 
     public function supportsTools(): bool
     {
-        return false;
+        return true;
     }
 
     protected function readLine($stream): string

@@ -18,10 +18,22 @@ All notable changes to Chat Bridge will be documented in this file.
   - stop-signal reads now fail open and return `stop_requested=false` instead of breaking the endpoint.
 - Header live status widget now remains functional even when Redis/cache connectivity is temporarily unavailable.
 
-### 🤖 Empty-Turn Recovery
-- Improved empty-turn handling before fallback message insertion:
-  - whitespace-only streams now trigger non-stream fallback generation.
-  - added configurable rescue generation attempts (`AI_TURN_RESCUE_ATTEMPTS`) before static fallback text is used.
+### 🤖 Ollama Model + Tooling Support
+- Expanded Ollama model discovery to query both common local endpoints:
+  - Ollama native tags (`/api/tags`)
+  - OpenAI-compatible model listing (`/v1/models` or `/models`)
+- Added Ollama tool-calling support in the provider driver via `/api/chat` tool payloads.
+- MCP traffic tooling now records provider/model context so Ollama tool activity is visible in admin monitoring.
+
+### 🧭 MCP Utilities Traffic Watch
+- Added MCP traffic monitor support class and event logging.
+- Added admin MCP traffic endpoint: `/admin/mcp-utilities/traffic`.
+- Added live traffic controls in the MCP Utilities page to inspect recent tool calls by provider (including Ollama).
+
+### 🚨 Empty-Turn Failure Behavior
+- Removed the static assistant fallback text (`"I need to regroup for a moment..."`) from runtime recovery.
+- Empty/whitespace turn failures now exhaust retry/rescue attempts and then mark the conversation failed with structured context for debugging.
+- Session UI now surfaces `last_error_context` metadata to make provider/model failure diagnosis explicit.
 
 ## [Unreleased] - 2026-02-27
 

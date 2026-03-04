@@ -298,20 +298,33 @@ class RunChatSession implements ShouldQueue
                 }
 
                 if (trim($fullResponse) === '') {
-                    $fullResponse = $this->fallbackMessage();
-
-                    Log::warning('Turn produced empty response after retries; using fallback message', [
-                        'conversation_id' => $this->conversationId,
+                    $failureContext = [
+                        'code' => 'empty_turn_exhausted',
+                        'conversation_id' => (string) $this->conversationId,
                         'round' => $round + 1,
                         'persona' => $currentPersona->name,
+                        'provider' => $this->providerForPersona($conversation, $currentPersona),
+                        'model' => $this->modelForPersona($conversation, $currentPersona),
                         'chunk_count' => $chunkCount,
                         'empty_retry_attempts' => $emptyRetryAttempt,
                         'max_empty_retries' => $maxEmptyTurnRetries,
                         'exception_retry_attempts' => $exceptionRetryAttempt,
                         'max_exception_retries' => $maxTurnExceptionRetries,
                         'retryable_exception' => $retryableExceptionAfterRetries?->getMessage(),
-                        'fallback_length' => strlen($fullResponse),
-                    ]);
+                        'rescue_attempts' => $maxTurnRescueAttempts,
+                    ];
+
+                    Log::error('Turn produced empty response after retries; failing conversation', $failureContext);
+
+                    $errorMessage = sprintf(
+                        'Turn failed after retries: empty response from %s/%s (round %d, persona %s).',
+                        (string) ($failureContext['provider'] ?? 'unknown'),
+                        (string) ($failureContext['model'] ?? 'unknown'),
+                        $round + 1,
+                        $currentPersona->name
+                    );
+
+                    throw $this->buildGenerationFailure($errorMessage, $failureContext);
                 }
 
                 // 5. Save & Finalize Turn
@@ -380,7 +393,7 @@ class RunChatSession implements ShouldQueue
                 'line' => $e->getLine(),
                 'round' => $round,
             ]);
-            $this->markConversationFailed($conversation, $e->getMessage());
+            $this->markConversationFailed($conversation, $e->getMessage(), $this->extractFailureContext($e));
             app(SafeBroadcaster::class)->broadcast(
                 new \App\Events\ConversationStatusUpdated($conversation),
                 [
@@ -404,7 +417,7 @@ class RunChatSession implements ShouldQueue
     {
         $conversation = Conversation::find($this->conversationId);
         if ($conversation) {
-            $this->markConversationFailed($conversation, $exception->getMessage());
+            $this->markConversationFailed($conversation, $exception->getMessage(), $this->extractFailureContext($exception));
             app(SafeBroadcaster::class)->broadcast(
                 new \App\Events\ConversationStatusUpdated($conversation),
                 [
@@ -461,11 +474,14 @@ class RunChatSession implements ShouldQueue
         return (bool) $metadata['notifications_enabled'];
     }
 
-    protected function markConversationFailed(Conversation $conversation, string $errorMessage): void
+    protected function markConversationFailed(Conversation $conversation, string $errorMessage, ?array $errorContext = null): void
     {
         $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
         $metadata['last_error_message'] = mb_substr($errorMessage, 0, 2000);
         $metadata['last_error_at'] = now()->toIso8601String();
+        if (is_array($errorContext) && $errorContext !== []) {
+            $metadata['last_error_context'] = $errorContext;
+        }
 
         $conversation->update([
             'status' => 'failed',
@@ -576,11 +592,37 @@ class RunChatSession implements ShouldQueue
         ];
     }
 
-    private function fallbackMessage(): string
+    private function providerForPersona(Conversation $conversation, Persona $persona): string
     {
-        return trim((string) config(
-            'ai.empty_turn_fallback_message',
-            'I need to regroup for a moment. Please continue with your strongest next point.'
-        ));
+        return $conversation->personaA && $persona->is($conversation->personaA)
+            ? (string) $conversation->provider_a
+            : (string) $conversation->provider_b;
+    }
+
+    private function modelForPersona(Conversation $conversation, Persona $persona): ?string
+    {
+        return $conversation->personaA && $persona->is($conversation->personaA)
+            ? ($conversation->model_a ? (string) $conversation->model_a : null)
+            : ($conversation->model_b ? (string) $conversation->model_b : null);
+    }
+
+    private function buildGenerationFailure(string $message, array $context): \RuntimeException
+    {
+        return new \RuntimeException($message, 0, new \RuntimeException(json_encode($context, JSON_UNESCAPED_SLASHES)));
+    }
+
+    private function extractFailureContext(\Throwable $exception): ?array
+    {
+        $previous = $exception->getPrevious();
+        if (! $previous instanceof \RuntimeException) {
+            return null;
+        }
+
+        $decoded = json_decode($previous->getMessage(), true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        return $decoded;
     }
 }

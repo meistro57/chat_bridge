@@ -45,7 +45,10 @@ class ConversationService
         // Check if driver supports tools and tools are enabled
         if ($driver->supportsTools() && config('ai.tools_enabled', true)) {
             // Use agentic loop with tools (non-streaming)
-            $result = $this->generateWithTools($driver, $messages, $settings['temperature']);
+            $result = $this->generateWithTools($driver, $messages, $settings['temperature'], [
+                'provider' => $settings['provider'] ?? null,
+                'model' => $settings['model'] ?? null,
+            ]);
 
             // Stream the final tools response in smaller chunks for smoother UI updates.
             $generator = function () use ($result) {
@@ -165,7 +168,7 @@ class ConversationService
     /**
      * Generate response using agentic tool calling loop
      */
-    protected function generateWithTools($driver, Collection $messages, float $temperature): string
+    protected function generateWithTools($driver, Collection $messages, float $temperature, array $toolContext = []): string
     {
         $tools = $this->toolExecutor->getAllTools();
         $maxIterations = config('ai.max_tool_iterations', 5);
@@ -222,7 +225,7 @@ class ConversationService
             // Execute all tool calls
             $toolResults = [];
             foreach ($toolCalls as $toolCall) {
-                $toolResult = $this->toolExecutor->execute($toolCall['name'], $toolCall['arguments']);
+                $toolResult = $this->toolExecutor->execute($toolCall['name'], $toolCall['arguments'], $toolContext);
                 $toolResults[] = [
                     'tool_call_id' => $toolCall['id'],
                     'tool_name' => $toolCall['name'],
@@ -253,16 +256,11 @@ class ConversationService
             return $finalResponse;
         }
 
-        $fallbackMessage = (string) config(
-            'ai.empty_turn_fallback_message',
-            'I need to regroup for a moment. Please continue with your strongest next point.'
-        );
-
-        Log::warning('Tool-enabled generation remained empty after retries; using fallback message', [
+        Log::warning('Tool-enabled generation remained empty after retries; failing generation', [
             'max_iterations' => $maxIterations,
         ]);
 
-        return $fallbackMessage;
+        throw new \RuntimeException("Tool-enabled generation remained empty after {$maxIterations} iterations.");
     }
 
     /**

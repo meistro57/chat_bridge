@@ -38,6 +38,7 @@
 - **Manual Controls** - Start, stop, and resume conversations
 - **Per-Conversation Provider/Model Selection** - Choose any provider and model for each agent
 - **Dynamic Model Fetching** - Query providers for available models (344+ models supported)
+- **Ollama Auto-Discovery** - Detect local models from Ollama native and OpenAI-compatible model endpoints
 - **Live Pricing Display** - See cost per 1M tokens before starting conversation
 - **Discord Broadcast Toggle** - Optional per-conversation broadcast to Discord
 - **Webhook Resolution Chain** - Conversation override -> user default -> global fallback
@@ -55,6 +56,7 @@
 - **Message History** - Complete conversation logs
 - **Transcript Export** - Download conversations as CSV
 - **Long Running** - 20-minute timeout support
+- **Structured Failure Context** - Empty-turn hard-fail path stores detailed error metadata for diagnostics
 
 ### 🔐 Authentication & Authorization
 - **User Registration** - Laravel Breeze integration
@@ -261,6 +263,14 @@
 - **Slow Query Feed** - Recent SQL queries over 100ms
 - **Queue Health** - Queued + failed jobs snapshot
 - **Runtime Context** - Memory, load average, DB/cache drivers
+
+### 🧭 MCP Utilities (`/admin/mcp-utilities`)
+
+**MCP Operations Features:**
+- **Embedding Sync Controls** - Compare and populate missing embeddings from the admin UI
+- **Provider Capability Checks** - Validate tool support status for active providers (including Ollama)
+- **Live MCP Traffic Watch** - Inspect recent MCP/tool execution events with provider filtering
+- **Auto-Refresh Monitoring** - Polling controls for near-real-time troubleshooting
 
 ---
 

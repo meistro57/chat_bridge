@@ -141,4 +141,48 @@ class ProviderModelPricingTest extends TestCase
         $this->assertTrue($ids->contains('anthropic.claude-3-7-sonnet-20250219-v1:0'));
         $this->assertTrue($ids->contains('anthropic.claude-sonnet-4-20250514-v1:0'));
     }
+
+    public function test_ollama_models_are_fetched_from_native_api_tags_endpoint(): void
+    {
+        config(['services.ollama.host' => 'http://localhost:11434']);
+
+        Http::fake([
+            'http://localhost:11434/api/tags' => Http::response([
+                'models' => [
+                    ['name' => 'llama3.2:latest'],
+                    ['name' => 'qwen2.5:7b'],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->getJson('/api/providers/models?provider=ollama');
+
+        $response->assertOk();
+        $ids = collect($response->json('models'))->pluck('id');
+        $this->assertTrue($ids->contains('llama3.2:latest'));
+        $this->assertTrue($ids->contains('qwen2.5:7b'));
+    }
+
+    public function test_ollama_models_are_fetched_from_openai_compatible_endpoint_when_tags_fail(): void
+    {
+        config(['services.ollama.host' => 'http://localhost:11434/v1']);
+
+        Http::fake([
+            'http://localhost:11434/api/tags' => Http::response([], 404),
+            'http://localhost:11434/v1/models' => Http::response([
+                'data' => [
+                    ['id' => 'llama3.2:latest'],
+                    ['id' => 'mistral:latest', 'name' => 'Mistral 7B'],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->getJson('/api/providers/models?provider=ollama');
+
+        $response->assertOk();
+        $ids = collect($response->json('models'))->pluck('id');
+        $this->assertTrue($ids->contains('llama3.2:latest'));
+        $this->assertTrue($ids->contains('mistral:latest'));
+        $this->assertSame('Mistral 7B', collect($response->json('models'))->firstWhere('id', 'mistral:latest')['name']);
+    }
 }

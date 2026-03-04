@@ -597,6 +597,15 @@ Request and query-level observability for admins:
 - Recent slow SQL query samples (>= 100ms)
 - Queue health and runtime context (DB/cache driver, memory, load)
 
+### 🧭 **MCP Utilities** (`/admin/mcp-utilities`)
+
+Admin controls for MCP tooling and embedding operations:
+
+- Embedding population/rebuild controls with missing-item comparison support
+- Provider capability status (including Ollama tool-call support checks)
+- Live MCP traffic watch with provider filter, limit control, and auto-refresh
+- Backed by `/admin/mcp-utilities/traffic` for recent tool execution events
+
 ### 🤖 **Model Context Protocol (MCP) Server** (`/api/mcp`)
 Native implementation of the JSON-RPC 2.0 MCP protocol for developer interaction:
 
@@ -1303,11 +1312,18 @@ php artisan queue:restart
 ```
 
 ### Conversation Stops Early (Empty Turn)
-If a provider occasionally returns an empty response, tune retry behavior:
+If a provider returns empty/whitespace output repeatedly, the conversation now fails with structured error context instead of inserting a static fallback assistant line.
+
+Tune retry behavior:
 ```bash
 # Retry empty turns before failing the conversation
 AI_EMPTY_TURN_RETRY_ATTEMPTS=2
 AI_EMPTY_TURN_RETRY_DELAY_MS=500
+```
+
+Optional rescue attempts before hard-fail:
+```bash
+AI_TURN_RESCUE_ATTEMPTS=2
 ```
 
 Apply config changes and restart workers:

@@ -8,6 +8,7 @@ use App\Models\ModelPrice;
 use App\Services\AnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -266,20 +267,83 @@ class ProviderController extends Controller
 
     private function fetchOllamaModels(): array
     {
-        $baseUrl = config('services.ollama.host', 'http://localhost:11434');
+        $configuredBaseUrl = rtrim((string) config('services.ollama.host', 'http://localhost:11434'), '/');
+        $nativeBaseUrl = $this->normalizeOllamaNativeBaseUrl($configuredBaseUrl);
 
         try {
-            $response = Http::timeout(3)->get("{$baseUrl}/api/tags");
+            $response = Http::timeout(3)->get("{$nativeBaseUrl}/api/tags");
 
             if ($response->successful()) {
-                return collect($response->json('models'))->map(fn ($model) => [
-                    'id' => $model['name'],
-                    'name' => $model['name'],
-                    'cost' => 'FREE (local)',
-                ])->toArray();
+                $models = collect($response->json('models', []))
+                    ->map(function ($model) {
+                        $name = is_array($model) ? ($model['name'] ?? null) : null;
+                        if (! is_string($name) || trim($name) === '') {
+                            return null;
+                        }
+
+                        return [
+                            'id' => $name,
+                            'name' => $name,
+                            'cost' => 'FREE (local)',
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if (! empty($models)) {
+                    return $models;
+                }
             }
         } catch (\Exception $e) {
-            // Ollama not available
+            Log::info('Ollama /api/tags model discovery failed', ['error' => $e->getMessage()]);
+        }
+
+        $openAiCompatibleBaseUrls = collect([
+            $configuredBaseUrl,
+            "{$nativeBaseUrl}/v1",
+        ])->unique()->values();
+
+        foreach ($openAiCompatibleBaseUrls as $openAiCompatibleBaseUrl) {
+            try {
+                $response = Http::timeout(3)->get("{$openAiCompatibleBaseUrl}/models");
+
+                if (! $response->successful()) {
+                    continue;
+                }
+
+                $models = collect($response->json('data', []))
+                    ->map(function ($model) {
+                        $id = is_array($model) ? ($model['id'] ?? null) : null;
+                        if (! is_string($id) || trim($id) === '') {
+                            return null;
+                        }
+
+                        $name = Arr::get($model, 'name', $id);
+                        if (! is_string($name) || trim($name) === '') {
+                            $name = $id;
+                        }
+
+                        return [
+                            'id' => $id,
+                            'name' => $name,
+                            'cost' => 'FREE (local)',
+                        ];
+                    })
+                    ->filter()
+                    ->unique('id')
+                    ->values()
+                    ->all();
+
+                if (! empty($models)) {
+                    return $models;
+                }
+            } catch (\Exception $e) {
+                Log::info('Ollama OpenAI-compatible model discovery failed', [
+                    'base_url' => $openAiCompatibleBaseUrl,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return [
@@ -287,6 +351,18 @@ class ProviderController extends Controller
             ['id' => 'llama3.2', 'name' => 'Llama 3.2', 'cost' => 'FREE (local)'],
             ['id' => 'mistral', 'name' => 'Mistral', 'cost' => 'FREE (local)'],
         ];
+    }
+
+    private function normalizeOllamaNativeBaseUrl(string $configuredBaseUrl): string
+    {
+        $trimmedBaseUrl = rtrim($configuredBaseUrl, '/');
+        foreach (['/v1', '/api'] as $suffix) {
+            if (str_ends_with($trimmedBaseUrl, $suffix)) {
+                return substr($trimmedBaseUrl, 0, -strlen($suffix));
+            }
+        }
+
+        return $trimmedBaseUrl;
     }
 
     private function fetchLMStudioModels(): array

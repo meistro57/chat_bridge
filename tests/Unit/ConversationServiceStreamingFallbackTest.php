@@ -455,12 +455,11 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $this->assertSame(['Fallback recovery'], $chunks);
     }
 
-    public function test_generate_turn_uses_configured_fallback_when_all_tool_attempts_are_empty(): void
+    public function test_generate_turn_throws_when_all_tool_attempts_are_empty(): void
     {
         config()->set('services.qdrant.enabled', false);
         config()->set('ai.tools_enabled', true);
         config()->set('ai.max_tool_iterations', 1);
-        config()->set('ai.empty_turn_fallback_message', 'Fallback bridge response');
 
         $user = User::factory()->create();
         $personaA = Persona::factory()->create();
@@ -516,10 +515,9 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             streamingChunker: new StreamingChunker
         );
 
-        $result = $service->generateTurn($conversation, $personaA, new Collection);
-        $chunks = iterator_to_array($result['content']);
-
-        $this->assertSame(['Fallback bridge response'], $chunks);
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Tool-enabled generation remained empty');
+        $service->generateTurn($conversation, $personaA, new Collection);
     }
 
     protected function tearDown(): void

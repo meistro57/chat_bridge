@@ -102,6 +102,13 @@ export default function Show({ conversation, stopSignal }) {
     const lastErrorAt = typeof conversation.metadata?.last_error_at === 'string'
         ? conversation.metadata.last_error_at
         : null;
+    const lastErrorContext = (
+        typeof conversation.metadata?.last_error_context === 'object' &&
+        conversation.metadata?.last_error_context !== null &&
+        !Array.isArray(conversation.metadata?.last_error_context)
+    )
+        ? conversation.metadata.last_error_context
+        : null;
 
     const appendLiveLog = (level, event, details = '') => {
         const nextId = logCounterRef.current + 1;
@@ -323,6 +330,11 @@ export default function Show({ conversation, stopSignal }) {
                             <p className="mt-3 whitespace-pre-wrap break-words rounded-xl border border-red-400/20 bg-black/20 p-3 font-mono text-xs text-red-100">
                                 {lastErrorMessage}
                             </p>
+                            {lastErrorContext && (
+                                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-red-400/20 bg-black/20 p-3 font-mono text-[11px] text-red-100">
+                                    {JSON.stringify(lastErrorContext, null, 2)}
+                                </pre>
+                            )}
                         </div>
                     )}
 

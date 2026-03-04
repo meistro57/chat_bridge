@@ -2,7 +2,7 @@ import { GlassCard } from '@/Components/ui/GlassCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function StatusPill({ ok }) {
     const classes = ok
@@ -29,7 +29,7 @@ function StatItem({ label, value }) {
     );
 }
 
-export default function McpUtilities({ health, stats, endpoints }) {
+export default function McpUtilities({ health, stats, endpoints, traffic, ollamaToolsSupported = null }) {
     const healthPayload = health?.payload ?? {};
     const statsPayload = stats?.payload ?? {};
     const [audit, setAudit] = useState({
@@ -49,6 +49,38 @@ export default function McpUtilities({ health, stats, endpoints }) {
     const [populateLimit, setPopulateLimit] = useState(100);
     const [error, setError] = useState('');
     const [populateSummary, setPopulateSummary] = useState(null);
+    const [trafficEvents, setTrafficEvents] = useState(Array.isArray(traffic?.events) ? traffic.events : []);
+    const [trafficProvider, setTrafficProvider] = useState('ollama');
+    const [trafficLimit, setTrafficLimit] = useState(40);
+    const [trafficLoading, setTrafficLoading] = useState(false);
+    const [trafficError, setTrafficError] = useState('');
+
+    const loadTraffic = async (provider = trafficProvider, limit = trafficLimit) => {
+        setTrafficLoading(true);
+        setTrafficError('');
+        try {
+            const response = await axios.get(route('admin.mcp.utilities.traffic'), {
+                params: {
+                    provider: provider || undefined,
+                    limit,
+                },
+            });
+            setTrafficEvents(Array.isArray(response.data?.events) ? response.data.events : []);
+        } catch (requestError) {
+            setTrafficError(requestError.response?.data?.message || requestError.message || 'Failed to load MCP traffic.');
+        } finally {
+            setTrafficLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadTraffic();
+        const timer = setInterval(() => {
+            loadTraffic();
+        }, 3000);
+
+        return () => clearInterval(timer);
+    }, [trafficProvider, trafficLimit]);
 
     const compareEmbeddings = async () => {
         setCompareLoading(true);
@@ -204,6 +236,109 @@ export default function McpUtilities({ health, stats, endpoints }) {
                                     {error}
                                 </div>
                             )}
+                        </div>
+                    </GlassCard>
+
+                    <GlassCard accent="indigo" className="space-y-5">
+                        <div className="space-y-1">
+                            <h2 className="text-lg font-semibold text-zinc-100">MCP Traffic Watch</h2>
+                            <p className="text-sm text-zinc-400">
+                                Live MCP tool call events captured during chat runs.
+                            </p>
+                        </div>
+
+                        {ollamaToolsSupported === false && (
+                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                Ollama tool calling is currently unsupported in this app, so Ollama-filtered MCP traffic will stay empty.
+                            </div>
+                        )}
+
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div>
+                                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                            Provider Filter
+                                        </label>
+                                        <select
+                                            value={trafficProvider}
+                                            onChange={(event) => setTrafficProvider(event.target.value)}
+                                            className="rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+                                        >
+                                            <option value="">All</option>
+                                            <option value="ollama">Ollama</option>
+                                            <option value="openai">OpenAI</option>
+                                            <option value="anthropic">Anthropic</option>
+                                            <option value="openrouter">OpenRouter</option>
+                                            <option value="gemini">Gemini</option>
+                                            <option value="bedrock">Bedrock</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                            Event Limit
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="250"
+                                            value={trafficLimit}
+                                            onChange={(event) => setTrafficLimit(Math.max(1, Math.min(250, Number(event.target.value || 1))))}
+                                            className="w-28 rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+                                        />
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => loadTraffic()}
+                                    disabled={trafficLoading}
+                                    className="rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {trafficLoading ? 'Refreshing...' : 'Refresh Traffic'}
+                                </button>
+                            </div>
+
+                            {trafficError && (
+                                <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {trafficError}
+                                </div>
+                            )}
+
+                            <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
+                                {trafficEvents.length === 0 && (
+                                    <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-400">
+                                        No MCP traffic for this filter yet.
+                                    </div>
+                                )}
+                                {trafficEvents.map((event) => (
+                                    <div key={event.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                            <span className="rounded border border-white/10 bg-white/5 px-2 py-0.5 font-semibold text-zinc-200">
+                                                {event.tool_name}
+                                            </span>
+                                            <span className="font-mono text-zinc-500">{new Date(event.at).toLocaleTimeString()}</span>
+                                            <span className="rounded border border-white/10 px-2 py-0.5 text-zinc-300">
+                                                {event.provider || 'unknown provider'}
+                                            </span>
+                                            <span className="rounded border border-white/10 px-2 py-0.5 text-zinc-300">
+                                                {event.model || 'unknown model'}
+                                            </span>
+                                            <span className="rounded border border-white/10 px-2 py-0.5 text-zinc-300">
+                                                {event.duration_ms}ms
+                                            </span>
+                                        </div>
+                                        {event.error ? (
+                                            <div className="mt-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1 text-xs text-red-200">
+                                                {event.error}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-2 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
+                                                {event.result_preview}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </GlassCard>
 

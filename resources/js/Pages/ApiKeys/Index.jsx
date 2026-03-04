@@ -13,7 +13,7 @@ export default function Index({ apiKeys }) {
 
     const handleDelete = (id) => {
         if (confirm('Delete this API Key?')) {
-            router.delete(`/api-keys/${id}`);
+            router.delete(route('api-keys.destroy', id));
         }
     };
 
@@ -21,7 +21,7 @@ export default function Index({ apiKeys }) {
         setTesting(prev => ({ ...prev, [id]: true }));
 
         try {
-            const response = await fetch(`/api-keys/${id}/test`, {
+            const response = await fetch(route('api-keys.test', id), {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -72,8 +72,8 @@ export default function Index({ apiKeys }) {
                         <p className="text-zinc-500 mt-2">Manage provider authentication keys securely.</p>
                     </div>
                     
-                    <Link 
-                        href="/api-keys/create"
+                                    <Link 
+                        href={route('api-keys.create')}
                         className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -153,7 +153,7 @@ export default function Index({ apiKeys }) {
                                     )}
                                 </button>
                                 <Link
-                                    href={`/api-keys/${key.id}/edit`}
+                                    href={route('api-keys.edit', key.id)}
                                     className="px-4 py-2 rounded-lg bg-zinc-900/50 hover:bg-white text-zinc-400 hover:text-black transition-colors text-sm font-medium border border-white/5"
                                 >
                                     Configure
@@ -172,7 +172,7 @@ export default function Index({ apiKeys }) {
                         <div className="relative text-center py-24 bg-zinc-900/50 backdrop-blur-2xl rounded-2xl border-2 border-dashed border-zinc-700 overflow-hidden glass-butter butter-reveal">
                             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                             <p className="relative text-zinc-500 mb-4">No credentials stored locally.</p>
-                            <Link href="/api-keys/create" className="relative text-indigo-400 hover:text-indigo-300">Register a Provider Key</Link>
+                            <Link href={route('api-keys.create')} className="relative text-indigo-400 hover:text-indigo-300">Register a Provider Key</Link>
                         </div>
                     )}
                 </div>

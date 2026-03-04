@@ -90,13 +90,12 @@ class RunChatSessionRetryTest extends TestCase
         ]);
     }
 
-    public function test_it_uses_fallback_message_when_turn_stays_empty_after_retries(): void
+    public function test_it_fails_conversation_when_turn_stays_empty_after_retries(): void
     {
         config()->set('ai.empty_turn_retry_attempts', 1);
         config()->set('ai.empty_turn_retry_delay_ms', 0);
         config()->set('ai.turn_rescue_attempts', 0);
         config()->set('ai.initial_stream_enabled', false);
-        config()->set('ai.empty_turn_fallback_message', 'Fallback turn content');
 
         $user = User::factory()->create();
         $personaA = Persona::factory()->create(['user_id' => $user->id]);
@@ -135,42 +134,30 @@ class RunChatSessionRetryTest extends TestCase
                 })(),
                 'driver' => $driver,
             ]);
-        $service->shouldReceive('saveTurn')
-            ->once()
-            ->andReturnUsing(function (Conversation $conversationArg, Persona $personaArg, string $content, ?int $tokensUsed) {
-                return $conversationArg->messages()->create([
-                    'persona_id' => $personaArg->id,
-                    'role' => 'assistant',
-                    'content' => $content,
-                    'tokens_used' => $tokensUsed,
-                ]);
-            });
-        $service->shouldReceive('completeConversation')
-            ->once()
-            ->andReturnUsing(function (Conversation $conversationArg): void {
-                $conversationArg->update(['status' => 'completed']);
-            });
+        $service->shouldReceive('saveTurn')->never();
+        $service->shouldReceive('completeConversation')->never();
 
         $job = new RunChatSession($conversation->id, 1);
-        $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Turn failed after retries: empty response');
+        try {
+            $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
+        } finally {
+            $conversation->refresh();
+        }
 
-        $conversation->refresh();
-        $this->assertSame('completed', $conversation->status);
-        $this->assertDatabaseHas('messages', [
-            'conversation_id' => $conversation->id,
-            'role' => 'assistant',
-            'content' => 'Fallback turn content',
-            'tokens_used' => 7,
-        ]);
+        $this->assertSame('failed', $conversation->status);
+        $this->assertSame(0, $conversation->messages()->where('role', 'assistant')->count());
+        $this->assertSame('empty_turn_exhausted', data_get($conversation->metadata, 'last_error_context.code'));
+        $this->assertSame('openai', data_get($conversation->metadata, 'last_error_context.provider'));
     }
 
-    public function test_it_uses_fallback_message_when_retryable_exception_persists(): void
+    public function test_it_fails_conversation_when_retryable_exception_persists(): void
     {
         config()->set('ai.turn_exception_retry_attempts', 1);
         config()->set('ai.turn_exception_retry_delay_ms', 0);
         config()->set('ai.turn_rescue_attempts', 0);
         config()->set('ai.initial_stream_enabled', false);
-        config()->set('ai.empty_turn_fallback_message', 'Fallback after timeout');
 
         $user = User::factory()->create();
         $personaA = Persona::factory()->create(['user_id' => $user->id]);
@@ -194,33 +181,22 @@ class RunChatSessionRetryTest extends TestCase
         $service->shouldReceive('generateTurn')
             ->twice()
             ->andThrow(new \RuntimeException('cURL error 28: operation timed out'));
-        $service->shouldReceive('saveTurn')
-            ->once()
-            ->andReturnUsing(function (Conversation $conversationArg, Persona $personaArg, string $content, ?int $tokensUsed) {
-                return $conversationArg->messages()->create([
-                    'persona_id' => $personaArg->id,
-                    'role' => 'assistant',
-                    'content' => $content,
-                    'tokens_used' => $tokensUsed,
-                ]);
-            });
-        $service->shouldReceive('completeConversation')
-            ->once()
-            ->andReturnUsing(function (Conversation $conversationArg): void {
-                $conversationArg->update(['status' => 'completed']);
-            });
+        $service->shouldReceive('saveTurn')->never();
+        $service->shouldReceive('completeConversation')->never();
 
         $job = new RunChatSession($conversation->id, 1);
-        $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Turn failed after retries: empty response');
+        try {
+            $job->handle($service, app(StopWordService::class), app(DiscordStreamer::class));
+        } finally {
+            $conversation->refresh();
+        }
 
-        $conversation->refresh();
-        $this->assertSame('completed', $conversation->status);
-        $this->assertDatabaseHas('messages', [
-            'conversation_id' => $conversation->id,
-            'role' => 'assistant',
-            'content' => 'Fallback after timeout',
-            'tokens_used' => null,
-        ]);
+        $this->assertSame('failed', $conversation->status);
+        $this->assertSame(0, $conversation->messages()->where('role', 'assistant')->count());
+        $this->assertSame('empty_turn_exhausted', data_get($conversation->metadata, 'last_error_context.code'));
+        $this->assertSame('cURL error 28: operation timed out', data_get($conversation->metadata, 'last_error_context.retryable_exception'));
     }
 
     public function test_it_uses_rescue_turn_before_fallback_for_empty_turns(): void
