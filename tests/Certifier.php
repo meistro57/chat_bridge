@@ -46,7 +46,7 @@ class Certifier
 
         $this->step('DRIVERS', 'Verifying AI Manager Registry', function () {
             $ai = app(AIManager::class);
-            $drivers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'ollama', 'lmstudio'];
+            $drivers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'bedrock', 'ollama', 'lmstudio'];
             $ready = [];
             foreach ($drivers as $d) {
                 try {

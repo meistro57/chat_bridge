@@ -177,6 +177,7 @@ export default function System({ systemInfo }) {
 
     const actions = [
         { id: 'health_check', label: 'Health Check', icon: '🏥', color: 'blue' },
+        { id: 'runtime_refresh', label: 'Runtime Refresh', icon: '🔄', color: 'emerald' },
         { id: 'fix_permissions', label: 'Fix Permissions', icon: '🔐', color: 'purple' },
         { id: 'clear_cache', label: 'Clear All Caches', icon: '🗑️', color: 'orange' },
         { id: 'optimize', label: 'Optimize App', icon: '⚡', color: 'yellow' },

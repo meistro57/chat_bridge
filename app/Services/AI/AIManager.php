@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Models\ApiKey;
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Drivers\AnthropicDriver;
+use App\Services\AI\Drivers\BedrockDriver;
 use App\Services\AI\Drivers\DeepSeekDriver;
 use App\Services\AI\Drivers\GeminiDriver;
 use App\Services\AI\Drivers\LMStudioDriver;
@@ -170,6 +171,25 @@ class AIManager extends Manager
         );
     }
 
+    public function createBedrockDriver(?string $model = null): AIDriverInterface
+    {
+        $accessKeyId = (string) config('services.bedrock.access_key_id', '');
+        $secretAccessKey = (string) config('services.bedrock.secret_access_key', '');
+
+        if ($accessKeyId === '' || $secretAccessKey === '') {
+            return new MockDriver;
+        }
+
+        return new BedrockDriver(
+            accessKeyId: $accessKeyId,
+            secretAccessKey: $secretAccessKey,
+            sessionToken: config('services.bedrock.session_token'),
+            region: (string) config('services.bedrock.region', 'us-east-1'),
+            model: $model ?: (string) config('services.bedrock.model', 'anthropic.claude-3-7-sonnet-20250219-v1:0'),
+            baseUrl: config('services.bedrock.runtime_base_url')
+        );
+    }
+
     public function createOllamaDriver(?string $model = null): AIDriverInterface
     {
         return new OllamaDriver(
@@ -203,6 +223,7 @@ class AIManager extends Manager
             'deepseek' => $this->createDeepSeekDriver($model),
             'openrouter' => $this->createOpenRouterDriver($model),
             'gemini' => $this->createGeminiDriver($model),
+            'bedrock' => $this->createBedrockDriver($model),
             'ollama' => $this->createOllamaDriver($model),
             'lmstudio' => $this->createLMStudioDriver($model),
             'mock' => $this->createMockDriver(),
@@ -247,6 +268,17 @@ class AIManager extends Manager
                 ? new GeminiDriver(
                     apiKey: $key,
                     model: $resolvedModel ?: config('services.gemini.model', 'gemini-2.5-flash')
+                )
+                : new MockDriver,
+            'bedrock' => ((string) config('services.bedrock.access_key_id', '')) !== ''
+                && ((string) config('services.bedrock.secret_access_key', '')) !== ''
+                ? new BedrockDriver(
+                    accessKeyId: (string) config('services.bedrock.access_key_id', ''),
+                    secretAccessKey: (string) config('services.bedrock.secret_access_key', ''),
+                    sessionToken: config('services.bedrock.session_token'),
+                    region: (string) config('services.bedrock.region', 'us-east-1'),
+                    model: $resolvedModel ?: (string) config('services.bedrock.model', 'anthropic.claude-3-7-sonnet-20250219-v1:0'),
+                    baseUrl: config('services.bedrock.runtime_base_url')
                 )
                 : new MockDriver,
             'ollama' => new OllamaDriver(

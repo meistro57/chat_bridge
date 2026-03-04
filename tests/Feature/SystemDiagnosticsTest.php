@@ -87,6 +87,24 @@ class SystemDiagnosticsTest extends TestCase
         );
     }
 
+    public function test_admin_can_run_runtime_refresh_action(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.system.diagnostic'), [
+            'action' => 'runtime_refresh',
+        ]);
+
+        $response->assertOk();
+
+        $output = $response->json('output');
+        $this->assertIsString($output);
+        $this->assertStringContainsString('Running runtime refresh sequence', $output);
+        $this->assertStringContainsString('Runtime refresh complete', $output);
+    }
+
     public function test_admin_openai_key_test_uses_response_content(): void
     {
         Http::fake([

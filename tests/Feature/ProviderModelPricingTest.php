@@ -101,4 +101,28 @@ class ProviderModelPricingTest extends TestCase
         $this->assertSame(0.6, $storedPrice->completion_per_million);
         $this->assertSame(2, (int) Cache::get('analytics:pricing:version'));
     }
+
+    public function test_openrouter_models_fall_back_to_curated_list_when_api_fails(): void
+    {
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response([], 500),
+        ]);
+
+        $response = $this->getJson('/api/providers/models?provider=openrouter');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('models'))->pluck('id');
+        $this->assertTrue($ids->contains('anthropic/claude-3-sonnet'));
+    }
+
+    public function test_bedrock_models_are_available_from_provider_models_endpoint(): void
+    {
+        $response = $this->getJson('/api/providers/models?provider=bedrock');
+
+        $response->assertOk();
+        $ids = collect($response->json('models'))->pluck('id');
+        $this->assertTrue($ids->contains('anthropic.claude-3-7-sonnet-20250219-v1:0'));
+        $this->assertTrue($ids->contains('anthropic.claude-sonnet-4-20250514-v1:0'));
+    }
 }

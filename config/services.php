@@ -62,6 +62,15 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
+    'bedrock' => [
+        'access_key_id' => env('AWS_ACCESS_KEY_ID'),
+        'secret_access_key' => env('AWS_SECRET_ACCESS_KEY'),
+        'session_token' => env('AWS_SESSION_TOKEN'),
+        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+        'model' => env('BEDROCK_MODEL', 'anthropic.claude-3-7-sonnet-20250219-v1:0'),
+        'runtime_base_url' => env('BEDROCK_RUNTIME_BASE_URL'),
+    ],
+
     'ollama' => [
         'host' => env('OLLAMA_HOST', 'http://localhost:11434'),
         'model' => env('OLLAMA_MODEL', 'llama3.1'),

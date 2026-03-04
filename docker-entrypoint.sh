@@ -3,11 +3,18 @@ set -e
 
 echo "🚀 Starting Chat Bridge Docker initialization..."
 
-# Fix permissions on storage and cache to prevent permission issues on host
-# This ensures that both the container and the host user can write to logs/cache
-echo "🔧 Fixing permissions..."
-chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+# Ensure writable paths exist and ownership is correct for app user.
+echo "🔧 Preparing writable paths..."
+mkdir -p /var/www/html/storage/framework/cache/data \
+         /var/www/html/storage/framework/sessions \
+         /var/www/html/storage/framework/views \
+         /var/www/html/storage/logs \
+         /var/www/html/storage/app/public \
+         /var/www/html/database
+
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
+find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type d -exec chmod 775 {} + 2>/dev/null || true
+find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type f -exec chmod 664 {} + 2>/dev/null || true
 
 # Ensure .env file has correct permissions
 touch /var/www/html/.env
@@ -17,20 +24,10 @@ chown www-data:www-data /var/www/html/.env
 # Clear cached framework files to avoid stale package discovery issues
 rm -f /var/www/html/bootstrap/cache/*.php
 
-# Ensure storage subdirectories exist with correct permissions
-mkdir -p /var/www/html/storage/framework/cache/data \
-         /var/www/html/storage/framework/sessions \
-         /var/www/html/storage/framework/views \
-         /var/www/html/storage/logs \
-         /var/www/html/storage/app/public \
-         /var/www/html/database
-
 # Ensure SQLite database exists with correct permissions
 touch /var/www/html/database/database.sqlite
-chmod 666 /var/www/html/database/database.sqlite
+chmod 664 /var/www/html/database/database.sqlite
 chown www-data:www-data /var/www/html/database/database.sqlite
-
-chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
 
 # Prepare Codex CLI home/config (uses OPENAI_API_KEY via app, but CLI prefers apikey auth mode)
 if [ -n "${CODEX_HOME}" ]; then

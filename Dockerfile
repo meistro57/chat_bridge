@@ -24,6 +24,9 @@ RUN npm run build
 # Stage 2: PHP application
 FROM php:8.3-fpm-alpine
 
+ARG APP_UID=1000
+ARG APP_GID=1000
+
 # Install system dependencies
 RUN apk add --no-cache \
     git \
@@ -43,8 +46,13 @@ RUN apk add --no-cache \
     redis \
     nginx \
     supervisor \
+    shadow \
     nodejs \
     npm
+
+# Align www-data with host user/group so mounted files are not root/uid-82 owned
+RUN groupmod -o -g "${APP_GID}" www-data \
+    && usermod -o -u "${APP_UID}" -g www-data www-data
 
 # Install PHP extensions
 RUN docker-php-ext-install \
@@ -96,7 +104,8 @@ RUN composer dump-autoload --optimize
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
+    && find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type d -exec chmod 775 {} + \
+    && find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type f -exec chmod 664 {} +
 
 # Install Codex Laravel skills package
 RUN mkdir -p /var/www/html/.codex \

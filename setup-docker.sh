@@ -43,6 +43,20 @@ fi
 # Update .env for Docker environment
 echo ""
 echo "🐳 Configuring for Docker environment..."
+
+LOCAL_UID=$(id -u)
+LOCAL_GID=$(id -g)
+if grep -q "^LOCAL_UID=" .env; then
+    sed -i.bak "s|^LOCAL_UID=.*|LOCAL_UID=${LOCAL_UID}|g" .env
+else
+    echo "LOCAL_UID=${LOCAL_UID}" >> .env
+fi
+if grep -q "^LOCAL_GID=" .env; then
+    sed -i.bak "s|^LOCAL_GID=.*|LOCAL_GID=${LOCAL_GID}|g" .env
+else
+    echo "LOCAL_GID=${LOCAL_GID}" >> .env
+fi
+
 sed -i.bak "s|^DB_CONNECTION=sqlite|# DB_CONNECTION=sqlite|g" .env
 sed -i.bak "s|^# DB_CONNECTION=pgsql|DB_CONNECTION=pgsql|g" .env
 sed -i.bak "s|^# DB_HOST=postgres|DB_HOST=postgres|g" .env

@@ -4,6 +4,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_UID: ${LOCAL_UID:-1000}
+        APP_GID: ${LOCAL_GID:-1000}
     container_name: chatbridge-app
     restart: unless-stopped
     working_dir: /var/www/html
@@ -52,6 +55,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_UID: ${LOCAL_UID:-1000}
+        APP_GID: ${LOCAL_GID:-1000}
     container_name: chatbridge-queue
     restart: unless-stopped
     working_dir: /var/www/html
@@ -89,6 +95,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_UID: ${LOCAL_UID:-1000}
+        APP_GID: ${LOCAL_GID:-1000}
     container_name: chatbridge-reverb
     restart: unless-stopped
     working_dir: /var/www/html

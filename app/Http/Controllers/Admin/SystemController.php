@@ -59,6 +59,10 @@ class SystemController extends Controller
                     $output = $this->optimizeApplication();
                     break;
 
+                case 'runtime_refresh':
+                    $output = $this->runRuntimeRefresh();
+                    break;
+
                 case 'validate_ai':
                     $output = $this->validateAIServices();
                     break;
@@ -438,6 +442,52 @@ class SystemController extends Controller
         }
 
         $output[] = "\n✓ Optimization complete!";
+
+        return implode("\n", $output);
+    }
+
+    private function runRuntimeRefresh(): string
+    {
+        $output = [];
+
+        $output[] = 'Running runtime refresh sequence...';
+        $output[] = '→ Step 1: Clearing cached bootstrap files';
+        Artisan::call('optimize:clear');
+        $output[] = '✓ optimize:clear complete';
+
+        $output[] = '→ Step 2: Applying database migrations';
+        Artisan::call('migrate', ['--force' => true]);
+        $migrateOutput = trim(Artisan::output());
+        if ($migrateOutput !== '') {
+            $output[] = $migrateOutput;
+        }
+        $output[] = '✓ migrate complete';
+
+        $output[] = '→ Step 3: Restarting queue workers';
+        Artisan::call('queue:restart');
+        $output[] = '✓ queue:restart complete';
+
+        $hasAdmin = \App\Models\User::query()->where('email', 'admin@chatbridge.local')->exists();
+        $hasPersona = \App\Models\Persona::query()->exists();
+
+        if (! $hasAdmin || ! $hasPersona) {
+            $output[] = '→ Step 4: Seed check failed; running db:seed --force';
+            Artisan::call('db:seed', ['--force' => true]);
+            $output[] = '✓ db:seed complete';
+        } else {
+            $output[] = '→ Step 4: Seed check passed; no seeding needed';
+        }
+
+        if (app()->environment('production')) {
+            $output[] = '→ Step 5: Caching config/routes/views/events (production)';
+            Artisan::call('optimize');
+            $output[] = '✓ optimize complete';
+        } else {
+            $output[] = '→ Step 5: Skipped optimize cache step (not production)';
+        }
+
+        $output[] = '';
+        $output[] = '✓ Runtime refresh complete.';
 
         return implode("\n", $output);
     }

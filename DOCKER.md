@@ -43,6 +43,15 @@ docker run --rm -v $(pwd):/app -w /app php:8.3-cli php artisan key:generate --sh
 nano .env
 ```
 
+Set local UID/GID to avoid container-created files being owned by root/`www-data` on host:
+
+```env
+LOCAL_UID=1000
+LOCAL_GID=1000
+```
+
+You can set these to your shell values (`id -u` / `id -g`). The Docker image remaps `www-data` to these IDs during build.
+
 If you switched from host mode and your `.env` contains host SQLite values, reset it first:
 
 ```bash

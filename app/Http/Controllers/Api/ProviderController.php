@@ -57,6 +57,7 @@ class ProviderController extends Controller
             'openai' => $this->fetchOpenAIModels(),
             'openrouter' => $this->fetchOpenRouterModels(),
             'gemini' => $this->fetchGeminiModels(),
+            'bedrock' => $this->fetchBedrockModels(),
             'deepseek' => $this->fetchDeepSeekModels(),
             'ollama' => $this->fetchOllamaModels(),
             'lmstudio' => $this->fetchLMStudioModels(),
@@ -156,6 +157,7 @@ class ProviderController extends Controller
             ['id' => 'openai/gpt-4o', 'name' => 'GPT-4o', 'context' => 128000, 'cost' => '$2.50/$10.00'],
             ['id' => 'openai/gpt-4o-mini', 'name' => 'GPT-4o Mini', 'context' => 128000, 'cost' => '$0.15/$0.60'],
             ['id' => 'openai/gpt-4-turbo', 'name' => 'GPT-4 Turbo', 'context' => 128000, 'cost' => '$10/$30'],
+            ['id' => 'anthropic/claude-3-sonnet', 'name' => 'Claude 3 Sonnet', 'context' => 200000, 'cost' => '$3/$15'],
             ['id' => 'anthropic/claude-sonnet-4-5-20250929', 'name' => 'Claude Sonnet 4.5', 'context' => 200000, 'cost' => '$3/$15'],
             ['id' => 'anthropic/claude-opus-4-5-20251101', 'name' => 'Claude Opus 4.5', 'context' => 200000, 'cost' => '$15/$75'],
             ['id' => 'anthropic/claude-haiku-4-5-20251001', 'name' => 'Claude Haiku 4.5', 'context' => 200000, 'cost' => '$0.25/$1.25'],
@@ -247,6 +249,16 @@ class ProviderController extends Controller
         return [
             ['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat', 'cost' => '$0.14/$0.28'],
             ['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner', 'cost' => '$0.55/$2.19'],
+        ];
+    }
+
+    private function fetchBedrockModels(): array
+    {
+        return [
+            ['id' => 'anthropic.claude-3-5-sonnet-20241022-v2:0', 'name' => 'Claude 3.5 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00'],
+            ['id' => 'anthropic.claude-3-7-sonnet-20250219-v1:0', 'name' => 'Claude 3.7 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00'],
+            ['id' => 'anthropic.claude-sonnet-4-20250514-v1:0', 'name' => 'Claude Sonnet 4 (Bedrock)', 'cost' => '$3.00/$15.00'],
+            ['id' => 'anthropic.claude-3-5-haiku-20241022-v1:0', 'name' => 'Claude 3.5 Haiku (Bedrock)', 'cost' => '$0.80/$4.00'],
         ];
     }
 

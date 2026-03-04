@@ -9,7 +9,7 @@ return [
     | This option controls the default AI driver that will be used when
     | no specific driver is requested. You can change this to any of the
     | supported drivers: openai, anthropic, gemini, deepseek, openrouter,
-    | ollama, lmstudio, mock
+    | bedrock, ollama, lmstudio, mock
     |
     */
 
@@ -39,6 +39,9 @@ return [
             'enabled' => true,
         ],
         'openrouter' => [
+            'enabled' => true,
+        ],
+        'bedrock' => [
             'enabled' => true,
         ],
         'ollama' => [

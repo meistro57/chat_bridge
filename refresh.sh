@@ -9,6 +9,8 @@ WIPE_VOLUMES=false
 SKIP_FRONTEND_BUILD=false
 SKIP_TESTS=false
 SKIP_CODEX_CHECK=false
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 
 # Parse arguments
 for arg in "$@"; do
@@ -23,6 +25,29 @@ for arg in "$@"; do
 done
 
 echo "🚀 Starting Chat Bridge refresh..."
+
+sync_local_ids() {
+    if [ ! -f ".env" ]; then
+        return
+    fi
+
+    if grep -q "^LOCAL_UID=" .env; then
+        sed -i "s|^LOCAL_UID=.*|LOCAL_UID=${HOST_UID}|g" .env
+    else
+        echo "LOCAL_UID=${HOST_UID}" >> .env
+    fi
+
+    if grep -q "^LOCAL_GID=" .env; then
+        sed -i "s|^LOCAL_GID=.*|LOCAL_GID=${HOST_GID}|g" .env
+    else
+        echo "LOCAL_GID=${HOST_GID}" >> .env
+    fi
+}
+
+echo "🆔 Syncing Docker UID/GID mapping (uid=${HOST_UID}, gid=${HOST_GID})..."
+sync_local_ids
+export LOCAL_UID="${HOST_UID}"
+export LOCAL_GID="${HOST_GID}"
 
 # Ensure SQLite config is container-safe when running via Docker
 if [ -f ".env" ]; then
@@ -151,9 +176,11 @@ for i in {1..30}; do
     sleep 2
 done
 
+HEALTH_PORT="${APP_PORT:-8000}"
+HEALTH_URL="http://localhost:${HEALTH_PORT}"
 echo "🌐 Verifying HTTP endpoint..."
 for i in {1..30}; do
-    if curl -fsS "http://localhost:8000" > /dev/null; then
+    if curl -fsS "${HEALTH_URL}" > /dev/null; then
         break
     fi
 
@@ -215,4 +242,4 @@ else
 fi
 
 echo "✅ Refresh Complete! Your app is running."
-echo "   Web: http://localhost:8000"
+echo "   Web: ${HEALTH_URL}"

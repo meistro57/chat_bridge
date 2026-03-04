@@ -9,6 +9,40 @@ use Tests\TestCase;
 
 class OpenRouterDriverTest extends TestCase
 {
+    public function test_it_sends_claude_3_sonnet_model_and_returns_response_content(): void
+    {
+        Http::fake([
+            'openrouter.ai/api/v1/chat/completions' => Http::response([
+                'choices' => [
+                    [
+                        'message' => [
+                            'role' => 'assistant',
+                            'content' => 'Model is responding.',
+                        ],
+                    ],
+                ],
+                'usage' => [
+                    'prompt_tokens' => 8,
+                    'completion_tokens' => 4,
+                    'total_tokens' => 12,
+                ],
+            ], 200),
+        ]);
+
+        $driver = new OpenRouterDriver('test-key', 'anthropic/claude-3-sonnet');
+        $response = $driver->chat(collect([
+            new MessageData('user', 'hello'),
+        ]));
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://openrouter.ai/api/v1/chat/completions'
+                && ($request['model'] ?? null) === 'anthropic/claude-3-sonnet';
+        });
+
+        $this->assertSame('Model is responding.', $response->content);
+        $this->assertSame(12, $response->totalTokens);
+    }
+
     public function test_it_handles_empty_response_without_throwing(): void
     {
         Http::fake([

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal';
 import { Head, useForm, usePage, Link } from '@inertiajs/react';
@@ -7,6 +7,7 @@ const PROVIDERS = [
     { id: 'anthropic', name: 'Anthropic (Claude)' },
     { id: 'openai', name: 'OpenAI (GPT)' },
     { id: 'openrouter', name: 'OpenRouter' },
+    { id: 'bedrock', name: 'AWS Bedrock' },
     { id: 'gemini', name: 'Google Gemini' },
     { id: 'deepseek', name: 'DeepSeek' },
     { id: 'ollama', name: 'Ollama (Local)' },
@@ -17,6 +18,7 @@ const FALLBACK_MODELS_BY_PROVIDER = {
     openrouter: [
         { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
         { id: 'openai/gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
+        { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet', cost: '$3.00/$15.00' },
         { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3.00/$15.00' },
         { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
     ],
@@ -29,6 +31,25 @@ export default function Create({
     discordDefaults = {},
     discourseDefaults = {},
 }) {
+    const modelMatchesQuery = (model, rawQuery) => {
+        const query = rawQuery.trim().toLowerCase();
+        if (query.length === 0) {
+            return true;
+        }
+
+        const searchable = `${model.id || ''} ${model.name || ''}`.toLowerCase();
+        if (searchable.includes(query)) {
+            return true;
+        }
+
+        const tokens = query.split(/[^a-z0-9.]+/i).filter(Boolean);
+        if (tokens.length === 0) {
+            return true;
+        }
+
+        return tokens.every((token) => searchable.includes(token));
+    };
+
     const { flash } = usePage().props;
     const selectedPersonaA = personas.find((persona) => persona.id === (template?.persona_a_id ?? ''));
     const selectedPersonaB = personas.find((persona) => persona.id === (template?.persona_b_id ?? ''));
@@ -70,6 +91,8 @@ export default function Create({
     const [modelsB, setModelsB] = useState([]);
     const [loadingModelsA, setLoadingModelsA] = useState(false);
     const [loadingModelsB, setLoadingModelsB] = useState(false);
+    const [modelFilterA, setModelFilterA] = useState('');
+    const [modelFilterB, setModelFilterB] = useState('');
     const [showTemplateModal, setShowTemplateModal] = useState(false);
     const fallbackModelsByProvider = {
         ...FALLBACK_MODELS_BY_PROVIDER,
@@ -82,6 +105,14 @@ export default function Create({
     const visibleModelsB = modelsB.length > 0
         ? modelsB
         : (data.provider_b ? (fallbackModelsByProvider[data.provider_b] || []) : []);
+
+    const filteredModelsA = useMemo(() => {
+        return visibleModelsA.filter((model) => modelMatchesQuery(model, modelFilterA));
+    }, [visibleModelsA, modelFilterA]);
+
+    const filteredModelsB = useMemo(() => {
+        return visibleModelsB.filter((model) => modelMatchesQuery(model, modelFilterB));
+    }, [visibleModelsB, modelFilterB]);
 
     const templateForm = useForm({
         name: '',
@@ -354,6 +385,14 @@ export default function Create({
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Model</label>
+                                <input
+                                    type="text"
+                                    value={modelFilterA}
+                                    onChange={e => setModelFilterA(e.target.value)}
+                                    disabled={!data.provider_a || loadingModelsA}
+                                    placeholder="Filter models by name or ID..."
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 placeholder:text-zinc-600 focus:ring-2 focus:ring-indigo-500/50 outline-none disabled:opacity-50"
+                                />
                                 <select
                                     value={data.model_a}
                                     onChange={e => setData('model_a', e.target.value)}
@@ -361,13 +400,14 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none disabled:opacity-50"
                                 >
                                     <option value="">{loadingModelsA ? 'Loading models...' : 'Select Model...'}</option>
-                                    {visibleModelsA.map(m => (
+                                    {filteredModelsA.map(m => (
                                         <option key={m.id} value={m.id}>
                                             {m.name}{m.cost ? ` - ${m.cost}` : ''}
                                         </option>
                                     ))}
                                 </select>
                                 {errors.model_a && <div className="text-red-400 text-sm">{errors.model_a}</div>}
+                                <p className="text-xs text-zinc-600 ml-1">{filteredModelsA.length}/{visibleModelsA.length} models shown</p>
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 
@@ -412,6 +452,14 @@ export default function Create({
 
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Model</label>
+                                <input
+                                    type="text"
+                                    value={modelFilterB}
+                                    onChange={e => setModelFilterB(e.target.value)}
+                                    disabled={!data.provider_b || loadingModelsB}
+                                    placeholder="Filter models by name or ID..."
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 placeholder:text-zinc-600 focus:ring-2 focus:ring-purple-500/50 outline-none disabled:opacity-50"
+                                />
                                 <select
                                     value={data.model_b}
                                     onChange={e => setData('model_b', e.target.value)}
@@ -419,13 +467,14 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none disabled:opacity-50"
                                 >
                                     <option value="">{loadingModelsB ? 'Loading models...' : 'Select Model...'}</option>
-                                    {visibleModelsB.map(m => (
+                                    {filteredModelsB.map(m => (
                                         <option key={m.id} value={m.id}>
                                             {m.name}{m.cost ? ` - ${m.cost}` : ''}
                                         </option>
                                     ))}
                                 </select>
                                 {errors.model_b && <div className="text-red-400 text-sm">{errors.model_b}</div>}
+                                <p className="text-xs text-zinc-600 ml-1">{filteredModelsB.length}/{visibleModelsB.length} models shown</p>
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 
