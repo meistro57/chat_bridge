@@ -182,6 +182,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Turn Rescue Attempts
+    |--------------------------------------------------------------------------
+    |
+    | After retries are exhausted for empty content or retryable failures,
+    | run this many additional rescue generations before using fallback text.
+    |
+    */
+
+    'turn_rescue_attempts' => (int) env('AI_TURN_RESCUE_ATTEMPTS', 1),
+
+    /*
+    |--------------------------------------------------------------------------
     | Provider HTTP Client Resilience
     |--------------------------------------------------------------------------
     |

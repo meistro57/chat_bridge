@@ -61,16 +61,25 @@ class ConversationService
         }
 
         // Standard streaming response without tools
-        $generator = function () use ($driver, $messages, $settings) {
+        $generator = function () use ($driver, $messages, $settings, $conversation, $persona) {
             $streamYieldedContent = false;
+            $streamedContent = '';
             foreach ($driver->streamChat($messages, $settings['temperature']) as $chunk) {
                 $streamYieldedContent = true;
+                $streamedContent .= $chunk;
                 yield $chunk;
             }
 
-            if (! $streamYieldedContent) {
+            if (! $streamYieldedContent || trim($streamedContent) === '') {
+                if ($streamYieldedContent) {
+                    Log::warning('Streaming turn content was whitespace-only; using non-stream fallback', [
+                        'conversation_id' => $conversation->id,
+                        'persona_id' => $persona->id,
+                    ]);
+                }
+
                 $response = $driver->chat($messages, $settings['temperature']);
-                if ($response->content !== '') {
+                if (trim($response->content) !== '') {
                     yield $response->content;
                 }
             }

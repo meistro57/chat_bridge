@@ -194,6 +194,65 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $this->assertSame(['fallback response'], $chunks);
     }
 
+    public function test_generate_turn_falls_back_to_chat_when_stream_is_whitespace_only(): void
+    {
+        config()->set('services.qdrant.enabled', false);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'mock',
+            'provider_b' => 'mock',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
+            'starter_message' => 'Hello',
+            'status' => 'active',
+            'metadata' => [],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->andReturn(new \ArrayIterator(['   ', "\n"]));
+        $driver->shouldReceive('chat')
+            ->once()
+            ->andReturn(new AIResponse('Recovered after whitespace stream'));
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(false);
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: Mockery::mock(RagService::class),
+            toolExecutor: Mockery::mock(ToolExecutor::class),
+            streamingChunker: new StreamingChunker
+        );
+
+        $result = $service->generateTurn($conversation, $personaA, new Collection);
+        $chunks = iterator_to_array($result['content']);
+
+        $this->assertSame("   \nRecovered after whitespace stream", implode('', $chunks));
+    }
+
     public function test_generate_turn_streams_tools_response_in_smaller_chunks(): void
     {
         config()->set('services.qdrant.enabled', false);

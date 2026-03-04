@@ -9,6 +9,7 @@ use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
@@ -17,6 +18,97 @@ use Tests\TestCase;
 class ChatControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_live_status_requires_authentication(): void
+    {
+        $response = $this->getJson(route('chat.live-status'));
+
+        $response->assertUnauthorized();
+    }
+
+    public function test_live_status_returns_active_conversation_progress_for_authenticated_user(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $activeConversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'status' => 'active',
+            'max_rounds' => 10,
+        ]);
+
+        $activeConversation->messages()->create([
+            'role' => 'assistant',
+            'persona_id' => $personaA->id,
+            'content' => 'Turn 1',
+        ]);
+        $activeConversation->messages()->create([
+            'role' => 'assistant',
+            'persona_id' => $personaB->id,
+            'content' => 'Turn 2',
+        ]);
+        $activeConversation->messages()->create([
+            'role' => 'user',
+            'persona_id' => null,
+            'content' => 'Starter',
+        ]);
+
+        Cache::put("conversation.stop.{$activeConversation->id}", true, now()->addMinutes(5));
+
+        Conversation::factory()->create([
+            'user_id' => $user->id,
+            'status' => 'completed',
+        ]);
+
+        Conversation::factory()->create([
+            'user_id' => $otherUser->id,
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('chat.live-status'));
+
+        $response->assertOk();
+        $response->assertJsonPath('active_count', 1);
+        $response->assertJsonPath('items.0.id', $activeConversation->id);
+        $response->assertJsonPath('items.0.current_turn', 3);
+        $response->assertJsonPath('items.0.max_rounds', 10);
+        $response->assertJsonPath('items.0.assistant_turns', 2);
+        $response->assertJsonPath('items.0.messages_count', 3);
+        $response->assertJsonPath('items.0.stop_requested', true);
+    }
+
+    public function test_live_status_handles_cache_failures_and_still_returns_active_conversations(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\RecordPerformanceMetrics::class);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $activeConversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'status' => 'active',
+            'max_rounds' => 10,
+        ]);
+
+        Cache::shouldReceive('get')
+            ->once()
+            ->with("conversation.stop.{$activeConversation->id}")
+            ->andThrow(new \RuntimeException('Redis unavailable'));
+
+        $response = $this->actingAs($user)->getJson(route('chat.live-status'));
+
+        $response->assertOk();
+        $response->assertJsonPath('active_count', 1);
+        $response->assertJsonPath('items.0.id', $activeConversation->id);
+        $response->assertJsonPath('items.0.stop_requested', false);
+    }
 
     public function test_store_includes_template_rag_metadata_when_template_selected(): void
     {
@@ -85,6 +177,10 @@ class ChatControllerTest extends TestCase
             'model_b' => 'gpt-4o-mini',
             'starter_message' => 'Test kickoff prompt.',
             'max_rounds' => 7,
+            'memory_history_limit' => 18,
+            'memory_rag_enabled' => true,
+            'memory_rag_source_limit' => 8,
+            'memory_rag_score_threshold' => 0.45,
             'stop_word_detection' => true,
             'stop_words' => ['goodbye', 'halt'],
             'stop_word_threshold' => 0.5,
@@ -114,6 +210,10 @@ class ChatControllerTest extends TestCase
         $this->assertTrue($conversation->stop_word_detection);
         $this->assertEquals($payload['stop_word_threshold'], $conversation->stop_word_threshold);
         $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
+        $this->assertSame($payload['memory_history_limit'], $conversation->metadata['memory']['history_limit'] ?? null);
+        $this->assertSame($payload['memory_rag_enabled'], $conversation->metadata['rag']['enabled'] ?? null);
+        $this->assertSame($payload['memory_rag_source_limit'], $conversation->metadata['rag']['source_limit'] ?? null);
+        $this->assertEquals($payload['memory_rag_score_threshold'], $conversation->metadata['rag']['score_threshold'] ?? null);
         $this->assertTrue($conversation->discord_streaming_enabled);
         $this->assertSame($payload['discord_webhook_url'], $conversation->discord_webhook_url);
         $this->assertTrue($conversation->discourse_streaming_enabled);
@@ -162,6 +262,10 @@ class ChatControllerTest extends TestCase
 
         $this->assertNotNull($conversation);
         $this->assertSame(false, $conversation->metadata['notifications_enabled'] ?? null);
+        $this->assertSame(10, $conversation->metadata['memory']['history_limit'] ?? null);
+        $this->assertTrue($conversation->metadata['rag']['enabled'] ?? false);
+        $this->assertSame(6, $conversation->metadata['rag']['source_limit'] ?? null);
+        $this->assertEquals(0.3, $conversation->metadata['rag']['score_threshold'] ?? null);
     }
 
     public function test_store_defaults_discord_streaming_to_user_preference_when_omitted(): void

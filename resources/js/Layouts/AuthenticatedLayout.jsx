@@ -3,7 +3,7 @@ import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
@@ -11,6 +11,51 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
+    const [liveStatus, setLiveStatus] = useState({
+        active_count: 0,
+        items: [],
+    });
+    const [liveStatusError, setLiveStatusError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const loadLiveStatus = async () => {
+            try {
+                const response = await fetch(route('chat.live-status'), {
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+                if (isMounted) {
+                    setLiveStatus({
+                        active_count: Number(payload.active_count ?? 0),
+                        items: Array.isArray(payload.items) ? payload.items : [],
+                    });
+                    setLiveStatusError(false);
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setLiveStatusError(true);
+                }
+            }
+        };
+
+        loadLiveStatus();
+        const interval = setInterval(loadLiveStatus, 10000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, []);
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -36,6 +81,27 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
 
                         <div className="hidden sm:ms-6 sm:flex sm:items-center gap-3">
+                            <div className="hidden lg:flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-900/40 px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                    <span className={`h-2 w-2 rounded-full ${liveStatus.active_count > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`}></span>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-300">
+                                        Live Chats: {liveStatus.active_count}
+                                    </span>
+                                </div>
+                                {liveStatus.items.slice(0, 2).map((item) => (
+                                    <div key={item.id} className="rounded-lg border border-white/10 bg-black/20 px-2 py-1">
+                                        <div className="max-w-[180px] truncate text-[10px] text-zinc-400">
+                                            {item.label}
+                                        </div>
+                                        <div className="text-[11px] font-mono text-zinc-200">
+                                            Turn {item.current_turn}/{item.max_rounds}
+                                        </div>
+                                    </div>
+                                ))}
+                                {liveStatusError && (
+                                    <span className="text-[10px] text-amber-300">status unavailable</span>
+                                )}
+                            </div>
                             {!isDashboard && (
                                 <Link
                                     href={route('dashboard')}

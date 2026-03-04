@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Services\AI\TranscriptService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -20,6 +21,68 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ChatController extends Controller
 {
+    public function liveStatus(Request $request): JsonResponse
+    {
+        $activeConversations = Conversation::query()
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'active')
+            ->with(['personaA:id,name', 'personaB:id,name'])
+            ->withCount([
+                'messages as assistant_turns_count' => fn ($query) => $query->where('role', 'assistant'),
+                'messages as messages_count',
+            ])
+            ->latest('updated_at')
+            ->limit(6)
+            ->get([
+                'id',
+                'persona_a_id',
+                'persona_b_id',
+                'max_rounds',
+                'updated_at',
+            ]);
+
+        $items = $activeConversations->map(function (Conversation $conversation): array {
+            $assistantTurns = (int) ($conversation->assistant_turns_count ?? 0);
+            $maxRounds = max(1, (int) ($conversation->max_rounds ?? 1));
+            $currentTurn = min($assistantTurns + 1, $maxRounds);
+            $stopRequested = $this->resolveStopRequested($conversation);
+            $personaAName = $conversation->personaA?->name ?? 'Agent A';
+            $personaBName = $conversation->personaB?->name ?? 'Agent B';
+
+            return [
+                'id' => (string) $conversation->id,
+                'label' => "{$personaAName} vs {$personaBName}",
+                'current_turn' => $currentTurn,
+                'max_rounds' => $maxRounds,
+                'assistant_turns' => $assistantTurns,
+                'messages_count' => (int) ($conversation->messages_count ?? 0),
+                'stop_requested' => $stopRequested,
+                'updated_at' => $conversation->updated_at?->toIso8601String(),
+                'updated_at_human' => $conversation->updated_at?->diffForHumans(),
+            ];
+        })->values();
+
+        return response()->json([
+            'active_count' => $items->count(),
+            'items' => $items,
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    protected function resolveStopRequested(Conversation $conversation): bool
+    {
+        try {
+            return (bool) Cache::get("conversation.stop.{$conversation->id}");
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to resolve stop signal for live chat status', [
+                'conversation_id' => $conversation->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     public function index(): InertiaResponse
     {
         Log::info('ChatController::index loading personas', [
@@ -155,10 +218,13 @@ class ChatController extends Controller
                 'persona_b_name' => $personaB->name,
                 'notifications_enabled' => $request->boolean('notifications_enabled', false),
                 'template_id' => $selectedTemplate?->id,
+                'memory' => [
+                    'history_limit' => (int) ($validated['memory_history_limit'] ?? 10),
+                ],
                 'rag' => [
-                    'enabled' => (bool) ($selectedTemplate?->rag_enabled ?? false),
-                    'source_limit' => (int) ($selectedTemplate?->rag_source_limit ?? 6),
-                    'score_threshold' => (float) ($selectedTemplate?->rag_score_threshold ?? 0.3),
+                    'enabled' => (bool) ($validated['memory_rag_enabled'] ?? ($selectedTemplate?->rag_enabled ?? true)),
+                    'source_limit' => (int) ($validated['memory_rag_source_limit'] ?? ($selectedTemplate?->rag_source_limit ?? 6)),
+                    'score_threshold' => (float) ($validated['memory_rag_score_threshold'] ?? ($selectedTemplate?->rag_score_threshold ?? 0.3)),
                     'system_prompt' => (string) ($selectedTemplate?->rag_system_prompt ?? ''),
                     'files' => $selectedTemplate?->rag_files ?? [],
                 ],

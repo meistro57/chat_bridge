@@ -198,6 +198,59 @@ class TranscriptChatControllerTest extends TestCase
         $this->assertSame('assistant', $response->json('sources.0.role'));
     }
 
+    public function test_ask_accepts_extended_openai_models_in_settings(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create(['user_id' => $user->id]);
+        $conversation = Conversation::factory()->create(['user_id' => $user->id]);
+
+        $message = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $persona->id,
+            'role' => 'assistant',
+            'content' => 'We can use model-specific settings for this answer.',
+            'embedding' => array_fill(0, 1536, 0.1),
+        ]);
+        $message->similarity_score = 0.91;
+
+        $this->mock(RagService::class, function ($mock) use ($message) {
+            $mock->shouldReceive('searchSimilarMessages')
+                ->once()
+                ->andReturn(collect([$message]));
+        });
+
+        $this->mock(EmbeddingService::class);
+
+        Http::fake([
+            'api.openai.com/v1/chat/completions' => Http::response([
+                'choices' => [
+                    ['message' => ['content' => 'Using extended model list works.']],
+                ],
+            ], 200),
+        ]);
+
+        config([
+            'services.openai.key' => 'sk-test-key',
+            'services.openrouter.key' => null,
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('transcript-chat.ask'), [
+            'question' => 'Can we use the newer model choices here?',
+            'model' => 'gpt-5',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('answer', 'Using extended model list works.');
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->url() !== 'https://api.openai.com/v1/chat/completions') {
+                return false;
+            }
+
+            return ($request->data()['model'] ?? null) === 'gpt-5';
+        });
+    }
+
     public function test_ask_accepts_valid_conversation_id_for_scoped_search(): void
     {
         $user = User::factory()->create();

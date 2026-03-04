@@ -2,15 +2,13 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
-export default function Edit({ apiKey }) {
+export default function Edit({ apiKey, providers }) {
     const { data, setData, put, processing, errors } = useForm({
         provider: apiKey.provider,
         label: apiKey.label || '',
         key: '', // Empty by default
         is_active: apiKey.is_active,
     });
-
-    const providers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'ollama', 'lmstudio'];
 
     const handleSubmit = (e) => {
         e.preventDefault();

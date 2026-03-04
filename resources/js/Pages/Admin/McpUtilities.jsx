@@ -1,6 +1,8 @@
 import { GlassCard } from '@/Components/ui/GlassCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import axios from 'axios';
+import { useState } from 'react';
 
 function StatusPill({ ok }) {
     const classes = ok
@@ -30,6 +32,60 @@ function StatItem({ label, value }) {
 export default function McpUtilities({ health, stats, endpoints }) {
     const healthPayload = health?.payload ?? {};
     const statsPayload = stats?.payload ?? {};
+    const [audit, setAudit] = useState({
+        messages_count: Number(statsPayload.messages_count ?? 0),
+        embeddings_count: Number(statsPayload.embeddings_count ?? 0),
+        missing_embeddings_count: Math.max(
+            Number(statsPayload.messages_count ?? 0) - Number(statsPayload.embeddings_count ?? 0),
+            0,
+        ),
+        coverage_percent: Number(statsPayload.messages_count ?? 0) > 0
+            ? Number((((Number(statsPayload.embeddings_count ?? 0) / Number(statsPayload.messages_count ?? 0)) * 100).toFixed(2)))
+            : 100,
+        checked_at: null,
+    });
+    const [compareLoading, setCompareLoading] = useState(false);
+    const [populateLoading, setPopulateLoading] = useState(false);
+    const [populateLimit, setPopulateLimit] = useState(100);
+    const [error, setError] = useState('');
+    const [populateSummary, setPopulateSummary] = useState(null);
+
+    const compareEmbeddings = async () => {
+        setCompareLoading(true);
+        setError('');
+        setPopulateSummary(null);
+
+        try {
+            const response = await axios.get(route('admin.mcp.utilities.embeddings.compare'));
+            setAudit(response.data.audit);
+        } catch (requestError) {
+            setError(requestError.response?.data?.message || requestError.message || 'Failed to compare embeddings.');
+        } finally {
+            setCompareLoading(false);
+        }
+    };
+
+    const populateEmbeddings = async () => {
+        if (audit.missing_embeddings_count <= 0) {
+            return;
+        }
+
+        setPopulateLoading(true);
+        setError('');
+        setPopulateSummary(null);
+
+        try {
+            const response = await axios.post(route('admin.mcp.utilities.embeddings.populate'), {
+                limit: populateLimit,
+            });
+            setAudit(response.data.audit);
+            setPopulateSummary(response.data.summary);
+        } catch (requestError) {
+            setError(requestError.response?.data?.message || requestError.message || 'Failed to populate embeddings.');
+        } finally {
+            setPopulateLoading(false);
+        }
+    };
 
     return (
         <AuthenticatedLayout>
@@ -76,8 +132,78 @@ export default function McpUtilities({ health, stats, endpoints }) {
 
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <StatItem label="Conversations" value={statsPayload.conversations_count} />
-                            <StatItem label="Messages" value={statsPayload.messages_count} />
-                            <StatItem label="Embeddings" value={statsPayload.embeddings_count} />
+                            <StatItem label="Messages" value={audit.messages_count} />
+                            <StatItem label="Embeddings" value={audit.embeddings_count} />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <StatItem label="Missing Embeddings" value={audit.missing_embeddings_count} />
+                            <StatItem label="Coverage %" value={audit.coverage_percent} />
+                        </div>
+
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                                <div className="space-y-2">
+                                    <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                        Embedding Controls
+                                    </div>
+                                    <div className="text-sm text-zinc-400">
+                                        Compare totals first, then populate missing embeddings in batches.
+                                    </div>
+                                    {audit.checked_at && (
+                                        <div className="text-xs text-zinc-500">
+                                            Last compared: {new Date(audit.checked_at).toLocaleString()}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                    <div>
+                                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                            Populate Limit
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="1000"
+                                            value={populateLimit}
+                                            onChange={(event) => setPopulateLimit(Math.max(1, Math.min(1000, Number(event.target.value || 1))))}
+                                            className="w-28 rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-cyan-500/50"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={compareEmbeddings}
+                                        disabled={compareLoading || populateLoading}
+                                        className="rounded-xl border border-white/10 bg-zinc-900/50 px-4 py-2 text-sm text-zinc-200 transition-colors hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {compareLoading ? 'Comparing...' : 'Compare Missing'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={populateEmbeddings}
+                                        disabled={populateLoading || compareLoading || audit.missing_embeddings_count <= 0}
+                                        className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {populateLoading ? 'Populating...' : 'Populate Missing'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {populateSummary && (
+                                <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+                                    <StatItem label="Processed" value={populateSummary.processed} />
+                                    <StatItem label="Updated" value={populateSummary.updated} />
+                                    <StatItem label="Failed" value={populateSummary.failed} />
+                                    <StatItem label="Requested" value={populateSummary.requested_limit} />
+                                    <StatItem label="Remaining" value={populateSummary.remaining_missing} />
+                                </div>
+                            )}
+
+                            {error && (
+                                <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {error}
+                                </div>
+                            )}
                         </div>
                     </GlassCard>
 

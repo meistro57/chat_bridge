@@ -2,6 +2,27 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-04
+
+### 🧠 Session Memory Controls
+- Added per-session agent memory settings on chat creation:
+  - `memory_history_limit` (recent turn context window)
+  - `memory_rag_enabled` (cross-chat memory toggle)
+  - `memory_rag_source_limit` (retrieved memory depth)
+  - `memory_rag_score_threshold` (retrieval strictness)
+- Chat creation now stores memory settings in conversation metadata and applies them at runtime.
+- Turn generation now respects per-conversation history window (instead of a fixed value).
+
+### 🛡️ Live Status Reliability
+- Hardened `/chat/live-status` against cache backend outages:
+  - stop-signal reads now fail open and return `stop_requested=false` instead of breaking the endpoint.
+- Header live status widget now remains functional even when Redis/cache connectivity is temporarily unavailable.
+
+### 🤖 Empty-Turn Recovery
+- Improved empty-turn handling before fallback message insertion:
+  - whitespace-only streams now trigger non-stream fallback generation.
+  - added configurable rescue generation attempts (`AI_TURN_RESCUE_ATTEMPTS`) before static fallback text is used.
+
 ## [Unreleased] - 2026-02-27
 
 ### 🤖 **AI Chatbot (Ask the Archive)**

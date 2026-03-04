@@ -57,7 +57,23 @@ class ProviderModelPricingTest extends TestCase
         $response->assertOk();
         $ids = collect($response->json('models'))->pluck('id');
         $this->assertTrue($ids->contains('gemini-2.5-flash'));
+        $this->assertTrue($ids->contains('gemini-2.5-pro'));
         $this->assertFalse($ids->contains('gemini-1.5-flash'));
+        $this->assertFalse($ids->contains('gemini-1.5-pro'));
+    }
+
+    public function test_openai_models_fall_back_to_defaults_when_no_key(): void
+    {
+        config(['services.openai.key' => null]);
+
+        $response = $this->getJson('/api/providers/models?provider=openai');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('models'))->pluck('id');
+        $this->assertTrue($ids->contains('gpt-5'));
+        $this->assertTrue($ids->contains('gpt-5-mini'));
+        $this->assertTrue($ids->contains('o3-mini'));
     }
 
     public function test_openrouter_model_query_persists_pricing_for_analytics(): void

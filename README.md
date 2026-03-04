@@ -203,6 +203,7 @@ Orchestrate AI discussions with:
 - 🎯 Manual stop/resume controls
 - ▶️ Resume failed sessions from both the session detail page and the main chat list
 - 🛑 **Smart stop-word detection with thresholds**
+- 🧠 **Per-session agent memory controls** (recent message window, cross-chat memory toggle, retrieval depth, similarity threshold)
 - 🤖 **Per-conversation provider/model selection**
 - 💰 **Live pricing display for 344+ models**
 - 📡 Live status broadcasting
@@ -237,6 +238,7 @@ Contextual AI with memory:
 - 🗄️ Qdrant vector database
 - 🔍 Semantic message search
 - 💭 Persistent conversation memory
+- 🎚️ Session-level memory tuning for each chat
 - ⚡ Sub-10ms retrieval times
 - 🎯 Context-aware responses
 - 📊 Automatic embeddings

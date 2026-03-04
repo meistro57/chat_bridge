@@ -44,6 +44,10 @@
 - **Discord Threading** - Auto-create/continue a dedicated thread per conversation
 - **Advanced Chat Controls**:
   - **Max Rounds** - Set conversation length limit (1-100 turns)
+  - **Memory Window** - Configure how many recent messages are included each turn (1-50)
+  - **Cross-Chat Memory Toggle** - Enable/disable embedding-based memory retrieval per session
+  - **Memory Recall Depth** - Number of retrieved memory snippets to inject (1-20)
+  - **Memory Similarity Threshold** - Tune retrieval strictness (0.00-1.00)
   - **Stop Word Detection** - Automatic conversation stopping based on keywords
   - **Stop Word Threshold** - Configurable similarity threshold (0.1-1.0)
   - **Custom Stop Words** - Define conversation-ending phrases
@@ -82,6 +86,7 @@
 - **Automatic Embeddings** - Generated for all messages
 - **Semantic Search** - Find relevant past conversations
 - **Persistent Memory** - AI remembers across sessions
+- **Session Memory Profiles** - Each conversation can tune history window and retrieval behavior
 - **Context Injection** - Relevant history added to prompts
 - **Sub-10ms Retrieval** - Lightning-fast vector search
 - **Scalable Storage** - Efficient compression and indexing

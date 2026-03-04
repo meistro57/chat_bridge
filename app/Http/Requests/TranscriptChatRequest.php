@@ -6,6 +6,22 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class TranscriptChatRequest extends FormRequest
 {
+    /**
+     * @var array<int, string>
+     */
+    private const ALLOWED_MODELS = [
+        'gpt-4o-mini',
+        'gpt-4o',
+        'gpt-5',
+        'gpt-5-mini',
+        'gpt-5-nano',
+        'gpt-4.1',
+        'gpt-4.1-mini',
+        'gpt-4.1-nano',
+        'o3-mini',
+        'o1',
+    ];
+
     public function authorize(): bool
     {
         return true;
@@ -20,7 +36,7 @@ class TranscriptChatRequest extends FormRequest
             'question' => ['required', 'string', 'min:3', 'max:2000'],
             'conversation_id' => ['nullable', 'uuid', 'exists:conversations,id'],
             'system_prompt' => ['nullable', 'string', 'max:4000'],
-            'model' => ['nullable', 'string', 'in:gpt-4o-mini,gpt-4o,gpt-4o-2024-11-20'],
+            'model' => ['nullable', 'string', 'in:'.implode(',', self::ALLOWED_MODELS)],
             'temperature' => ['nullable', 'numeric', 'min:0', 'max:1'],
             'max_tokens' => ['nullable', 'integer', 'min:256', 'max:4096'],
             'source_limit' => ['nullable', 'integer', 'min:1', 'max:10'],

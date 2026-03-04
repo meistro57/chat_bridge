@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
         Route::get('/boost/stats', [BoostDashboardController::class, 'stats'])->name('boost.stats');
         Route::get('/mcp-utilities', [McpUtilitiesController::class, 'index'])->name('mcp.utilities');
+        Route::get('/mcp-utilities/embeddings/compare', [McpUtilitiesController::class, 'compareEmbeddings'])->name('mcp.utilities.embeddings.compare');
+        Route::post('/mcp-utilities/embeddings/populate', [McpUtilitiesController::class, 'populateEmbeddings'])->name('mcp.utilities.embeddings.populate');
         Route::get('/performance', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'index'])->name('performance.index');
         Route::get('/performance/stats', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'stats'])->name('performance.stats');
     });
@@ -92,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Chat routes
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/create', [ChatController::class, 'create'])->name('chat.create');
+    Route::get('/chat/live-status', [ChatController::class, 'liveStatus'])->name('chat.live-status');
     Route::post('/chat', [ChatController::class, 'store'])->name('chat.store');
     Route::get('/chat/search', [ChatController::class, 'search'])->name('chat.search');
     Route::get('/chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');

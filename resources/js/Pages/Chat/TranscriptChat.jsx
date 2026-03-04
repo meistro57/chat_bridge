@@ -21,6 +21,19 @@ const DEFAULT_SETTINGS = {
     scoreThreshold: 0.3,
 };
 
+const OPENAI_MODELS = [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'gpt-5',
+    'gpt-5-mini',
+    'gpt-5-nano',
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+    'o3-mini',
+    'o1',
+];
+
 const MarkdownContent = ({ content }) => (
     <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -230,9 +243,9 @@ export default function TranscriptChat({ conversations }) {
                                         onChange={(e) => updateSetting('model', e.target.value)}
                                         className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
                                     >
-                                        <option value="gpt-4o-mini">gpt-4o-mini</option>
-                                        <option value="gpt-4o">gpt-4o</option>
-                                        <option value="gpt-4o-2024-11-20">gpt-4o (nov)</option>
+                                        {OPENAI_MODELS.map((model) => (
+                                            <option key={model} value={model}>{model}</option>
+                                        ))}
                                     </select>
                                 </div>
 

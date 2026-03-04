@@ -2,15 +2,13 @@ import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 
-export default function Create() {
+export default function Create({ providers }) {
     const { data, setData, post, processing, errors } = useForm({
         provider: 'openai',
         key: '',
         label: '',
         is_active: true, // not natively supported by controller create but useful if added later, ignoring for now as default database is true
     });
-
-    const providers = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'ollama', 'lmstudio'];
 
     const handleSubmit = (e) => {
         e.preventDefault();

@@ -15,12 +15,54 @@ const PROVIDERS = [
 ];
 
 const FALLBACK_MODELS_BY_PROVIDER = {
+    anthropic: [
+        { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3/$15' },
+        { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', cost: '$15/$75' },
+        { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', cost: '$0.25/$1.25' },
+        { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7', cost: '$3/$15' },
+    ],
+    openai: [
+        { id: 'gpt-5', name: 'GPT-5', cost: '$1.25/$10.00' },
+        { id: 'gpt-5-mini', name: 'GPT-5 Mini', cost: '$0.25/$2.00' },
+        { id: 'gpt-5-nano', name: 'GPT-5 Nano', cost: '$0.05/$0.40' },
+        { id: 'gpt-4.1', name: 'GPT-4.1', cost: '$2.00/$8.00' },
+        { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', cost: '$0.40/$1.60' },
+        { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', cost: '$0.10/$0.40' },
+        { id: 'gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
+        { id: 'o1', name: 'o1', cost: '$15.00/$60.00' },
+        { id: 'o3-mini', name: 'o3-mini', cost: '$1.10/$4.40' },
+    ],
     openrouter: [
         { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
         { id: 'openai/gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
         { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet', cost: '$3.00/$15.00' },
         { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3.00/$15.00' },
         { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
+    ],
+    bedrock: [
+        { id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', name: 'Claude 3.5 Sonnet (Bedrock)', cost: '$3.00/$15.00' },
+        { id: 'anthropic.claude-3-7-sonnet-20250219-v1:0', name: 'Claude 3.7 Sonnet (Bedrock)', cost: '$3.00/$15.00' },
+        { id: 'anthropic.claude-sonnet-4-20250514-v1:0', name: 'Claude Sonnet 4 (Bedrock)', cost: '$3.00/$15.00' },
+        { id: 'anthropic.claude-3-5-haiku-20241022-v1:0', name: 'Claude 3.5 Haiku (Bedrock)', cost: '$0.80/$4.00' },
+    ],
+    gemini: [
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', cost: '$0.15/$0.60' },
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', cost: '$1.25/$10.00' },
+        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', cost: '$0.10/$0.40' },
+        { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', cost: '$0.075/$0.30' },
+    ],
+    deepseek: [
+        { id: 'deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
+        { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', cost: '$0.55/$2.19' },
+    ],
+    ollama: [
+        { id: 'llama3.1', name: 'Llama 3.1', cost: 'FREE (local)' },
+        { id: 'llama3.2', name: 'Llama 3.2', cost: 'FREE (local)' },
+        { id: 'mistral', name: 'Mistral', cost: 'FREE (local)' },
+    ],
+    lmstudio: [
+        { id: 'local-model', name: 'Local Model', cost: 'FREE (local)' },
     ],
 };
 
@@ -65,6 +107,10 @@ export default function Create({
         temp_b: selectedPersonaB?.temperature ?? 0.7,
         starter_message: template?.starter_message ?? '',
         max_rounds: template?.max_rounds ?? 10,
+        memory_history_limit: 10,
+        memory_rag_enabled: Boolean(template?.rag_enabled ?? true),
+        memory_rag_source_limit: template?.rag_source_limit ?? 6,
+        memory_rag_score_threshold: template?.rag_score_threshold ?? 0.3,
         stop_word_detection: false,
         stop_words: '',
         stop_word_threshold: 0.8,
@@ -215,6 +261,9 @@ export default function Create({
         .length > 0;
 
     const isValidRoundCount = Number.isInteger(Number(data.max_rounds)) && Number(data.max_rounds) >= 1 && Number(data.max_rounds) <= 100;
+    const isValidHistoryLimit = Number.isInteger(Number(data.memory_history_limit)) && Number(data.memory_history_limit) >= 1 && Number(data.memory_history_limit) <= 50;
+    const isValidRagSourceLimit = Number.isInteger(Number(data.memory_rag_source_limit)) && Number(data.memory_rag_source_limit) >= 1 && Number(data.memory_rag_source_limit) <= 20;
+    const isValidRagScoreThreshold = Number.isFinite(Number(data.memory_rag_score_threshold)) && Number(data.memory_rag_score_threshold) >= 0 && Number(data.memory_rag_score_threshold) <= 1;
 
     const canSubmit = Boolean(
         data.persona_a_id &&
@@ -225,6 +274,9 @@ export default function Create({
         data.model_b &&
         data.starter_message.trim().length > 0 &&
         isValidRoundCount &&
+        isValidHistoryLimit &&
+        isValidRagSourceLimit &&
+        isValidRagScoreThreshold &&
         (!data.stop_word_detection || (hasStopWords && data.stop_word_threshold >= 0.1 && data.stop_word_threshold <= 1))
     );
 
@@ -518,6 +570,83 @@ export default function Create({
                                 />
                                 {errors.max_rounds && <div className="text-red-400 text-sm">{errors.max_rounds}</div>}
                                 <p className="text-xs text-zinc-600">Maximum number of conversation turns</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Memory Window (Recent Messages)</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="50"
+                                    value={data.memory_history_limit}
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        setData('memory_history_limit', value === '' ? '' : parseInt(value, 10));
+                                    }}
+                                    onBlur={() => {
+                                        if (!isValidHistoryLimit) {
+                                            setData('memory_history_limit', 10);
+                                        }
+                                    }}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
+                                />
+                                {errors.memory_history_limit && <div className="text-red-400 text-sm">{errors.memory_history_limit}</div>}
+                                <p className="text-xs text-zinc-600">How many latest messages each agent keeps in-turn memory.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Memory Recall Depth</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="20"
+                                    value={data.memory_rag_source_limit}
+                                    onChange={e => {
+                                        const value = e.target.value;
+                                        setData('memory_rag_source_limit', value === '' ? '' : parseInt(value, 10));
+                                    }}
+                                    onBlur={() => {
+                                        if (!isValidRagSourceLimit) {
+                                            setData('memory_rag_source_limit', 6);
+                                        }
+                                    }}
+                                    className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-yellow-500/50 outline-none"
+                                />
+                                {errors.memory_rag_source_limit && <div className="text-red-400 text-sm">{errors.memory_rag_source_limit}</div>}
+                                <p className="text-xs text-zinc-600">Max retrieved memory snippets from prior chats.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">
+                                    Memory Similarity Threshold: {Number(data.memory_rag_score_threshold).toFixed(2)}
+                                </label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={data.memory_rag_score_threshold}
+                                    onChange={e => setData('memory_rag_score_threshold', parseFloat(e.target.value))}
+                                    className="w-full"
+                                />
+                                {errors.memory_rag_score_threshold && <div className="text-red-400 text-sm">{errors.memory_rag_score_threshold}</div>}
+                                <div className="flex justify-between text-xs text-zinc-600">
+                                    <span>Broader Recall</span>
+                                    <span>Stricter Match</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={data.memory_rag_enabled}
+                                        onChange={e => setData('memory_rag_enabled', e.target.checked)}
+                                        className="w-5 h-5 rounded bg-zinc-900/50 border-white/10"
+                                    />
+                                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Enable Cross-Chat Memory</span>
+                                </label>
+                                <p className="text-xs text-zinc-600 ml-7">Use embedding retrieval from prior conversations as extra context.</p>
                             </div>
 
                             <div className="space-y-2">

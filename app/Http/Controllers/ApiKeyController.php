@@ -10,6 +10,13 @@ use Inertia\Inertia;
 class ApiKeyController extends Controller
 {
     /**
+     * Supported API key providers.
+     *
+     * @var array<int, string>
+     */
+    private const PROVIDERS = ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'bedrock', 'ollama', 'lmstudio'];
+
+    /**
      * Providers that do not require an API key.
      *
      * @var array<int, string>
@@ -65,7 +72,9 @@ class ApiKeyController extends Controller
      */
     public function create()
     {
-        return Inertia::render('ApiKeys/Create');
+        return Inertia::render('ApiKeys/Create', [
+            'providers' => self::PROVIDERS,
+        ]);
     }
 
     /**
@@ -107,6 +116,7 @@ class ApiKeyController extends Controller
                 'is_active' => (bool) $apiKey->is_active,
                 // Don't send the full key for security
             ],
+            'providers' => self::PROVIDERS,
         ]);
     }
 

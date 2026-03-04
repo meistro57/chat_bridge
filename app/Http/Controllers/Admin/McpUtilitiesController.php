@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\PopulateEmbeddingsRequest;
+use App\Models\Message;
+use App\Services\AI\EmbeddingService;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -50,7 +54,74 @@ class McpUtilitiesController extends Controller
                     description: 'Embedding-powered contextual memory lookup with keyword fallback.',
                     baseUrl: $baseUrl,
                 ),
+                $this->endpointDefinition(
+                    method: 'GET',
+                    path: '/admin/mcp-utilities/embeddings/compare',
+                    description: 'Compare message totals vs. embeddings and return missing counts.',
+                    baseUrl: $baseUrl,
+                ),
+                $this->endpointDefinition(
+                    method: 'POST',
+                    path: '/admin/mcp-utilities/embeddings/populate',
+                    description: 'Generate embeddings for messages that are missing them.',
+                    baseUrl: $baseUrl,
+                ),
             ],
+        ]);
+    }
+
+    public function compareEmbeddings(): JsonResponse
+    {
+        return response()->json([
+            'ok' => true,
+            'audit' => $this->embeddingAudit(),
+        ]);
+    }
+
+    public function populateEmbeddings(PopulateEmbeddingsRequest $request, EmbeddingService $embeddingService): JsonResponse
+    {
+        $limit = $request->integer('limit');
+        $updated = 0;
+        $failed = 0;
+
+        $messages = Message::query()
+            ->whereNull('embedding')
+            ->whereNotNull('content')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'content']);
+
+        foreach ($messages as $message) {
+            try {
+                $content = trim((string) $message->content);
+
+                if ($content === '') {
+                    $failed++;
+
+                    continue;
+                }
+
+                $embedding = $embeddingService->getEmbedding($content);
+                $message->update(['embedding' => $embedding]);
+                $updated++;
+            } catch (\Throwable $exception) {
+                $failed++;
+                report($exception);
+            }
+        }
+
+        $audit = $this->embeddingAudit();
+
+        return response()->json([
+            'ok' => true,
+            'summary' => [
+                'requested_limit' => $limit,
+                'processed' => $messages->count(),
+                'updated' => $updated,
+                'failed' => $failed,
+                'remaining_missing' => $audit['missing_embeddings_count'],
+            ],
+            'audit' => $audit,
         ]);
     }
 
@@ -92,6 +163,27 @@ class McpUtilitiesController extends Controller
             'path' => $path,
             'description' => $description,
             'url' => $baseUrl.$path,
+        ];
+    }
+
+    /**
+     * @return array{messages_count:int,embeddings_count:int,missing_embeddings_count:int,coverage_percent:float,checked_at:string}
+     */
+    private function embeddingAudit(): array
+    {
+        $messagesCount = Message::query()->count();
+        $embeddingsCount = Message::query()->whereNotNull('embedding')->count();
+        $missingCount = max($messagesCount - $embeddingsCount, 0);
+        $coveragePercent = $messagesCount > 0
+            ? round(($embeddingsCount / $messagesCount) * 100, 2)
+            : 100.0;
+
+        return [
+            'messages_count' => $messagesCount,
+            'embeddings_count' => $embeddingsCount,
+            'missing_embeddings_count' => $missingCount,
+            'coverage_percent' => $coveragePercent,
+            'checked_at' => now()->toIso8601String(),
         ];
     }
 }

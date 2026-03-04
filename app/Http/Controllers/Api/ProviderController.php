@@ -100,7 +100,14 @@ class ProviderController extends Controller
 
         if ($response->successful()) {
             return collect($response->json('data'))
-                ->filter(fn ($model) => str_starts_with($model['id'], 'gpt-'))
+                ->filter(function ($model) {
+                    $id = (string) ($model['id'] ?? '');
+
+                    return str_starts_with($id, 'gpt-')
+                        || str_starts_with($id, 'o1')
+                        || str_starts_with($id, 'o3')
+                        || str_starts_with($id, 'o4');
+                })
                 ->sortByDesc('created')
                 ->map(fn ($model) => [
                     'id' => $model['id'],
@@ -226,11 +233,6 @@ class ProviderController extends Controller
             'gemini-2.0-flash' => '$0.10/$0.40',
             'gemini-2.0-flash-lite' => '$0.075/$0.30',
             'gemini-2.0-flash-exp' => 'FREE (exp)',
-            'gemini-1.5-pro' => '$1.25/$5.00',
-            'gemini-1.5-pro-latest' => '$1.25/$5.00',
-            'gemini-1.5-flash' => '$0.075/$0.30',
-            'gemini-1.5-flash-latest' => '$0.075/$0.30',
-            'gemini-1.5-flash-8b' => '$0.037/$0.15',
         ];
     }
 
@@ -238,9 +240,9 @@ class ProviderController extends Controller
     {
         return [
             ['id' => 'gemini-2.5-flash', 'name' => 'Gemini 2.5 Flash', 'cost' => '$0.15/$0.60'],
+            ['id' => 'gemini-2.5-pro', 'name' => 'Gemini 2.5 Pro', 'cost' => '$1.25/$10.00'],
             ['id' => 'gemini-2.0-flash-lite', 'name' => 'Gemini 2.0 Flash Lite', 'cost' => '$0.075/$0.30'],
-            ['id' => 'gemini-1.5-pro', 'name' => 'Gemini 1.5 Pro', 'cost' => '$1.25/$5.00'],
-            ['id' => 'gemini-1.5-flash-8b', 'name' => 'Gemini 1.5 Flash 8B', 'cost' => '$0.037/$0.15'],
+            ['id' => 'gemini-2.0-flash', 'name' => 'Gemini 2.0 Flash', 'cost' => '$0.10/$0.40'],
         ];
     }
 
@@ -347,10 +349,16 @@ class ProviderController extends Controller
     private function getDefaultOpenAIModels(): array
     {
         return [
+            ['id' => 'gpt-5', 'name' => 'GPT-5', 'cost' => '$1.25/$10.00'],
+            ['id' => 'gpt-5-mini', 'name' => 'GPT-5 Mini', 'cost' => '$0.25/$2.00'],
+            ['id' => 'gpt-5-nano', 'name' => 'GPT-5 Nano', 'cost' => '$0.05/$0.40'],
+            ['id' => 'gpt-4.1', 'name' => 'GPT-4.1', 'cost' => '$2.00/$8.00'],
+            ['id' => 'gpt-4.1-mini', 'name' => 'GPT-4.1 Mini', 'cost' => '$0.40/$1.60'],
+            ['id' => 'gpt-4.1-nano', 'name' => 'GPT-4.1 Nano', 'cost' => '$0.10/$0.40'],
             ['id' => 'gpt-4o', 'name' => 'GPT-4o', 'cost' => '$2.50/$10.00'],
             ['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini', 'cost' => '$0.15/$0.60'],
-            ['id' => 'gpt-4-turbo', 'name' => 'GPT-4 Turbo', 'cost' => '$10/$30'],
-            ['id' => 'gpt-3.5-turbo', 'name' => 'GPT-3.5 Turbo', 'cost' => '$0.50/$1.50'],
+            ['id' => 'o1', 'name' => 'o1', 'cost' => '$15.00/$60.00'],
+            ['id' => 'o3-mini', 'name' => 'o3-mini', 'cost' => '$1.10/$4.40'],
         ];
     }
 

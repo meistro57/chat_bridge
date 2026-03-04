@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Data\AIResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia;
 use Mockery;
 use Tests\TestCase;
 
@@ -48,6 +49,40 @@ class ApiKeyTest extends TestCase
 
         $response->assertSessionHasErrors('key');
         $response->assertRedirect('/api-keys/create');
+    }
+
+    public function test_create_page_includes_bedrock_provider_option(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/api-keys/create');
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('ApiKeys/Create')
+            ->where('providers', fn ($providers) => collect($providers)->contains('bedrock'))
+        );
+    }
+
+    public function test_edit_page_includes_bedrock_provider_option(): void
+    {
+        $user = User::factory()->create();
+        $apiKey = ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openai',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get("/api-keys/{$apiKey->id}/edit");
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('ApiKeys/Edit')
+            ->where('providers', fn ($providers) => collect($providers)->contains('bedrock'))
+        );
     }
 
     public function test_gemini_key_is_marked_valid_when_api_call_succeeds(): void

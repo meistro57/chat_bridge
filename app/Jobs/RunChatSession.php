@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Events\MessageChunkSent;
 use App\Events\MessageCompleted;
 use App\Models\Conversation;
+use App\Models\Persona;
 use App\Notifications\ConversationCompletedNotification;
 use App\Notifications\ConversationFailedNotification;
 use App\Services\AI\Data\MessageData;
@@ -116,12 +117,13 @@ class RunChatSession implements ShouldQueue
                 $currentPersona = (! $lastMessage || $lastMessage->persona_id === $conversation->personaB->id)
                     ? $conversation->personaA
                     : $conversation->personaB;
+                $historyLimit = $this->historyLimitForConversation($conversation);
 
                 // 3. Prepare History with persona names
                 $history = $conversation->messages()
                     ->with('persona')
                     ->latest()
-                    ->take(10)
+                    ->take($historyLimit)
                     ->get()
                     ->sortBy('id')
                     ->map(fn ($m) => new MessageData(
@@ -143,10 +145,12 @@ class RunChatSession implements ShouldQueue
                 $emptyTurnRetryDelayMs = max(0, (int) config('ai.empty_turn_retry_delay_ms', 350));
                 $maxTurnExceptionRetries = max(0, (int) config('ai.turn_exception_retry_attempts', 2));
                 $turnExceptionRetryDelayMs = max(0, (int) config('ai.turn_exception_retry_delay_ms', 1000));
+                $maxTurnRescueAttempts = max(0, (int) config('ai.turn_rescue_attempts', 1));
                 $chunkCount = 0;
                 $driver = null;
                 $emptyRetryAttempt = 0;
                 $exceptionRetryAttempt = 0;
+                $retryableExceptionAfterRetries = null;
 
                 while (true) {
                     $fullResponse = '';
@@ -233,19 +237,15 @@ class RunChatSession implements ShouldQueue
                                 continue;
                             }
 
-                            $fullResponse = trim((string) config(
-                                'ai.empty_turn_fallback_message',
-                                'I need to regroup for a moment. Please continue with your strongest next point.'
-                            ));
+                            $retryableExceptionAfterRetries = $exception;
 
-                            Log::warning('Turn failed with retryable exception after retries; using fallback message', [
+                            Log::warning('Turn failed with retryable exception after retries; attempting rescue turn', [
                                 'conversation_id' => $this->conversationId,
                                 'round' => $round + 1,
                                 'persona' => $currentPersona->name,
                                 'retry_attempts' => $exceptionRetryAttempt,
                                 'max_retries' => $maxTurnExceptionRetries,
                                 'error' => $exception->getMessage(),
-                                'fallback_length' => strlen($fullResponse),
                             ]);
 
                             break;
@@ -276,11 +276,29 @@ class RunChatSession implements ShouldQueue
                     break;
                 }
 
+                if (trim($fullResponse) === '' && $maxTurnRescueAttempts > 0) {
+                    for ($rescueAttempt = 1; $rescueAttempt <= $maxTurnRescueAttempts; $rescueAttempt++) {
+                        $rescueResult = $this->attemptRescueTurn(
+                            $service,
+                            $conversation,
+                            $currentPersona,
+                            $history,
+                            $round + 1,
+                            $rescueAttempt,
+                            $maxTurnRescueAttempts
+                        );
+
+                        if (trim($rescueResult['content']) !== '') {
+                            $fullResponse = $rescueResult['content'];
+                            $driver = $rescueResult['driver'] ?? $driver;
+
+                            break;
+                        }
+                    }
+                }
+
                 if (trim($fullResponse) === '') {
-                    $fullResponse = trim((string) config(
-                        'ai.empty_turn_fallback_message',
-                        'I need to regroup for a moment. Please continue with your strongest next point.'
-                    ));
+                    $fullResponse = $this->fallbackMessage();
 
                     Log::warning('Turn produced empty response after retries; using fallback message', [
                         'conversation_id' => $this->conversationId,
@@ -291,6 +309,7 @@ class RunChatSession implements ShouldQueue
                         'max_empty_retries' => $maxEmptyTurnRetries,
                         'exception_retry_attempts' => $exceptionRetryAttempt,
                         'max_exception_retries' => $maxTurnExceptionRetries,
+                        'retryable_exception' => $retryableExceptionAfterRetries?->getMessage(),
                         'fallback_length' => strlen($fullResponse),
                     ]);
                 }
@@ -481,5 +500,87 @@ class RunChatSession implements ShouldQueue
         }
 
         return false;
+    }
+
+    private function historyLimitForConversation(Conversation $conversation): int
+    {
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $configured = (int) data_get($metadata, 'memory.history_limit', 10);
+
+        return max(1, min($configured, 50));
+    }
+
+    /**
+     * @return array{content: string, driver: mixed}
+     */
+    private function attemptRescueTurn(
+        ConversationService $service,
+        Conversation $conversation,
+        Persona $currentPersona,
+        \Illuminate\Support\Collection $history,
+        int $roundNumber,
+        int $attempt,
+        int $maxAttempts
+    ): array {
+        $rescueHistory = $history->values();
+        $rescueHistory->push(new MessageData(
+            'system',
+            'Your previous attempt returned no content. Respond now to the latest message with a complete 2-4 sentence reply.'
+        ));
+
+        try {
+            $generation = $service->generateTurn($conversation, $currentPersona, $rescueHistory);
+            $driver = $generation['driver'] ?? null;
+            $content = '';
+
+            foreach ($generation['content'] as $chunk) {
+                $content .= $chunk;
+            }
+
+            if (trim($content) !== '') {
+                Log::info('Recovered empty turn via rescue generation', [
+                    'conversation_id' => $this->conversationId,
+                    'round' => $roundNumber,
+                    'persona' => $currentPersona->name,
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts,
+                ]);
+
+                return [
+                    'content' => $content,
+                    'driver' => $driver,
+                ];
+            }
+
+            Log::warning('Rescue generation remained empty', [
+                'conversation_id' => $this->conversationId,
+                'round' => $roundNumber,
+                'persona' => $currentPersona->name,
+                'attempt' => $attempt,
+                'max_attempts' => $maxAttempts,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Rescue generation failed', [
+                'conversation_id' => $this->conversationId,
+                'round' => $roundNumber,
+                'persona' => $currentPersona->name,
+                'attempt' => $attempt,
+                'max_attempts' => $maxAttempts,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return [
+            'content' => '',
+            'driver' => null,
+        ];
+    }
+
+    private function fallbackMessage(): string
+    {
+        return trim((string) config(
+            'ai.empty_turn_fallback_message',
+            'I need to regroup for a moment. Please continue with your strongest next point.'
+        ));
     }
 }
