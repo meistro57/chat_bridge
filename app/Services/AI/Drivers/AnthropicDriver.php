@@ -5,6 +5,8 @@ namespace App\Services\AI\Drivers;
 use App\Services\AI\Contracts\AIDriverInterface;
 use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +26,7 @@ class AnthropicDriver implements AIDriverInterface
     {
         $payload = $this->preparePayload($messages);
 
-        $response = Http::withHeaders([
+        $response = $this->buildRequest()->withHeaders([
             'x-api-key' => $this->apiKey,
             'anthropic-version' => $this->version,
             'content-type' => 'application/json',
@@ -71,12 +73,16 @@ class AnthropicDriver implements AIDriverInterface
 
         $payload = $this->preparePayload($messages);
         $payload['stream'] = true;
+        $readTimeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
 
-        $response = Http::withHeaders([
+        $response = $this->buildRequest()->withHeaders([
             'x-api-key' => $this->apiKey,
             'anthropic-version' => $this->version,
             'content-type' => 'application/json',
-        ])->withOptions(['stream' => true])
+        ])->withOptions([
+            'stream' => true,
+            'read_timeout' => $readTimeoutSeconds,
+        ])
             ->post("{$this->baseUrl}/messages", $payload);
 
         if ($response->failed()) {
@@ -136,7 +142,7 @@ class AnthropicDriver implements AIDriverInterface
         $payload = $this->preparePayload($messages);
         $payload['tools'] = $tools->map(fn (ToolDefinition $tool) => $tool->toAnthropicSchema())->all();
 
-        $response = Http::withHeaders([
+        $response = $this->buildRequest()->withHeaders([
             'x-api-key' => $this->apiKey,
             'anthropic-version' => $this->version,
             'content-type' => 'application/json',
@@ -236,8 +242,20 @@ class AnthropicDriver implements AIDriverInterface
     protected function readLine($stream): string
     {
         $buffer = '';
+        $startedAt = microtime(true);
+        $streamReadTimeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+
         while (! $stream->eof()) {
             $char = $stream->read(1);
+
+            if ($char === '') {
+                if ((microtime(true) - $startedAt) >= $streamReadTimeoutSeconds) {
+                    throw new \Exception('Anthropic stream read timed out before receiving a full event line.');
+                }
+
+                continue;
+            }
+
             if ($char === "\n") {
                 break;
             }
@@ -245,6 +263,27 @@ class AnthropicDriver implements AIDriverInterface
         }
 
         return trim($buffer);
+    }
+
+    private function buildRequest(): PendingRequest
+    {
+        $timeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+        $connectTimeoutSeconds = max(1, (int) config('ai.http_connect_timeout_seconds', 15));
+        $retryAttempts = max(1, (int) config('ai.http_retry_attempts', 2));
+        $retryDelayMs = max(0, (int) config('ai.http_retry_delay_ms', 500));
+
+        $request = Http::timeout($timeoutSeconds)
+            ->connectTimeout($connectTimeoutSeconds);
+
+        if ($retryAttempts > 1) {
+            $request = $request->retry(
+                $retryAttempts,
+                $retryDelayMs,
+                fn (\Exception $exception): bool => $exception instanceof ConnectionException
+            );
+        }
+
+        return $request;
     }
 
     protected function extractContent(?array $payload): ?string
