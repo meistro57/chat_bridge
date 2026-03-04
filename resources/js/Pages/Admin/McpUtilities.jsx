@@ -54,6 +54,9 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
     const [trafficLimit, setTrafficLimit] = useState(40);
     const [trafficLoading, setTrafficLoading] = useState(false);
     const [trafficError, setTrafficError] = useState('');
+    const [flushLoading, setFlushLoading] = useState(false);
+    const [flushSummary, setFlushSummary] = useState(null);
+    const [flushError, setFlushError] = useState('');
 
     const loadTraffic = async (provider = trafficProvider, limit = trafficLimit) => {
         setTrafficLoading(true);
@@ -116,6 +119,26 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
             setError(requestError.response?.data?.message || requestError.message || 'Failed to populate embeddings.');
         } finally {
             setPopulateLoading(false);
+        }
+    };
+
+    const flushQueueState = async () => {
+        setFlushLoading(true);
+        setFlushError('');
+        setFlushSummary(null);
+
+        try {
+            const response = await axios.post(route('admin.mcp.utilities.flush'));
+            setFlushSummary(response.data?.summary ?? null);
+        } catch (requestError) {
+            const responseErrors = requestError.response?.data?.errors;
+            if (Array.isArray(responseErrors) && responseErrors.length > 0) {
+                setFlushError(responseErrors.join(' | '));
+            } else {
+                setFlushError(requestError.response?.data?.message || requestError.message || 'Failed to flush queue state.');
+            }
+        } finally {
+            setFlushLoading(false);
         }
     };
 
@@ -218,6 +241,14 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
                                     >
                                         {populateLoading ? 'Populating...' : 'Populate Missing'}
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={flushQueueState}
+                                        disabled={flushLoading || populateLoading || compareLoading}
+                                        className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {flushLoading ? 'Flushing...' : 'Flush Queue State'}
+                                    </button>
                                 </div>
                             </div>
 
@@ -234,6 +265,18 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
                             {error && (
                                 <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
                                     {error}
+                                </div>
+                            )}
+
+                            {flushSummary && (
+                                <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                                    Flushed {flushSummary.failed_jobs_flushed} failed jobs and cleared {flushSummary.cleared_lock_keys} lock keys.
+                                </div>
+                            )}
+
+                            {flushError && (
+                                <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {flushError}
                                 </div>
                             )}
                         </div>

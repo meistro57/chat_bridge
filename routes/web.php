@@ -65,6 +65,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/mcp-utilities', [McpUtilitiesController::class, 'index'])->name('mcp.utilities');
         Route::get('/mcp-utilities/embeddings/compare', [McpUtilitiesController::class, 'compareEmbeddings'])->name('mcp.utilities.embeddings.compare');
         Route::post('/mcp-utilities/embeddings/populate', [McpUtilitiesController::class, 'populateEmbeddings'])->name('mcp.utilities.embeddings.populate');
+        Route::post('/mcp-utilities/flush', [McpUtilitiesController::class, 'flush'])->name('mcp.utilities.flush');
         Route::get('/mcp-utilities/traffic', [McpUtilitiesController::class, 'traffic'])->name('mcp.utilities.traffic');
         Route::get('/performance', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'index'])->name('performance.index');
         Route::get('/performance/stats', [\App\Http\Controllers\Admin\PerformanceMonitorController::class, 'stats'])->name('performance.stats');

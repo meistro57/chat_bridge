@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\AI\EmbeddingService;
 use App\Support\McpTrafficMonitor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -39,7 +40,7 @@ class AdminMcpUtilitiesTest extends TestCase
             )
             ->has('traffic.events')
             ->has('ollamaToolsSupported')
-            ->has('endpoints', 8)
+            ->has('endpoints', 9)
         );
     }
 
@@ -126,6 +127,31 @@ class AdminMcpUtilitiesTest extends TestCase
         $this->assertSame([0.42, 0.24, 0.12], $missing->embedding);
     }
 
+    public function test_admin_can_flush_queue_state(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        DB::table('failed_jobs')->insert([
+            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'connection' => 'redis',
+            'queue' => 'default',
+            'payload' => json_encode(['job' => 'App\\Jobs\\RunChatSession']),
+            'exception' => 'Test failure',
+            'failed_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->postJson(route('admin.mcp.utilities.flush'));
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('summary.failed_jobs_before', 1);
+        $response->assertJsonPath('summary.failed_jobs_after', 0);
+        $response->assertJsonPath('summary.failed_jobs_flushed', 1);
+    }
+
     public function test_non_admin_cannot_view_mcp_utilities_page(): void
     {
         $user = User::factory()->create([
@@ -153,6 +179,10 @@ class AdminMcpUtilitiesTest extends TestCase
 
         $this->actingAs($user)
             ->getJson(route('admin.mcp.utilities.traffic'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->postJson(route('admin.mcp.utilities.flush'))
             ->assertForbidden();
     }
 }

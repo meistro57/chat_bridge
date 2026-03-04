@@ -11,6 +11,9 @@ use App\Services\AI\EmbeddingService;
 use App\Support\McpTrafficMonitor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -77,6 +80,12 @@ class McpUtilitiesController extends Controller
                     method: 'GET',
                     path: '/admin/mcp-utilities/traffic?limit=40&provider=ollama',
                     description: 'Recent in-app MCP tool traffic (filterable by provider).',
+                    baseUrl: $baseUrl,
+                ),
+                $this->endpointDefinition(
+                    method: 'POST',
+                    path: '/admin/mcp-utilities/flush',
+                    description: 'Flush failed queue jobs and stale RunChatSession overlap locks, then restart workers.',
                     baseUrl: $baseUrl,
                 ),
             ],
@@ -148,6 +157,47 @@ class McpUtilitiesController extends Controller
             ],
             'audit' => $audit,
         ]);
+    }
+
+    public function flush(): JsonResponse
+    {
+        $failedJobsBefore = (int) DB::table('failed_jobs')->count();
+        $clearedLockKeys = 0;
+        $errors = [];
+        $warnings = [];
+
+        try {
+            Artisan::call('queue:flush');
+        } catch (\Throwable $exception) {
+            $errors[] = 'queue:flush failed: '.$exception->getMessage();
+        }
+
+        try {
+            $clearedLockKeys += $this->clearRedisKeysByPattern('*laravel-queue-overlap:App\\Jobs\\RunChatSession:*');
+            $clearedLockKeys += $this->clearRedisKeysByPattern('*conversation.kickstart.*');
+        } catch (\Throwable $exception) {
+            $warnings[] = 'lock cleanup skipped: '.$exception->getMessage();
+        }
+
+        try {
+            Artisan::call('queue:restart');
+        } catch (\Throwable $exception) {
+            $errors[] = 'queue:restart failed: '.$exception->getMessage();
+        }
+
+        $failedJobsAfter = (int) DB::table('failed_jobs')->count();
+
+        return response()->json([
+            'ok' => $errors === [],
+            'summary' => [
+                'failed_jobs_before' => $failedJobsBefore,
+                'failed_jobs_after' => $failedJobsAfter,
+                'failed_jobs_flushed' => max($failedJobsBefore - $failedJobsAfter, 0),
+                'cleared_lock_keys' => $clearedLockKeys,
+            ],
+            'errors' => $errors,
+            'warnings' => $warnings,
+        ], $errors === [] ? 200 : 500);
     }
 
     private function resolveMcpPayload(string $action): array
@@ -224,5 +274,16 @@ class McpUtilitiesController extends Controller
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    private function clearRedisKeysByPattern(string $pattern): int
+    {
+        $keys = Redis::keys($pattern);
+
+        if (! is_array($keys) || $keys === []) {
+            return 0;
+        }
+
+        return (int) Redis::del($keys);
     }
 }
