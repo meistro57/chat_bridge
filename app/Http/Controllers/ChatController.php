@@ -46,6 +46,7 @@ class ChatController extends Controller
             $maxRounds = max(1, (int) ($conversation->max_rounds ?? 1));
             $currentTurn = min($assistantTurns + 1, $maxRounds);
             $stopRequested = $this->resolveStopRequested($conversation);
+            $this->maybeKickstartStaleConversation($conversation, $assistantTurns, $stopRequested);
             $personaAName = $conversation->personaA?->name ?? 'Agent A';
             $personaBName = $conversation->personaB?->name ?? 'Agent B';
 
@@ -261,6 +262,12 @@ class ChatController extends Controller
             abort(403);
         }
 
+        $assistantTurns = (int) $conversation->messages()
+            ->where('role', 'assistant')
+            ->count();
+        $stopSignal = $this->resolveStopRequested($conversation);
+        $this->maybeKickstartStaleConversation($conversation, $assistantTurns, $stopSignal);
+
         return Inertia::render('Chat/Show', [
             'conversation' => $conversation->load([
                 'messages' => fn ($query) => $query->orderBy('id'),
@@ -268,7 +275,7 @@ class ChatController extends Controller
                 'personaA',
                 'personaB',
             ]),
-            'stopSignal' => (bool) Cache::get("conversation.stop.{$conversation->id}"),
+            'stopSignal' => $stopSignal,
         ]);
     }
 
@@ -358,6 +365,54 @@ class ChatController extends Controller
 
         return Storage::disk('local')->download($path, basename($path), [
             'Content-Type' => 'text/markdown; charset=utf-8',
+        ]);
+    }
+
+    protected function maybeKickstartStaleConversation(Conversation $conversation, int $assistantTurns, bool $stopRequested): void
+    {
+        if ($conversation->status !== 'active' || $stopRequested) {
+            return;
+        }
+
+        $maxRounds = max(1, (int) ($conversation->max_rounds ?? 1));
+        $remainingRounds = $maxRounds - max(0, $assistantTurns);
+        if ($remainingRounds <= 0) {
+            return;
+        }
+
+        $staleAfterSeconds = max(15, (int) config('ai.active_conversation_kickstart_after_seconds', 90));
+        $updatedAt = $conversation->updated_at;
+
+        if (! $updatedAt || $updatedAt->gt(now()->subSeconds($staleAfterSeconds))) {
+            return;
+        }
+
+        $cooldownSeconds = max(30, (int) config('ai.active_conversation_kickstart_cooldown_seconds', 120));
+        $kickstartKey = "conversation.kickstart.{$conversation->id}";
+
+        try {
+            $shouldDispatch = Cache::add($kickstartKey, now()->toIso8601String(), now()->addSeconds($cooldownSeconds));
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to kickstart stale active conversation due to cache error', [
+                'conversation_id' => $conversation->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return;
+        }
+
+        if (! $shouldDispatch) {
+            return;
+        }
+
+        dispatch(new RunChatSession($conversation->id, $remainingRounds));
+
+        Log::info('Kickstarted stale active conversation', [
+            'conversation_id' => $conversation->id,
+            'assistant_turns' => $assistantTurns,
+            'remaining_rounds' => $remainingRounds,
+            'stale_after_seconds' => $staleAfterSeconds,
+            'cooldown_seconds' => $cooldownSeconds,
         ]);
     }
 }

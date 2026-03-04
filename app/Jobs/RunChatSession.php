@@ -49,7 +49,9 @@ class RunChatSession implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping("run-chat-session:{$this->conversationId}"))->expireAfter($this->timeout + 60),
+            (new WithoutOverlapping("run-chat-session:{$this->conversationId}"))
+                ->expireAfter($this->timeout + 60)
+                ->dontRelease(),
         ];
     }
 

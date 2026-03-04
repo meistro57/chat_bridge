@@ -194,6 +194,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Active Conversation Kickstart
+    |--------------------------------------------------------------------------
+    |
+    | Automatically re-dispatch stale active chat sessions that appear stuck.
+    | This protects sessions that remain active but stop making progress.
+    |
+    */
+
+    'active_conversation_kickstart_after_seconds' => (int) env('AI_ACTIVE_KICKSTART_AFTER_SECONDS', 90),
+    'active_conversation_kickstart_cooldown_seconds' => (int) env('AI_ACTIVE_KICKSTART_COOLDOWN_SECONDS', 120),
+
+    /*
+    |--------------------------------------------------------------------------
     | Provider HTTP Client Resilience
     |--------------------------------------------------------------------------
     |

@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -108,6 +109,75 @@ class ChatControllerTest extends TestCase
         $response->assertJsonPath('active_count', 1);
         $response->assertJsonPath('items.0.id', $activeConversation->id);
         $response->assertJsonPath('items.0.stop_requested', false);
+    }
+
+    public function test_live_status_kickstarts_stale_active_conversation_without_stop_signal(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        Carbon::setTestNow(now());
+        config()->set('ai.active_conversation_kickstart_after_seconds', 30);
+        config()->set('ai.active_conversation_kickstart_cooldown_seconds', 60);
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'status' => 'active',
+            'max_rounds' => 8,
+            'updated_at' => now()->subMinutes(2),
+            'created_at' => now()->subMinutes(2),
+        ]);
+
+        $conversation->messages()->create([
+            'role' => 'user',
+            'content' => 'Kickoff message',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('chat.live-status'));
+
+        $response->assertOk();
+        Bus::assertDispatched(RunChatSession::class, function (RunChatSession $job) use ($conversation): bool {
+            return $job->conversationId === $conversation->id
+                && $job->maxRounds === 8;
+        });
+
+        Carbon::setTestNow();
+    }
+
+    public function test_live_status_does_not_kickstart_when_stop_signal_is_present(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        Carbon::setTestNow(now());
+        config()->set('ai.active_conversation_kickstart_after_seconds', 30);
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'status' => 'active',
+            'max_rounds' => 8,
+            'updated_at' => now()->subMinutes(2),
+            'created_at' => now()->subMinutes(2),
+        ]);
+
+        Cache::put("conversation.stop.{$conversation->id}", true, now()->addMinutes(10));
+
+        $response = $this->actingAs($user)->getJson(route('chat.live-status'));
+
+        $response->assertOk();
+        Bus::assertNotDispatched(RunChatSession::class);
+
+        Carbon::setTestNow();
     }
 
     public function test_store_includes_template_rag_metadata_when_template_selected(): void
