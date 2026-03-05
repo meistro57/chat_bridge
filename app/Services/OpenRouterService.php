@@ -78,7 +78,28 @@ class OpenRouterService
                     return $response->json('data', []);
                 }
 
-                Log::warning('OpenRouter activity fetch failed', ['status' => $response->status()]);
+                $status = $response->status();
+                $body = $this->truncateResponseBody($response->body());
+                Log::warning('OpenRouter activity fetch failed', [
+                    'status' => $status,
+                    'date' => $date,
+                    'body' => $body,
+                ]);
+
+                if ($date !== null && in_array($status, [400, 422], true)) {
+                    $fallbackResponse = Http::withHeaders($this->headers())
+                        ->timeout(10)
+                        ->get("{$this->baseUrl}/activity");
+
+                    if ($fallbackResponse->successful()) {
+                        Log::info('OpenRouter activity date-filter request failed; recovered via unfiltered fallback', [
+                            'status' => $status,
+                            'date' => $date,
+                        ]);
+
+                        return $this->filterActivityByDate($fallbackResponse->json('data', []), $date);
+                    }
+                }
 
                 return null;
             } catch (\Exception $e) {
@@ -267,5 +288,42 @@ class OpenRouterService
         }
 
         return 0.0;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected function filterActivityByDate(mixed $activity, string $date): array
+    {
+        if (! is_array($activity)) {
+            return [];
+        }
+
+        return collect($activity)
+            ->filter(function (mixed $item) use ($date): bool {
+                if (! is_array($item)) {
+                    return false;
+                }
+
+                $entryDate = $this->extractActivityDate($item);
+
+                return $entryDate?->toDateString() === $date;
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function truncateResponseBody(string $body): string
+    {
+        $trimmed = trim($body);
+        if ($trimmed === '') {
+            return '';
+        }
+
+        if (strlen($trimmed) <= 500) {
+            return $trimmed;
+        }
+
+        return substr($trimmed, 0, 500).'... [truncated]';
     }
 }

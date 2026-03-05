@@ -94,4 +94,32 @@ class OllamaDriverTest extends TestCase
 
         $this->assertTrue($driver->supportsTools());
     }
+
+    public function test_chat_with_tools_retries_without_tools_when_model_does_not_support_them(): void
+    {
+        Http::fake([
+            'http://localhost:11434/api/chat' => Http::sequence()
+                ->push(['error' => 'registry.ollama.ai/library/dolphin-mistral:latest does not support tools'], 400)
+                ->push([
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'Recovered without tools',
+                    ],
+                    'prompt_eval_count' => 11,
+                    'eval_count' => 14,
+                ], 200),
+        ]);
+
+        $driver = new OllamaDriver(model: 'dolphin-mistral:latest', baseUrl: 'http://localhost:11434');
+        $messages = collect([
+            new MessageData('user', 'Summarize this without tools'),
+        ]);
+
+        $result = $driver->chatWithTools($messages, collect());
+
+        $this->assertInstanceOf(AIResponse::class, $result['response']);
+        $this->assertSame('Recovered without tools', $result['response']->content);
+        $this->assertSame([], $result['tool_calls']);
+        Http::assertSentCount(2);
+    }
 }

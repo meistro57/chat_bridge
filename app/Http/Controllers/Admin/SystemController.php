@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\Drivers\OpenAIDriver;
 use App\Services\System\EnvFileService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -810,38 +811,48 @@ PROMPT;
 
     private function getRecentErrors(int $limit = 20): string
     {
-        $path = storage_path('logs/laravel.log');
-
-        if (! File::exists($path)) {
-            return 'laravel.log not found.';
+        $path = $this->resolveLatestLaravelLogPath();
+        if ($path === null) {
+            return 'No Laravel log file found.';
         }
 
+        $windowMinutes = max(1, (int) config('services.codex.log_recent_minutes', 120));
+        $windowStart = CarbonImmutable::now()->subMinutes($windowMinutes);
         $lines = collect(explode("\n", File::get($path)));
-        $errors = $lines->filter(function (string $line) {
+        $recentLines = $lines->filter(function (string $line) use ($windowStart): bool {
+            return $this->isWithinLogWindow($line, $windowStart);
+        });
+
+        $errors = $recentLines->filter(function (string $line) {
             return str_contains($line, '.ERROR:') || str_contains($line, 'ERROR:');
         })->take(-$limit)->implode("\n");
 
         if ($errors === '') {
-            return 'No recent error entries found.';
+            return "No recent error entries found in the last {$windowMinutes} minutes (source: ".basename($path).').';
         }
 
-        return $this->redactSecrets($errors);
+        return 'Source: '.basename($path)."\n".$this->redactSecrets($errors);
     }
 
     private function getLogTail(int $lines = 200): string
     {
-        $path = storage_path('logs/laravel.log');
-
-        if (! File::exists($path)) {
-            return 'laravel.log not found.';
+        $path = $this->resolveLatestLaravelLogPath();
+        if ($path === null) {
+            return 'No Laravel log file found.';
         }
 
-        $contents = File::get($path);
-        $tail = collect(explode("\n", $contents))
+        $windowMinutes = max(1, (int) config('services.codex.log_recent_minutes', 120));
+        $windowStart = CarbonImmutable::now()->subMinutes($windowMinutes);
+        $allLines = collect(explode("\n", File::get($path)));
+        $recentLines = $allLines->filter(function (string $line) use ($windowStart): bool {
+            return $this->isWithinLogWindow($line, $windowStart);
+        });
+
+        $tail = ($recentLines->isNotEmpty() ? $recentLines : $allLines)
             ->take(-$lines)
             ->implode("\n");
 
-        return $this->redactSecrets($tail);
+        return 'Source: '.basename($path)."\n".$this->redactSecrets($tail);
     }
 
     private function redactSecrets(string $text): string
@@ -856,6 +867,50 @@ PROMPT;
         }
 
         return Str::limit($text, 12000, "\n[truncated]");
+    }
+
+    private function resolveLatestLaravelLogPath(): ?string
+    {
+        $logDir = storage_path('logs');
+        if (! File::isDirectory($logDir)) {
+            return null;
+        }
+
+        $candidatePaths = collect(File::files($logDir))
+            ->map(fn (\SplFileInfo $file) => $file->getPathname())
+            ->filter(fn (string $path) => preg_match('/laravel.*\.log$/', basename($path)) === 1)
+            ->values();
+
+        if ($candidatePaths->isEmpty()) {
+            return null;
+        }
+
+        return $candidatePaths
+            ->sortByDesc(fn (string $path) => @filemtime($path) ?: 0)
+            ->first();
+    }
+
+    private function isWithinLogWindow(string $line, CarbonImmutable $windowStart): bool
+    {
+        $timestamp = $this->extractLogTimestamp($line);
+        if ($timestamp === null) {
+            return true;
+        }
+
+        return $timestamp->greaterThanOrEqualTo($windowStart);
+    }
+
+    private function extractLogTimestamp(string $line): ?CarbonImmutable
+    {
+        if (! preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $line, $matches)) {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse($matches[1]);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     private function getBoostConfig(): array

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ApiKey;
+use App\Models\Conversation;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +19,38 @@ class PersonaTest extends TestCase
         $user = User::factory()->create();
         $response = $this->actingAs($user)->get('/personas');
         $response->assertStatus(200);
+    }
+
+    public function test_persona_index_includes_sessions_count(): void
+    {
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+        ]);
+
+        Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/personas');
+
+        $response->assertStatus(200);
+        $personas = collect($response->viewData('page')['props']['personas'] ?? []);
+
+        $personaAData = $personas->firstWhere('id', $personaA->id);
+        $personaBData = $personas->firstWhere('id', $personaB->id);
+
+        $this->assertNotNull($personaAData);
+        $this->assertNotNull($personaBData);
+        $this->assertSame(2, (int) ($personaAData['sessions_count'] ?? 0));
+        $this->assertSame(2, (int) ($personaBData['sessions_count'] ?? 0));
     }
 
     public function test_can_create_persona(): void

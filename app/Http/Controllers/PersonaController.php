@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GeneratePersonaRequest;
+use App\Models\Conversation;
 use App\Models\Persona;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
@@ -19,8 +20,31 @@ class PersonaController extends Controller
 {
     public function index(): InertiaResponse
     {
+        $personas = Persona::latest()->get();
+        $sessionCountsA = Conversation::query()
+            ->where('user_id', auth()->id())
+            ->whereNotNull('persona_a_id')
+            ->selectRaw('persona_a_id as persona_id, COUNT(*) as count')
+            ->groupBy('persona_a_id')
+            ->pluck('count', 'persona_id');
+
+        $sessionCountsB = Conversation::query()
+            ->where('user_id', auth()->id())
+            ->whereNotNull('persona_b_id')
+            ->selectRaw('persona_b_id as persona_id, COUNT(*) as count')
+            ->groupBy('persona_b_id')
+            ->pluck('count', 'persona_id');
+
+        $personas = $personas->map(function (Persona $persona) use ($sessionCountsA, $sessionCountsB) {
+            $countA = (int) ($sessionCountsA[$persona->id] ?? 0);
+            $countB = (int) ($sessionCountsB[$persona->id] ?? 0);
+            $persona->setAttribute('sessions_count', $countA + $countB);
+
+            return $persona;
+        });
+
         return Inertia::render('Personas/Index', [
-            'personas' => Persona::latest()->get(),
+            'personas' => $personas,
         ]);
     }
 

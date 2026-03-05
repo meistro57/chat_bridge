@@ -7,6 +7,7 @@ use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OllamaDriver implements AIDriverInterface
 {
@@ -94,15 +95,26 @@ class OllamaDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        $response = Http::post("{$this->baseUrl}/api/chat", [
+        $payload = [
             'model' => $this->model,
             'messages' => $messages->map->toArray()->all(),
             'tools' => $tools->map(fn (ToolDefinition $tool) => $tool->toOpenAISchema())->all(),
             'stream' => false,
-        ]);
+        ];
+
+        $response = Http::post("{$this->baseUrl}/api/chat", $payload);
 
         if ($response->failed()) {
-            throw new \Exception('Ollama API Error: '.$response->body());
+            $errorBody = (string) $response->body();
+            if ($this->isUnsupportedToolsError($errorBody)) {
+                Log::warning('Ollama model does not support tools; retrying without tools payload', [
+                    'model' => $this->model,
+                ]);
+
+                return $this->chatWithoutTools($messages);
+            }
+
+            throw new \Exception('Ollama API Error: '.$errorBody);
         }
 
         $data = $response->json();
@@ -172,6 +184,53 @@ class OllamaDriver implements AIDriverInterface
             ),
             'tool_calls' => [],
         ];
+    }
+
+    protected function chatWithoutTools(Collection $messages): array
+    {
+        $response = Http::post("{$this->baseUrl}/api/chat", [
+            'model' => $this->model,
+            'messages' => $messages->map->toArray()->all(),
+            'stream' => false,
+        ]);
+
+        if ($response->failed()) {
+            throw new \Exception('Ollama API Error: '.$response->body());
+        }
+
+        $data = $response->json();
+        $message = $data['message'] ?? null;
+        if (! is_array($message)) {
+            throw new \Exception('Ollama API returned an unexpected fallback response structure. Response: '.json_encode($data));
+        }
+
+        $content = $message['content'] ?? null;
+        if (! is_string($content)) {
+            throw new \Exception('Ollama API returned an unexpected fallback response content. Response: '.json_encode($data));
+        }
+
+        $promptTokens = $data['prompt_eval_count'] ?? null;
+        $completionTokens = $data['eval_count'] ?? null;
+        $totalTokens = ($promptTokens && $completionTokens) ? $promptTokens + $completionTokens : null;
+        $this->lastTokenUsage = $totalTokens;
+
+        return [
+            'response' => new AIResponse(
+                content: $content,
+                promptTokens: $promptTokens,
+                completionTokens: $completionTokens,
+                totalTokens: $totalTokens
+            ),
+            'tool_calls' => [],
+        ];
+    }
+
+    protected function isUnsupportedToolsError(string $errorBody): bool
+    {
+        $normalized = strtolower($errorBody);
+
+        return str_contains($normalized, 'does not support tools')
+            || str_contains($normalized, 'unsupported tools');
     }
 
     public function supportsTools(): bool

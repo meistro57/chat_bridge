@@ -81,4 +81,57 @@ class OpenRouterServiceTest extends TestCase
         $this->assertSame(0.6, $stats['top_model']['cost']);
         $this->assertSame(60.0, $stats['top_model']['share_percent']);
     }
+
+    public function test_dashboard_stats_falls_back_when_activity_date_filter_returns_400(): void
+    {
+        Cache::flush();
+        Config::set('services.openrouter.key', 'test-openrouter-key');
+
+        $today = now()->toDateString();
+        $yesterday = now()->subDay()->toDateString();
+
+        Http::fake(function ($request) use ($today, $yesterday) {
+            if (str_contains($request->url(), '/credits')) {
+                return Http::response([
+                    'data' => [
+                        'total_credits' => 10,
+                        'total_usage' => 1.5,
+                    ],
+                ], 200);
+            }
+
+            if (str_contains($request->url(), '/key')) {
+                return Http::response([
+                    'data' => [
+                        'limit' => 100,
+                        'usage' => 5,
+                        'is_free_tier' => false,
+                    ],
+                ], 200);
+            }
+
+            if (str_contains($request->url(), "/activity?date={$today}")) {
+                return Http::response([
+                    'error' => 'invalid date filter',
+                ], 400);
+            }
+
+            if (str_contains($request->url(), '/activity')) {
+                return Http::response([
+                    'data' => [
+                        ['model' => 'openai/gpt-4o-mini', 'cost' => 0.25, 'created_at' => "{$today}T10:00:00Z"],
+                        ['model' => 'anthropic/claude-sonnet', 'cost' => 0.75, 'created_at' => "{$yesterday}T10:00:00Z"],
+                    ],
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $stats = (new OpenRouterService)->getDashboardStats();
+
+        $this->assertSame(0.25, $stats['today_spend']);
+        $this->assertSame(2, $stats['activity_summary']['requests_30d']);
+        $this->assertSame(1.0, $stats['activity_summary']['spend_30d']);
+    }
 }

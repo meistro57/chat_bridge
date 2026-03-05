@@ -455,7 +455,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $this->assertSame(['Fallback recovery'], $chunks);
     }
 
-    public function test_generate_turn_throws_when_all_tool_attempts_are_empty(): void
+    public function test_generate_turn_falls_back_to_standard_generation_when_tool_mode_exhausts_empty_attempts(): void
     {
         config()->set('services.qdrant.enabled', false);
         config()->set('ai.tools_enabled', true);
@@ -495,6 +495,9 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $driver->shouldReceive('chat')
             ->twice()
             ->andReturn(new AIResponse(''), new AIResponse(''));
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->andReturn(new \ArrayIterator(['Recovered after tool failure']));
 
         $ai = Mockery::mock(AIManager::class);
         $ai->shouldReceive('driverForProvider')
@@ -515,9 +518,10 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             streamingChunker: new StreamingChunker
         );
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Tool-enabled generation remained empty');
-        $service->generateTurn($conversation, $personaA, new Collection);
+        $result = $service->generateTurn($conversation, $personaA, new Collection);
+        $chunks = iterator_to_array($result['content']);
+
+        $this->assertSame(['Recovered after tool failure'], $chunks);
     }
 
     protected function tearDown(): void

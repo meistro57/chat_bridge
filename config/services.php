@@ -83,6 +83,7 @@ return [
 
     'codex' => [
         'home' => env('CODEX_HOME', base_path('.codex')),
+        'log_recent_minutes' => env('CODEX_LOG_RECENT_MINUTES', 120),
     ],
 
     'qdrant' => [

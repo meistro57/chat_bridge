@@ -58,8 +58,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/system/openai-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testOpenAiKey'])->name('system.openai-key.test');
         Route::post('/system/openai-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearOpenAiKey'])->name('system.openai-key.clear');
         Route::get('/database/backup', [DatabaseController::class, 'backup'])->name('database.backup');
+        Route::post('/database/backup/run', [DatabaseController::class, 'runBackup'])->name('database.backup.run');
         Route::get('/database/restore', [DatabaseController::class, 'restore'])->name('database.restore');
         Route::post('/database/restore', [DatabaseController::class, 'restoreRun'])->name('database.restore.run');
+        Route::get('/database/backups/{filename}/download', [DatabaseController::class, 'download'])->name('database.backups.download');
         Route::delete('/database/backups', [DatabaseController::class, 'delete'])->name('database.backups.delete');
         Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
         Route::get('/boost/stats', [BoostDashboardController::class, 'stats'])->name('boost.stats');

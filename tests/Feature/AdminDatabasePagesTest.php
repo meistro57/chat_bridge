@@ -80,6 +80,39 @@ class AdminDatabasePagesTest extends TestCase
         $this->assertFalse(File::exists($path));
     }
 
+    public function test_admin_can_run_backup_action(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post(route('admin.database.backup.run'));
+
+        $response->assertRedirect(route('admin.database.backup'));
+        $response->assertSessionHas('success');
+
+        $backups = collect(File::files(storage_path('app/backups')))
+            ->map(fn ($file) => $file->getFilename())
+            ->filter(fn ($name) => str_starts_with($name, 'backup-') && str_ends_with($name, '.sql'));
+
+        $this->assertTrue($backups->isNotEmpty());
+    }
+
+    public function test_admin_can_download_backup_file(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $filename = 'download-me.sql';
+        $this->createBackupFile($filename);
+
+        $response = $this->actingAs($admin)->get(route('admin.database.backups.download', ['filename' => $filename]));
+
+        $response->assertOk();
+        $response->assertHeader('content-disposition');
+    }
+
     public function test_non_admin_cannot_view_database_pages(): void
     {
         $user = User::factory()->create([
@@ -92,6 +125,10 @@ class AdminDatabasePagesTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('admin.database.restore'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('admin.database.backup.run'))
             ->assertForbidden();
     }
 

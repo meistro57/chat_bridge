@@ -20,9 +20,20 @@ export default function Backup({ backups = [] }) {
                     </div>
 
                     <GlassCard accent="emerald" className="space-y-4">
-                        <h2 className="text-lg font-semibold text-zinc-100">
-                            Backup Command
-                        </h2>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h2 className="text-lg font-semibold text-zinc-100">
+                                Backup Command
+                            </h2>
+                            <form method="post" action={route('admin.database.backup.run')}>
+                                <input type="hidden" name="_token" value={document.querySelector('meta[name="csrf-token"]')?.content} />
+                                <button
+                                    type="submit"
+                                    className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/20"
+                                >
+                                    Run Backup Now
+                                </button>
+                            </form>
+                        </div>
                         <p className="text-sm text-zinc-400">
                             Run this from the project root on the host machine.
                         </p>
@@ -55,6 +66,7 @@ export default function Backup({ backups = [] }) {
                                             <th className="px-4 py-3">Filename</th>
                                             <th className="px-4 py-3">Size</th>
                                             <th className="px-4 py-3">Modified</th>
+                                            <th className="px-4 py-3 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
@@ -68,6 +80,14 @@ export default function Backup({ backups = [] }) {
                                                 </td>
                                                 <td className="px-4 py-3 text-zinc-400">
                                                     {new Date(backup.modified_at).toLocaleString()}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <a
+                                                        href={route('admin.database.backups.download', backup.filename)}
+                                                        className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-xs font-medium text-indigo-200 transition hover:bg-indigo-500/20"
+                                                    >
+                                                        Download
+                                                    </a>
                                                 </td>
                                             </tr>
                                         ))}

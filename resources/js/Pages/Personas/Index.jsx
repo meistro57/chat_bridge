@@ -74,9 +74,14 @@ export default function Index({ personas }) {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-lg text-zinc-100 group-hover:text-indigo-300 transition-colors">{persona.name}</h3>
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400">
-                                            Persona Template
-                                        </span>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400">
+                                                Persona Template
+                                            </span>
+                                            <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-200">
+                                                {Number(persona.sessions_count ?? 0)} sessions
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

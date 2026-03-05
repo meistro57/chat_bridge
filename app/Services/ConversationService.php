@@ -44,23 +44,31 @@ class ConversationService
 
         // Check if driver supports tools and tools are enabled
         if ($driver->supportsTools() && config('ai.tools_enabled', true)) {
-            // Use agentic loop with tools (non-streaming)
-            $result = $this->generateWithTools($driver, $messages, $settings['temperature'], [
-                'provider' => $settings['provider'] ?? null,
-                'model' => $settings['model'] ?? null,
-            ]);
+            try {
+                // Use agentic loop with tools (non-streaming)
+                $result = $this->generateWithTools($driver, $messages, $settings['temperature'], [
+                    'provider' => $settings['provider'] ?? null,
+                    'model' => $settings['model'] ?? null,
+                ]);
 
-            // Stream the final tools response in smaller chunks for smoother UI updates.
-            $generator = function () use ($result) {
-                foreach ($this->streamingChunker->split($result, $this->toolResponseChunkSize()) as $chunk) {
-                    yield $chunk;
-                }
-            };
+                // Stream the final tools response in smaller chunks for smoother UI updates.
+                $generator = function () use ($result) {
+                    foreach ($this->streamingChunker->split($result, $this->toolResponseChunkSize()) as $chunk) {
+                        yield $chunk;
+                    }
+                };
 
-            return [
-                'content' => $generator(),
-                'driver' => $driver,
-            ];
+                return [
+                    'content' => $generator(),
+                    'driver' => $driver,
+                ];
+            } catch (\Throwable $exception) {
+                Log::warning('Tool-enabled generation failed; falling back to standard generation', [
+                    'provider' => $settings['provider'] ?? null,
+                    'model' => $settings['model'] ?? null,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
         }
 
         // Standard streaming response without tools
