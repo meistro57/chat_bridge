@@ -75,10 +75,65 @@ export default function Index({
     const orActivitySummary = orStats?.activity_summary ?? null;
     const orTopModel = orStats?.top_model ?? null;
 
-    const trends = trendData ?? [];
-    const providerTokens = tokenUsageByProvider ?? [];
-    const providerCounts = providerUsage ?? [];
-    const personas = personaStats ?? [];
+    const parseNumeric = (value) => {
+        const numeric = Number(value);
+
+        return Number.isFinite(numeric) ? numeric : 0;
+    };
+
+    const formatShortDate = (value) => {
+        const raw = String(value ?? '');
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        if (isoMatch) {
+            return `${parseNumeric(isoMatch[2])}/${parseNumeric(isoMatch[3])}`;
+        }
+
+        const date = new Date(raw);
+
+        if (!Number.isNaN(date.getTime())) {
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+
+        return raw;
+    };
+
+    const formatLongDate = (value) => {
+        const raw = String(value ?? '');
+        const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+        if (isoMatch) {
+            return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        }
+
+        const date = new Date(raw);
+
+        if (!Number.isNaN(date.getTime())) {
+            return date.toLocaleDateString();
+        }
+
+        return raw;
+    };
+
+    const trends = (trendData ?? []).map((entry) => ({
+        date: String(entry?.date ?? ''),
+        count: parseNumeric(entry?.count),
+    }));
+
+    const providerTokens = (tokenUsageByProvider ?? []).map((entry) => ({
+        provider: String(entry?.provider ?? 'unknown'),
+        tokens: parseNumeric(entry?.tokens),
+    }));
+
+    const providerCounts = (providerUsage ?? []).map((entry) => ({
+        provider: String(entry?.provider ?? 'unknown'),
+        count: parseNumeric(entry?.count),
+    }));
+
+    const personas = (personaStats ?? []).map((entry) => ({
+        persona_name: String(entry?.persona_name ?? 'Unknown'),
+        count: parseNumeric(entry?.count),
+    }));
     const recent = recentConversations ?? [];
 
     return (
@@ -246,10 +301,7 @@ export default function Index({
                                                 dataKey="date"
                                                 stroke="#9ca3af"
                                                 tick={{ fill: '#9ca3af', fontSize: 11 }}
-                                                tickFormatter={(value) => {
-                                                    const date = new Date(value);
-                                                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                                                }}
+                                                tickFormatter={(value) => formatShortDate(value)}
                                             />
                                             <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                                             <Tooltip
@@ -259,7 +311,7 @@ export default function Index({
                                                     borderRadius: '8px',
                                                     boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
                                                 }}
-                                                labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                                                labelFormatter={(value) => formatLongDate(value)}
                                                 formatter={(value) => [`${value} conversations`, 'Count']}
                                             />
                                             <Line

@@ -2,6 +2,28 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-05
+
+### 📊 Analytics Chart Data Integrity
+- Hardened analytics chart input normalization on `Analytics/Index` to guarantee chart-safe numeric values.
+- Fixed date label rendering for `YYYY-MM-DD` trend data to avoid timezone-shifted chart labels.
+- Aligned `/analytics/metrics` payload shape with the dashboard by including `openRouterStats`.
+- Added chart payload regression coverage in `AnalyticsTest` to enforce key/type expectations.
+
+### 🧠 OpenRouter Stats Safety
+- OpenRouter dashboard stats are now skipped in `testing` environment, avoiding external HTTP noise during test runs while preserving runtime behavior.
+
+### 🖼️ Profile Avatar Save Reliability
+- Updated profile avatar form submission to use multipart-safe method override (`POST` + `_method=patch`) so avatar uploads persist correctly.
+
+### 🔴 Admin Redis Dashboard
+- Added a dedicated admin Redis dashboard at `/admin/redis` with overview metrics (status, memory, cache efficiency, keyspace).
+- Added live stats endpoint at `/admin/redis/stats` and a Boost Dashboard quick-link to the new Redis page.
+- Added `AdminRedisDashboardTest` coverage for access control and stats payload structure.
+
+### 🐳 Docker / Composer Compatibility
+- Added PHP `gd` extension to Docker image builds to satisfy `phpoffice/phpspreadsheet` platform requirements used by `maatwebsite/excel`.
+
 ## [Unreleased] - 2026-03-04
 
 ### 🧠 Session Memory Controls

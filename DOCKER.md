@@ -211,6 +211,15 @@ docker compose restart app
 docker compose up -d --scale queue=3
 ```
 
+## PHP Extensions
+
+- The Docker image includes `ext-gd` so Composer updates/installations satisfy `phpoffice/phpspreadsheet` requirements used by `maatwebsite/excel`.
+- Quick verification inside the app container:
+
+```bash
+docker compose exec -T app php -m | grep -i '^gd$'
+```
+
 ## Database Management
 
 ### Persistence & Seeding

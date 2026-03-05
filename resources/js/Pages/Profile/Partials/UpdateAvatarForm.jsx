@@ -8,8 +8,9 @@ export default function UpdateAvatarForm({ className = '' }) {
     const user = usePage().props.auth.user;
     const [previewUrl, setPreviewUrl] = useState(user.avatar_url);
 
-    const { data, setData, patch, processing, errors, reset, recentlySuccessful } = useForm({
+    const { data, setData, post, processing, errors, reset, recentlySuccessful } = useForm({
         avatar: null,
+        _method: 'patch',
     });
 
     const deleteForm = useForm({});
@@ -42,7 +43,7 @@ export default function UpdateAvatarForm({ className = '' }) {
     const submit = (event) => {
         event.preventDefault();
 
-        patch(route('profile.avatar.update'), {
+        post(route('profile.avatar.update'), {
             forceFormData: true,
             onSuccess: () => reset('avatar'),
         });

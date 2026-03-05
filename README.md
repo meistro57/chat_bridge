@@ -288,6 +288,7 @@ Deep insights into conversations:
 - 💬 Message & token tracking
 - 📊 Real-time metrics
 - 💰 Chart pricing accuracy via live provider pricing sync + `model_prices` persistence
+- 🧮 Chart-safe numeric normalization and stable trend date labels
 
 </td>
 </tr>
@@ -605,6 +606,17 @@ Admin controls for MCP tooling and embedding operations:
 - Provider capability status (including Ollama tool-call support checks)
 - Live MCP traffic watch with provider filter, limit control, and auto-refresh
 - Backed by `/admin/mcp-utilities/traffic` for recent tool execution events
+
+### 🔴 **Redis Dashboard** (`/admin/redis`)
+
+Admin visibility into Redis runtime health:
+
+- Connection status, ping, DB size
+- Memory usage and fragmentation metrics
+- Command rate and connected clients
+- Cache hit/miss counters and hit-rate percentage
+- Keyspace breakdown by Redis database
+- JSON stats endpoint at `/admin/redis/stats`
 
 ### 🤖 **Model Context Protocol (MCP) Server** (`/api/mcp`)
 Native implementation of the JSON-RPC 2.0 MCP protocol for developer interaction:
@@ -1067,6 +1079,8 @@ chat_bridge/
 - `DELETE /admin/users/{id}` - Delete user
 - `GET /admin/performance` - Performance monitor dashboard
 - `GET /admin/performance/stats` - Performance monitor JSON snapshot
+- `GET /admin/redis` - Redis operations dashboard
+- `GET /admin/redis/stats` - Redis dashboard JSON snapshot
 
 ### External API
 

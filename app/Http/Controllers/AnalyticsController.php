@@ -39,6 +39,9 @@ class AnalyticsController extends Controller
         $trendData = $this->analyticsService->getTrendData($user, 30);
         $recentConversations = $this->analyticsService->getRecentConversations($user);
         $costEstimation = $this->analyticsService->getCostEstimation($user);
+        $openRouterStats = $this->shouldLoadOpenRouterStats()
+            ? $this->openRouterService->getDashboardStats()
+            : null;
 
         return Inertia::render('Analytics/Index', [
             'overview' => $overview,
@@ -49,7 +52,7 @@ class AnalyticsController extends Controller
             'trendData' => $trendData,
             'recentConversations' => $recentConversations,
             'costByProvider' => $costEstimation['by_provider'],
-            'openRouterStats' => $this->openRouterService->getDashboardStats(),
+            'openRouterStats' => $openRouterStats,
         ]);
     }
 
@@ -66,7 +69,15 @@ class AnalyticsController extends Controller
             'trendData' => $this->analyticsService->getTrendData($user, 30),
             'recentConversations' => $this->analyticsService->getRecentConversations($user),
             'costByProvider' => $this->analyticsService->getCostEstimation($user)['by_provider'],
+            'openRouterStats' => $this->shouldLoadOpenRouterStats()
+                ? $this->openRouterService->getDashboardStats()
+                : null,
         ]);
+    }
+
+    private function shouldLoadOpenRouterStats(): bool
+    {
+        return ! app()->environment('testing') && filled(config('services.openrouter.key'));
     }
 
     public function query(Request $request): Response

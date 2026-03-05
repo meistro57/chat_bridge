@@ -31,7 +31,10 @@ ARG APP_GID=1000
 RUN apk add --no-cache \
     git \
     curl \
+    freetype-dev \
+    libjpeg-turbo-dev \
     libpng-dev \
+    libwebp-dev \
     oniguruma-dev \
     libxml2-dev \
     libzip-dev \
@@ -54,8 +57,12 @@ RUN apk add --no-cache \
 RUN groupmod -o -g "${APP_GID}" www-data \
     && usermod -o -u "${APP_UID}" -g www-data www-data
 
+# Configure gd extension
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
+
 # Install PHP extensions
 RUN docker-php-ext-install \
+    gd \
     pdo \
     pdo_mysql \
     pdo_pgsql \

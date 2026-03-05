@@ -98,6 +98,62 @@ class AnalyticsTest extends TestCase
         ]);
     }
 
+    public function test_metrics_endpoint_returns_chart_ready_shapes(): void
+    {
+        Cache::flush();
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id, 'name' => 'Reader A']);
+        $personaB = Persona::factory()->create(['user_id' => $user->id, 'name' => 'Reader B']);
+
+        $conversation = Conversation::factory()->for($user)->completed()->create([
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'anthropic',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'claude-sonnet-4-5-20250929',
+            'created_at' => now()->subDay(),
+        ]);
+
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaA->id,
+            'tokens_used' => 123,
+        ]);
+
+        Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaB->id,
+            'tokens_used' => 456,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('analytics.metrics'));
+        $response->assertOk();
+
+        $payload = $response->json();
+
+        $this->assertIsArray($payload['trendData']);
+        $this->assertCount(30, $payload['trendData']);
+        $this->assertArrayHasKey('date', $payload['trendData'][0]);
+        $this->assertArrayHasKey('count', $payload['trendData'][0]);
+        $this->assertIsString($payload['trendData'][0]['date']);
+        $this->assertIsInt($payload['trendData'][0]['count']);
+
+        $this->assertNotEmpty($payload['providerUsage']);
+        $this->assertIsString($payload['providerUsage'][0]['provider']);
+        $this->assertIsInt($payload['providerUsage'][0]['count']);
+
+        $this->assertNotEmpty($payload['tokenUsageByProvider']);
+        $this->assertIsString($payload['tokenUsageByProvider'][0]['provider']);
+        $this->assertIsInt($payload['tokenUsageByProvider'][0]['tokens']);
+
+        $this->assertNotEmpty($payload['personaStats']);
+        $this->assertIsString($payload['personaStats'][0]['persona_name']);
+        $this->assertIsInt($payload['personaStats'][0]['count']);
+
+        $this->assertArrayHasKey('openRouterStats', $payload);
+    }
+
     public function test_user_can_export_analytics_csv(): void
     {
         if (! class_exists(Excel::class)) {

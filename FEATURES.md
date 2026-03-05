@@ -63,6 +63,7 @@
 - **Role-Based Access** - User and Admin roles
 - **Session Management** - Secure session handling
 - **Profile Management** - Update user information
+- **Avatar Upload Persistence** - Multipart-safe profile avatar saves with method-override support
 - **Email Verification** - Optional email confirmation
 - **Password Reset** - Forgot password functionality
 - **Remember Me** - Persistent login option
@@ -126,6 +127,8 @@
 - **CSV Export** - Up to 1000 records
 - **Real-time Metrics** - Live conversation statistics
 - **Charts & Graphs** - Recharts integration
+- **Chart-Safe Payload Contracts** - Normalized numeric series data for stable chart rendering
+- **Timezone-Safe Trend Labels** - Day labels render reliably from `YYYY-MM-DD` trend dates
 
 ---
 
@@ -231,6 +234,16 @@
 - Configurable watchers
 - Tag-based filtering
 - Search functionality
+
+### 🔴 Redis Dashboard (`/admin/redis`)
+
+**Operational Features:**
+- **Connection Health** - Ping status and connection details
+- **Memory Metrics** - Used memory, RSS, peak, fragmentation ratio
+- **Cache Efficiency** - Hit/miss counts and hit rate
+- **Traffic Snapshot** - Commands/sec and connected clients
+- **Keyspace Breakdown** - Per-DB key counts and expiration stats
+- **Live Stats Endpoint** - `/admin/redis/stats` for refreshable dashboard data
 
 ### 🐛 Laravel Debugbar
 

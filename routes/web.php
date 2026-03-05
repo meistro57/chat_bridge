@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\BoostDashboardController;
 use App\Http\Controllers\Admin\DatabaseController;
 use App\Http\Controllers\Admin\McpUtilitiesController;
+use App\Http\Controllers\Admin\RedisDashboardController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PersonaController;
 use App\Http\Controllers\ProfileController;
@@ -62,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/database/backups', [DatabaseController::class, 'delete'])->name('database.backups.delete');
         Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
         Route::get('/boost/stats', [BoostDashboardController::class, 'stats'])->name('boost.stats');
+        Route::get('/redis', [RedisDashboardController::class, 'index'])->name('redis.index');
+        Route::get('/redis/stats', [RedisDashboardController::class, 'stats'])->name('redis.stats');
         Route::get('/mcp-utilities', [McpUtilitiesController::class, 'index'])->name('mcp.utilities');
         Route::get('/mcp-utilities/embeddings/compare', [McpUtilitiesController::class, 'compareEmbeddings'])->name('mcp.utilities.embeddings.compare');
         Route::post('/mcp-utilities/embeddings/populate', [McpUtilitiesController::class, 'populateEmbeddings'])->name('mcp.utilities.embeddings.populate');
