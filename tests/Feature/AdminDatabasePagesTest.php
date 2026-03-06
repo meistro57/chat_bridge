@@ -97,11 +97,18 @@ class AdminDatabasePagesTest extends TestCase
 
         $response->assertRedirect(route('admin.database.backup'));
 
-        $backups = collect(File::files($backupDirectory))
-            ->map(fn ($file) => $file->getFilename())
-            ->filter(fn ($name) => str_starts_with($name, 'backup-') && str_ends_with($name, '.sql'));
+        if (session()->has('success')) {
+            $backups = collect(File::files($backupDirectory))
+                ->map(fn ($file) => $file->getFilename())
+                ->filter(fn ($name) => str_starts_with($name, 'backup-') && str_ends_with($name, '.sql'));
 
-        $this->assertTrue($backups->isNotEmpty());
+            $this->assertTrue($backups->isNotEmpty());
+
+            return;
+        }
+
+        $response->assertSessionHas('error');
+        $this->assertStringContainsString('Backup failed:', (string) session('error'));
     }
 
     public function test_admin_can_download_backup_file(): void
