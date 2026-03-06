@@ -4,6 +4,8 @@ namespace App\Services\Discourse;
 
 use App\Models\Conversation;
 use App\Models\Message;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -37,14 +39,16 @@ class DiscourseStreamer
         }
 
         return $this->safeCall(function () use ($conversation): ?int {
-            $topicId = $this->resolveTopicId($conversation);
+            return $this->withConversationLock($conversation, function () use ($conversation): ?int {
+                $topicId = $this->resolveTopicId($conversation);
 
-            if ($this->hasChatDelivery()) {
-                $this->sendChatMessage($this->starterMessageChat($conversation));
-                $this->sendChatMessage($this->conversationStartedChat($conversation));
-            }
+                if ($this->hasChatDelivery()) {
+                    $this->sendChatMessage($this->starterMessageChat($conversation));
+                    $this->sendChatMessage($this->conversationStartedChat($conversation));
+                }
 
-            return $topicId;
+                return $topicId;
+            });
         }, 'startConversation');
     }
 
@@ -55,19 +59,36 @@ class DiscourseStreamer
         }
 
         $this->safeCall(function () use ($conversation, $message, $turnNumber): void {
-            if ($this->hasTopicDelivery()) {
-                $topicId = $this->resolveTopicId($conversation);
-                if ($topicId !== null) {
-                    $this->executePost([
-                        'topic_id' => $topicId,
-                        'raw' => $this->messageRaw($conversation, $message, $turnNumber),
-                    ]);
+            $this->withConversationLock($conversation, function () use ($conversation, $message, $turnNumber): void {
+                if (! $this->shouldPublishMessage($conversation, $message)) {
+                    return;
                 }
-            }
 
-            if ($this->hasChatDelivery()) {
-                $this->sendChatMessage($this->messageChat($conversation, $message, $turnNumber));
-            }
+                $wasPublished = false;
+
+                if ($this->hasTopicDelivery()) {
+                    $topicId = $this->resolveTopicId($conversation);
+                    if ($topicId !== null) {
+                        $response = $this->executePost([
+                            'topic_id' => $topicId,
+                            'raw' => $this->messageRaw($conversation, $message, $turnNumber),
+                        ]);
+
+                        if (is_array($response)) {
+                            $wasPublished = true;
+                        }
+                    }
+                }
+
+                if ($this->hasChatDelivery()) {
+                    $chatPosted = $this->sendChatMessage($this->messageChat($conversation, $message, $turnNumber));
+                    $wasPublished = $wasPublished || $chatPosted;
+                }
+
+                if ($wasPublished) {
+                    $this->markMessagePublished($conversation, $message);
+                }
+            });
         }, 'postMessage');
     }
 
@@ -82,19 +103,21 @@ class DiscourseStreamer
         }
 
         $this->safeCall(function () use ($conversation, $totalMessages, $totalRounds, $durationSeconds): void {
-            if ($this->hasTopicDelivery()) {
-                $topicId = $this->resolveTopicId($conversation);
-                if ($topicId !== null) {
-                    $this->executePost([
-                        'topic_id' => $topicId,
-                        'raw' => $this->completedRaw($totalMessages, $totalRounds, $durationSeconds),
-                    ]);
+            $this->withConversationLock($conversation, function () use ($conversation, $totalMessages, $totalRounds, $durationSeconds): void {
+                if ($this->hasTopicDelivery()) {
+                    $topicId = $this->resolveTopicId($conversation);
+                    if ($topicId !== null) {
+                        $this->executePost([
+                            'topic_id' => $topicId,
+                            'raw' => $this->completedRaw($totalMessages, $totalRounds, $durationSeconds),
+                        ]);
+                    }
                 }
-            }
 
-            if ($this->hasChatDelivery()) {
-                $this->sendChatMessage($this->completedChat($totalMessages, $totalRounds, $durationSeconds));
-            }
+                if ($this->hasChatDelivery()) {
+                    $this->sendChatMessage($this->completedChat($totalMessages, $totalRounds, $durationSeconds));
+                }
+            });
         }, 'conversationCompleted');
     }
 
@@ -113,19 +136,21 @@ class DiscourseStreamer
         }
 
         $this->safeCall(function () use ($conversation, $error): void {
-            if ($this->hasTopicDelivery()) {
-                $topicId = $this->resolveTopicId($conversation);
-                if ($topicId !== null) {
-                    $this->executePost([
-                        'topic_id' => $topicId,
-                        'raw' => $this->failedRaw($error),
-                    ]);
+            $this->withConversationLock($conversation, function () use ($conversation, $error): void {
+                if ($this->hasTopicDelivery()) {
+                    $topicId = $this->resolveTopicId($conversation);
+                    if ($topicId !== null) {
+                        $this->executePost([
+                            'topic_id' => $topicId,
+                            'raw' => $this->failedRaw($error),
+                        ]);
+                    }
                 }
-            }
 
-            if ($this->hasChatDelivery()) {
-                $this->sendChatMessage($this->failedChat($error));
-            }
+                if ($this->hasChatDelivery()) {
+                    $this->sendChatMessage($this->failedChat($error));
+                }
+            });
         }, 'conversationFailed');
     }
 
@@ -295,11 +320,17 @@ class DiscourseStreamer
             && filled(config('discourse.chat_webhook_url'));
     }
 
-    protected function sendChatMessage(string $text): void
+    protected function sendChatMessage(string $text): bool
     {
+        $sentAny = false;
+        $allSuccessful = true;
+
         foreach ($this->splitChatMessage($text) as $part) {
-            $this->executeChatWebhook($part);
+            $sentAny = true;
+            $allSuccessful = $this->executeChatWebhook($part) && $allSuccessful;
         }
+
+        return $sentAny && $allSuccessful;
     }
 
     protected function executeChatWebhook(string $text): bool
@@ -355,6 +386,59 @@ class DiscourseStreamer
 
             return null;
         }
+    }
+
+    protected function withConversationLock(Conversation $conversation, callable $operation): mixed
+    {
+        try {
+            return Cache::lock($this->conversationLockKey($conversation), 30)->block(5, function () use ($operation): mixed {
+                return $operation();
+            });
+        } catch (LockTimeoutException $exception) {
+            Log::warning('Discourse streaming lock timeout', [
+                'conversation_id' => (string) $conversation->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    protected function shouldPublishMessage(Conversation $conversation, Message $message): bool
+    {
+        $lastMessageId = (int) Cache::get($this->lastPublishedMessageKey($conversation), 0);
+        $currentMessageId = (int) $message->id;
+
+        if ($lastMessageId <= 0) {
+            return true;
+        }
+
+        if ($currentMessageId > $lastMessageId) {
+            return true;
+        }
+
+        Log::info('Skipping out-of-order Discourse message', [
+            'conversation_id' => (string) $conversation->id,
+            'message_id' => $currentMessageId,
+            'last_published_message_id' => $lastMessageId,
+        ]);
+
+        return false;
+    }
+
+    protected function markMessagePublished(Conversation $conversation, Message $message): void
+    {
+        Cache::forever($this->lastPublishedMessageKey($conversation), (int) $message->id);
+    }
+
+    protected function conversationLockKey(Conversation $conversation): string
+    {
+        return "discourse.stream.{$conversation->id}";
+    }
+
+    protected function lastPublishedMessageKey(Conversation $conversation): string
+    {
+        return "discourse.stream.last_message.{$conversation->id}";
     }
 
     protected function recordFailure(): void

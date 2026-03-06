@@ -185,4 +185,55 @@ class DiscourseStreamerTest extends TestCase
         $conversation->refresh();
         $this->assertSame(777, $conversation->discourse_topic_id);
     }
+
+    public function test_it_skips_out_of_order_messages_for_existing_topic(): void
+    {
+        config()->set('discourse.enabled', true);
+        config()->set('discourse.base_url', 'https://forum.example.com');
+        config()->set('discourse.api_key', 'api-key');
+        config()->set('discourse.api_username', 'system');
+
+        Http::fake([
+            'https://forum.example.com/posts.json' => Http::response(['id' => 321], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'discourse_streaming_enabled' => true,
+            'discourse_topic_id' => 999,
+            'max_rounds' => 5,
+        ]);
+
+        $olderMessage = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaB->id,
+            'role' => 'assistant',
+            'content' => 'Older message should be skipped',
+        ]);
+
+        $newerMessage = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => 'Newer message should post first',
+        ]);
+
+        $streamer = app(DiscourseStreamer::class);
+        $streamer->postMessage($conversation, $newerMessage, 3);
+        $streamer->postMessage($conversation, $olderMessage, 2);
+
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request): bool {
+            $payload = $request->data();
+
+            return ($payload['topic_id'] ?? null) === 999
+                && str_contains((string) ($payload['raw'] ?? ''), 'Newer message should post first');
+        });
+    }
 }
