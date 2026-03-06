@@ -60,7 +60,7 @@ class DiscourseStreamer
 
         $this->safeCall(function () use ($conversation, $message, $turnNumber): void {
             $this->withConversationLock($conversation, function () use ($conversation, $message, $turnNumber): void {
-                if (! $this->shouldPublishMessage($conversation, $message)) {
+                if (! $this->shouldPublishMessage($conversation, $message, $turnNumber)) {
                     return;
                 }
 
@@ -86,7 +86,7 @@ class DiscourseStreamer
                 }
 
                 if ($wasPublished) {
-                    $this->markMessagePublished($conversation, $message);
+                    $this->markMessagePublished($conversation, $message, $turnNumber);
                 }
             });
         }, 'postMessage');
@@ -404,8 +404,20 @@ class DiscourseStreamer
         }
     }
 
-    protected function shouldPublishMessage(Conversation $conversation, Message $message): bool
+    protected function shouldPublishMessage(Conversation $conversation, Message $message, int $turnNumber): bool
     {
+        $lastPublishedTurn = (int) Cache::get($this->lastPublishedTurnKey($conversation), 0);
+        if ($lastPublishedTurn > 0 && $turnNumber <= $lastPublishedTurn) {
+            Log::info('Skipping out-of-order Discourse turn', [
+                'conversation_id' => (string) $conversation->id,
+                'turn_number' => $turnNumber,
+                'last_published_turn' => $lastPublishedTurn,
+                'message_id' => (int) $message->id,
+            ]);
+
+            return false;
+        }
+
         $lastMessageId = (int) Cache::get($this->lastPublishedMessageKey($conversation), 0);
         $currentMessageId = (int) $message->id;
 
@@ -426,9 +438,10 @@ class DiscourseStreamer
         return false;
     }
 
-    protected function markMessagePublished(Conversation $conversation, Message $message): void
+    protected function markMessagePublished(Conversation $conversation, Message $message, int $turnNumber): void
     {
         Cache::forever($this->lastPublishedMessageKey($conversation), (int) $message->id);
+        Cache::forever($this->lastPublishedTurnKey($conversation), (int) $turnNumber);
     }
 
     protected function conversationLockKey(Conversation $conversation): string
@@ -439,6 +452,11 @@ class DiscourseStreamer
     protected function lastPublishedMessageKey(Conversation $conversation): string
     {
         return "discourse.stream.last_message.{$conversation->id}";
+    }
+
+    protected function lastPublishedTurnKey(Conversation $conversation): string
+    {
+        return "discourse.stream.last_turn.{$conversation->id}";
     }
 
     protected function recordFailure(): void

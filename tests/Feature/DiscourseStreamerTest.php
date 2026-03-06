@@ -186,7 +186,7 @@ class DiscourseStreamerTest extends TestCase
         $this->assertSame(777, $conversation->discourse_topic_id);
     }
 
-    public function test_it_skips_out_of_order_messages_for_existing_topic(): void
+    public function test_it_skips_out_of_order_turns_for_existing_topic_even_when_message_ids_are_newer(): void
     {
         config()->set('discourse.enabled', true);
         config()->set('discourse.base_url', 'https://forum.example.com');
@@ -210,30 +210,30 @@ class DiscourseStreamerTest extends TestCase
             'max_rounds' => 5,
         ]);
 
-        $olderMessage = Message::factory()->create([
-            'conversation_id' => $conversation->id,
-            'persona_id' => $personaB->id,
-            'role' => 'assistant',
-            'content' => 'Older message should be skipped',
-        ]);
-
-        $newerMessage = Message::factory()->create([
+        $turnThreeMessage = Message::factory()->create([
             'conversation_id' => $conversation->id,
             'persona_id' => $personaA->id,
             'role' => 'assistant',
-            'content' => 'Newer message should post first',
+            'content' => 'Turn 3 should post first',
+        ]);
+
+        $turnTwoMessageCreatedLater = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'persona_id' => $personaB->id,
+            'role' => 'assistant',
+            'content' => 'Turn 2 replay should be skipped',
         ]);
 
         $streamer = app(DiscourseStreamer::class);
-        $streamer->postMessage($conversation, $newerMessage, 3);
-        $streamer->postMessage($conversation, $olderMessage, 2);
+        $streamer->postMessage($conversation, $turnThreeMessage, 3);
+        $streamer->postMessage($conversation, $turnTwoMessageCreatedLater, 2);
 
         Http::assertSentCount(1);
         Http::assertSent(function ($request): bool {
             $payload = $request->data();
 
             return ($payload['topic_id'] ?? null) === 999
-                && str_contains((string) ($payload['raw'] ?? ''), 'Newer message should post first');
+                && str_contains((string) ($payload['raw'] ?? ''), 'Turn 3 should post first');
         });
     }
 }
