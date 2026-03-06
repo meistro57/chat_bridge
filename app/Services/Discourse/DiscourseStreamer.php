@@ -192,6 +192,25 @@ class DiscourseStreamer
         }
 
         if ($response->failed()) {
+            if (
+                isset($payload['title'])
+                && ! isset($payload['topic_id'])
+                && $response->status() === 422
+                && str_contains($response->body(), 'Title has already been used')
+            ) {
+                $existingTopicId = $this->findTopicIdByTitle((string) $payload['title']);
+                if ($existingTopicId !== null) {
+                    Log::info('Reusing existing Discourse topic after duplicate title response', [
+                        'title' => $payload['title'],
+                        'topic_id' => $existingTopicId,
+                    ]);
+
+                    return [
+                        'topic_id' => $existingTopicId,
+                    ];
+                }
+            }
+
             if (! $response->clientError()) {
                 $this->recordFailure();
             }
@@ -206,6 +225,56 @@ class DiscourseStreamer
         $this->recordSuccess();
 
         return $response->json();
+    }
+
+    private function findTopicIdByTitle(string $title): ?int
+    {
+        $baseUrl = rtrim((string) config('discourse.base_url'), '/');
+
+        $request = Http::timeout((int) config('discourse.timeout', 15))
+            ->connectTimeout((int) config('discourse.connect_timeout', 5))
+            ->asJson()
+            ->withHeaders([
+                'Api-Key' => (string) config('discourse.api_key'),
+                'Api-Username' => (string) config('discourse.api_username'),
+            ]);
+
+        $queries = [
+            "{$baseUrl}/search/query.json?term=".urlencode($title),
+            "{$baseUrl}/search.json?q=".urlencode($title),
+        ];
+
+        foreach ($queries as $queryUrl) {
+            $response = $request->get($queryUrl);
+            if ($response->failed()) {
+                continue;
+            }
+
+            $data = $response->json();
+            $topics = $data['topics'] ?? data_get($data, 'grouped_search_result.topics', []);
+
+            if (! is_array($topics)) {
+                continue;
+            }
+
+            foreach ($topics as $topic) {
+                if (! is_array($topic)) {
+                    continue;
+                }
+
+                $candidateTitle = trim((string) ($topic['title'] ?? ''));
+                if (mb_strtolower($candidateTitle) !== mb_strtolower(trim($title))) {
+                    continue;
+                }
+
+                $topicId = (int) ($topic['id'] ?? $topic['topic_id'] ?? 0);
+                if ($topicId > 0) {
+                    return $topicId;
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function hasCredentials(): bool
@@ -313,8 +382,9 @@ class DiscourseStreamer
         $starterPreview = mb_strlen($starter) > 70
             ? mb_substr($starter, 0, 70).'...'
             : $starter;
+        $conversationToken = mb_substr((string) $conversation->id, 0, 8);
 
-        return mb_substr("Chat Bridge: {$personaA} vs {$personaB} | {$starterPreview}", 0, 240);
+        return mb_substr("Chat Bridge #{$conversationToken}: {$personaA} vs {$personaB} | {$starterPreview}", 0, 240);
     }
 
     protected function starterMessageRaw(Conversation $conversation): string

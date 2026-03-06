@@ -30,7 +30,7 @@ class DatabaseController extends Controller
         $filename = 'backup-'.now()->format('Y-m-d-His').'.sql';
         $path = $directory.DIRECTORY_SEPARATOR.$filename;
 
-        if (app()->environment('testing')) {
+        if (app()->runningUnitTests()) {
             File::put($path, '-- test backup');
 
             return redirect()

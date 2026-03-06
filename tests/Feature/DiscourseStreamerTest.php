@@ -140,4 +140,49 @@ class DiscourseStreamerTest extends TestCase
                 && $payload['text'] !== '';
         });
     }
+
+    public function test_it_reuses_existing_topic_when_discourse_rejects_duplicate_title(): void
+    {
+        config()->set('discourse.enabled', true);
+        config()->set('discourse.base_url', 'https://forum.example.com');
+        config()->set('discourse.api_key', 'api-key');
+        config()->set('discourse.api_username', 'system');
+        config()->set('discourse.default_tags', ['chat-bridge']);
+        config()->set('discourse.default_category_id', 12);
+
+        Http::fake([
+            'https://forum.example.com/posts.json' => Http::sequence()
+                ->push(['action' => 'create_post', 'errors' => ['Title has already been used']], 422)
+                ->push(['id' => 9002], 200),
+            'https://forum.example.com/search/query.json*' => Http::response([
+                'topics' => [
+                    ['id' => 777, 'title' => 'Chat Bridge #019cc4f8: ORACLE_PRIME vs VOID_WALKER | Demo'],
+                ],
+            ], 200),
+            'https://forum.example.com/search.json*' => Http::response([], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create([
+            'name' => 'ORACLE_PRIME',
+        ]);
+        $personaB = Persona::factory()->create([
+            'name' => 'VOID_WALKER',
+        ]);
+
+        $conversation = Conversation::factory()->create([
+            'id' => '019cc4f8-418b-71e8-855d-3847a9bb4dd5',
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'starter_message' => 'Demo',
+            'discourse_streaming_enabled' => true,
+        ]);
+
+        $topicId = app(DiscourseStreamer::class)->startConversation($conversation);
+
+        $this->assertSame(777, $topicId);
+        $conversation->refresh();
+        $this->assertSame(777, $conversation->discourse_topic_id);
+    }
 }

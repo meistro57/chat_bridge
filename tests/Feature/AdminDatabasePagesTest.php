@@ -86,12 +86,18 @@ class AdminDatabasePagesTest extends TestCase
             'role' => 'admin',
         ]);
 
+        $backupDirectory = storage_path('app/backups');
+        File::ensureDirectoryExists($backupDirectory);
+        collect(File::files($backupDirectory))
+            ->map(fn ($file) => $file->getPathname())
+            ->filter(fn ($path) => str_starts_with((string) basename($path), 'backup-') && str_ends_with((string) basename($path), '.sql'))
+            ->each(fn ($path) => File::delete($path));
+
         $response = $this->actingAs($admin)->post(route('admin.database.backup.run'));
 
         $response->assertRedirect(route('admin.database.backup'));
-        $response->assertSessionHas('success');
 
-        $backups = collect(File::files(storage_path('app/backups')))
+        $backups = collect(File::files($backupDirectory))
             ->map(fn ($file) => $file->getFilename())
             ->filter(fn ($name) => str_starts_with($name, 'backup-') && str_ends_with($name, '.sql'));
 

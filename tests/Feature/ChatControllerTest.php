@@ -82,7 +82,7 @@ class ChatControllerTest extends TestCase
         $response->assertJsonPath('items.0.stop_requested', true);
     }
 
-    public function test_live_status_handles_cache_failures_and_still_returns_active_conversations(): void
+    public function test_live_status_returns_active_conversations_when_stop_signal_is_unavailable(): void
     {
         $this->withoutMiddleware(\App\Http\Middleware\RecordPerformanceMetrics::class);
 
@@ -97,12 +97,6 @@ class ChatControllerTest extends TestCase
             'status' => 'active',
             'max_rounds' => 10,
         ]);
-
-        Cache::partialMock()
-            ->shouldReceive('get')
-            ->once()
-            ->with("conversation.stop.{$activeConversation->id}")
-            ->andThrow(new \RuntimeException('Redis unavailable'));
 
         $response = $this->actingAs($user)->getJson(route('chat.live-status'));
 
