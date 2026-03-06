@@ -67,6 +67,31 @@ class ConversationTemplateTest extends TestCase
         ]);
     }
 
+    public function test_user_can_create_template_with_max_rounds_500(): void
+    {
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create(['user_id' => $user->id]);
+        $personaB = Persona::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user)->post(route('templates.store'), [
+            'name' => 'Deep Dive Session',
+            'description' => 'Template with high round cap.',
+            'category' => 'Research',
+            'starter_message' => 'Analyze in depth before concluding.',
+            'max_rounds' => 500,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'is_public' => false,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('conversation_templates', [
+            'name' => 'Deep Dive Session',
+            'user_id' => $user->id,
+            'max_rounds' => 500,
+        ]);
+    }
+
     public function test_user_can_update_own_template(): void
     {
         $user = User::factory()->create();

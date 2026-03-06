@@ -64,9 +64,12 @@ REVERB_PID=$!
 php artisan queue:work > /dev/null 2>&1 &
 QUEUE_PID=$!
 
+php artisan schedule:work > /dev/null 2>&1 &
+SCHEDULE_PID=$!
+
 echo "Chat Bridge is running!"
 echo "Web URL: http://$APP_HOST:$PORT"
 echo "Reverb: $APP_HOST:$REVERB_PORT"
 
 # Wait
-wait $APP_PID $REVERB_PID $QUEUE_PID
+wait $APP_PID $REVERB_PID $QUEUE_PID $SCHEDULE_PID

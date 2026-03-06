@@ -204,6 +204,9 @@ return [
 
     'active_conversation_kickstart_after_seconds' => (int) env('AI_ACTIVE_KICKSTART_AFTER_SECONDS', 90),
     'active_conversation_kickstart_cooldown_seconds' => (int) env('AI_ACTIVE_KICKSTART_COOLDOWN_SECONDS', 120),
+    'active_conversation_auto_recovery_enabled' => env('AI_ACTIVE_AUTO_RECOVERY_ENABLED', true),
+    'active_conversation_auto_recovery_limit' => (int) env('AI_ACTIVE_AUTO_RECOVERY_LIMIT', 100),
+    'active_conversation_force_unlock_after_seconds' => (int) env('AI_ACTIVE_FORCE_UNLOCK_AFTER_SECONDS', 600),
 
     /*
     |--------------------------------------------------------------------------

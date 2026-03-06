@@ -44,7 +44,7 @@
 - **Webhook Resolution Chain** - Conversation override -> user default -> global fallback
 - **Discord Threading** - Auto-create/continue a dedicated thread per conversation
 - **Advanced Chat Controls**:
-  - **Max Rounds** - Set conversation length limit (1-100 turns)
+  - **Max Rounds** - Set conversation length limit (1-500 turns)
   - **Memory Window** - Configure how many recent messages are included each turn (1-50)
   - **Cross-Chat Memory Toggle** - Enable/disable embedding-based memory retrieval per session
   - **Memory Recall Depth** - Number of retrieved memory snippets to inject (1-20)
@@ -56,6 +56,8 @@
 - **Message History** - Complete conversation logs
 - **Transcript Export** - Download conversations as CSV
 - **Long Running** - 20-minute timeout support
+- **Stale Session Auto-Recovery** - Scheduler-driven `chat:recover-stale` job re-dispatches stuck sessions
+- **Stale Lock Force-Unlock** - Automatically releases orphaned `RunChatSession` overlap locks after configured threshold
 - **Structured Failure Context** - Empty-turn hard-fail path stores detailed error metadata for diagnostics
 
 ### 🔐 Authentication & Authorization

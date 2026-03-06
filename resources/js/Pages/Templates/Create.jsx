@@ -131,7 +131,7 @@ export default function Create({ personas, categories }) {
                                 <input
                                     type="number"
                                     min="1"
-                                    max="50"
+                                    max="500"
                                     value={data.max_rounds}
                                     onChange={(event) => setData('max_rounds', event.target.value)}
                                     className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-4 py-2 text-sm text-zinc-100 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20"

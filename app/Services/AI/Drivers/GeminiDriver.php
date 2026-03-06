@@ -241,7 +241,8 @@ class GeminiDriver implements AIDriverInterface
             $request = $request->retry(
                 $retryAttempts,
                 $retryDelayMs,
-                fn (\Exception $exception): bool => $exception instanceof ConnectionException
+                fn (\Exception $exception): bool => $exception instanceof ConnectionException,
+                throw: false
             );
         }
 

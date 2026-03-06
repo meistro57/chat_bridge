@@ -30,7 +30,7 @@ class StoreChatRequest extends FormRequest
             'model_a' => ['required', 'string'],
             'model_b' => ['required', 'string'],
             'starter_message' => ['required', 'string'],
-            'max_rounds' => ['required', 'integer', 'min:1', 'max:100'],
+            'max_rounds' => ['required', 'integer', 'min:1', 'max:500'],
             'memory_history_limit' => ['nullable', 'integer', 'min:1', 'max:50'],
             'memory_rag_enabled' => ['nullable', 'boolean'],
             'memory_rag_source_limit' => ['nullable', 'integer', 'min:1', 'max:20'],

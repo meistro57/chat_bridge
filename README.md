@@ -692,7 +692,7 @@ This script will:
 1. Find available ports for Web and WebSocket servers
 2. Configure your environment
 3. Rebuild frontend assets
-4. Start Web Server, Reverb, and Queue
+4. Start Web Server, Reverb, Queue, and Scheduler
 5. Display the access URLs
 
 Or run manually:
@@ -701,6 +701,7 @@ Or run manually:
 php artisan serve
 php artisan queue:work
 php artisan reverb:start
+php artisan schedule:work
 ```
 
 ---
@@ -914,7 +915,7 @@ This admin user is automatically created with full admin rights during installat
    - Select model with live pricing
 4. Enter **Starter Message**
 5. Configure **Chat Control Settings**:
-    - **Max Rounds**: Limit conversation turns (1-100)
+    - **Max Rounds**: Limit conversation turns (1-500)
     - **Stop Word Detection**: Enable automatic stopping
     - **Stop Words**: Comma-separated trigger words (e.g., "goodbye, end")
     - **Threshold**: Detection sensitivity (0.1-1.0)
@@ -1186,9 +1187,28 @@ php artisan test --coverage
 
 ```bash
 php artisan queue:work --tries=1
+php artisan schedule:work
 ```
 
-> This project uses Laravel queue workers (`queue:work` / `queue:restart`), not Horizon.
+> This project uses Laravel queue workers (`queue:work` / `queue:restart`), not Horizon.  
+> Keep `schedule:work` running too so stale-session auto-recovery continues in the background.
+
+### Conversation Appears Hung
+
+If a conversation stays `active` without new turns:
+
+```bash
+php artisan chat:recover-stale
+```
+
+Background self-healing is enabled by default via scheduler and these env settings:
+
+```bash
+AI_ACTIVE_AUTO_RECOVERY_ENABLED=true
+AI_ACTIVE_KICKSTART_AFTER_SECONDS=90
+AI_ACTIVE_KICKSTART_COOLDOWN_SECONDS=120
+AI_ACTIVE_FORCE_UNLOCK_AFTER_SECONDS=600
+```
 
 ### WebSocket Connection Failed
 
@@ -1297,6 +1317,7 @@ If messages are not showing in Discourse:
 2. Verify API user can post in the configured category.
 3. Verify API key is active and not revoked.
 4. Verify queue worker is running (`php artisan queue:work`).
+5. Verify scheduler is running (`php artisan schedule:work`).
 5. Verify conversation-level toggle is enabled on the session.
 6. Check logs for request failures:
 

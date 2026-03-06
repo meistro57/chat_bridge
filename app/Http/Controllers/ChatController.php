@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Models\ConversationTemplate;
 use App\Models\Persona;
 use App\Services\AI\TranscriptService;
+use App\Services\Conversations\ActiveConversationRecoveryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -72,16 +73,7 @@ class ChatController extends Controller
 
     protected function resolveStopRequested(Conversation $conversation): bool
     {
-        try {
-            return (bool) Cache::get("conversation.stop.{$conversation->id}");
-        } catch (\Throwable $exception) {
-            Log::warning('Unable to resolve stop signal for live chat status', [
-                'conversation_id' => $conversation->id,
-                'error' => $exception->getMessage(),
-            ]);
-
-            return false;
-        }
+        return app(ActiveConversationRecoveryService::class)->resolveStopRequested($conversation);
     }
 
     public function index(): InertiaResponse
@@ -370,49 +362,11 @@ class ChatController extends Controller
 
     protected function maybeKickstartStaleConversation(Conversation $conversation, int $assistantTurns, bool $stopRequested): void
     {
-        if ($conversation->status !== 'active' || $stopRequested) {
-            return;
-        }
-
-        $maxRounds = max(1, (int) ($conversation->max_rounds ?? 1));
-        $remainingRounds = $maxRounds - max(0, $assistantTurns);
-        if ($remainingRounds <= 0) {
-            return;
-        }
-
-        $staleAfterSeconds = max(15, (int) config('ai.active_conversation_kickstart_after_seconds', 90));
-        $updatedAt = $conversation->updated_at;
-
-        if (! $updatedAt || $updatedAt->gt(now()->subSeconds($staleAfterSeconds))) {
-            return;
-        }
-
-        $cooldownSeconds = max(30, (int) config('ai.active_conversation_kickstart_cooldown_seconds', 120));
-        $kickstartKey = "conversation.kickstart.{$conversation->id}";
-
-        try {
-            $shouldDispatch = Cache::add($kickstartKey, now()->toIso8601String(), now()->addSeconds($cooldownSeconds));
-        } catch (\Throwable $exception) {
-            Log::warning('Unable to kickstart stale active conversation due to cache error', [
-                'conversation_id' => $conversation->id,
-                'error' => $exception->getMessage(),
-            ]);
-
-            return;
-        }
-
-        if (! $shouldDispatch) {
-            return;
-        }
-
-        dispatch(new RunChatSession($conversation->id, $remainingRounds));
-
-        Log::info('Kickstarted stale active conversation', [
-            'conversation_id' => $conversation->id,
-            'assistant_turns' => $assistantTurns,
-            'remaining_rounds' => $remainingRounds,
-            'stale_after_seconds' => $staleAfterSeconds,
-            'cooldown_seconds' => $cooldownSeconds,
-        ]);
+        app(ActiveConversationRecoveryService::class)->maybeKickstartConversation(
+            $conversation,
+            $assistantTurns,
+            $stopRequested,
+            'chat-controller'
+        );
     }
 }

@@ -98,7 +98,8 @@ class ChatControllerTest extends TestCase
             'max_rounds' => 10,
         ]);
 
-        Cache::shouldReceive('get')
+        Cache::partialMock()
+            ->shouldReceive('get')
             ->once()
             ->with("conversation.stop.{$activeConversation->id}")
             ->andThrow(new \RuntimeException('Redis unavailable'));
@@ -298,6 +299,44 @@ class ChatControllerTest extends TestCase
         Bus::assertDispatched(RunChatSession::class, function (RunChatSession $job) use ($conversation, $payload) {
             return $job->conversationId === $conversation->id
                 && $job->maxRounds === $payload['max_rounds'];
+        });
+    }
+
+    public function test_store_accepts_max_rounds_up_to_500(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'Long-running conversation kickoff.',
+            'max_rounds' => 500,
+            'stop_word_detection' => false,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $this->assertSame(500, $conversation->max_rounds);
+
+        Bus::assertDispatched(RunChatSession::class, function (RunChatSession $job) use ($conversation): bool {
+            return $job->conversationId === $conversation->id
+                && $job->maxRounds === 500;
         });
     }
 

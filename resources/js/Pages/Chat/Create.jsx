@@ -260,7 +260,7 @@ export default function Create({
         .filter((word) => word.length > 0)
         .length > 0;
 
-    const isValidRoundCount = Number.isInteger(Number(data.max_rounds)) && Number(data.max_rounds) >= 1 && Number(data.max_rounds) <= 100;
+    const isValidRoundCount = Number.isInteger(Number(data.max_rounds)) && Number(data.max_rounds) >= 1 && Number(data.max_rounds) <= 500;
     const isValidHistoryLimit = Number.isInteger(Number(data.memory_history_limit)) && Number(data.memory_history_limit) >= 1 && Number(data.memory_history_limit) <= 50;
     const isValidRagSourceLimit = Number.isInteger(Number(data.memory_rag_source_limit)) && Number(data.memory_rag_source_limit) >= 1 && Number(data.memory_rag_source_limit) <= 20;
     const isValidRagScoreThreshold = Number.isFinite(Number(data.memory_rag_score_threshold)) && Number(data.memory_rag_score_threshold) >= 0 && Number(data.memory_rag_score_threshold) <= 1;
@@ -555,7 +555,7 @@ export default function Create({
                                 <input
                                     type="number"
                                     min="1"
-                                    max="100"
+                                    max="500"
                                     value={data.max_rounds}
                                     onChange={e => {
                                         const value = e.target.value;

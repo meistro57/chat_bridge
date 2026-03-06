@@ -69,7 +69,7 @@ npm run build
 
 ### Running Locally
 **Recommended: Use the start script**
-This script handles port selection and starts all services (App, Reverb, Queue).
+This script handles port selection and starts all services (App, Reverb, Queue, Scheduler).
 ```bash
 ./start-services.sh
 ```
@@ -87,6 +87,9 @@ php artisan queue:listen
 
 # Start WebSocket server (for real-time updates)
 php artisan reverb:start
+
+# Start scheduler (CRITICAL for stale-session auto-recovery)
+php artisan schedule:work
 ```
 
 ### Testing
@@ -116,6 +119,7 @@ After defining schema, run `php artisan migrate`.
 ## Gotchas
 
 - **Queue Worker Required**: If you create a chat and nothing happens, the queue worker is likely not running. Run `php artisan queue:work` or `queue:listen`.
+- **Scheduler Required for Self-Healing**: Stale conversation auto-recovery runs via scheduler. Keep `php artisan schedule:work` running (or use `./start-services.sh` / Docker queue service).
 - **Environment config**: Tailwind v4 is used (configured in `vite.config.js` and CSS), so `tailwind.config.js` might be missing or minimal.
 - **Sqlite**: Default database is SQLite (`database/database.sqlite`).
 - **Docker Builds**: Ensure `composer.lock` is up-to-date. If you encounter `Class 'Laravel\Pail\PailServiceProvider' not found`, run `composer update` to sync the lock file.
