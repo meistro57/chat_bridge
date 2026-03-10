@@ -58,6 +58,7 @@ class DiscordStreamer
 
             $payload = $this->embedBuilder->starterQuestion($conversation);
             $basePayload = $payload;
+            $threadCreated = false;
 
             // Create a thread by including thread_name in the webhook payload
             if (config('discord.thread_auto_create', true)) {
@@ -65,6 +66,10 @@ class DiscordStreamer
             }
 
             $response = $this->executeWebhook($webhookUrl, $payload);
+
+            if ($response !== null && array_key_exists('thread_name', $payload)) {
+                $threadCreated = true;
+            }
 
             if ($response === null && config('discord.thread_auto_create', true)) {
                 Log::info('Discord thread auto-create failed; retrying without thread_name', [
@@ -81,7 +86,7 @@ class DiscordStreamer
             // Extract the thread ID from the response
             // When thread_name is provided, Discord creates a thread and the
             // response includes the channel_id of the new thread.
-            $threadId = $response['channel_id'] ?? null;
+            $threadId = $threadCreated ? ($response['channel_id'] ?? null) : null;
 
             if ($threadId) {
                 $conversation->updateQuietly([

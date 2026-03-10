@@ -155,6 +155,7 @@ class ChatController extends Controller
             'personas' => Persona::orderBy('name')->get(),
             'template' => $template,
             'openRouterModels' => $openRouterModels,
+            'mcpEnabled' => (bool) config('ai.tools_enabled', true),
             'discordDefaults' => [
                 'enabled' => (bool) $request->user()->discord_streaming_default,
                 'webhook_url' => $request->user()->discord_webhook_url,
@@ -327,6 +328,62 @@ class ChatController extends Controller
         ]);
 
         return back()->with('success', 'Conversation resumed.');
+    }
+
+    public function retryWith(Request $request, Conversation $conversation): RedirectResponse
+    {
+        if ($conversation->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        if ($conversation->status !== 'failed') {
+            return back()->with('error', 'Only failed conversations can be retried.');
+        }
+
+        $validated = $request->validate([
+            'provider_a' => 'nullable|string|max:50',
+            'model_a' => 'nullable|string|max:200',
+            'provider_b' => 'nullable|string|max:50',
+            'model_b' => 'nullable|string|max:200',
+        ]);
+
+        $updates = array_filter([
+            'provider_a' => $validated['provider_a'] ?? null,
+            'model_a' => $validated['model_a'] ?? null,
+            'provider_b' => $validated['provider_b'] ?? null,
+            'model_b' => $validated['model_b'] ?? null,
+        ]);
+
+        $assistantTurns = (int) $conversation->messages()
+            ->where('role', 'assistant')
+            ->count();
+        $remainingRounds = $conversation->max_rounds - $assistantTurns;
+
+        if ($remainingRounds <= 0) {
+            return back()->with('error', 'No remaining rounds available to retry.');
+        }
+
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $metadata['resumed_at'] = now()->toIso8601String();
+        $metadata['resume_attempts'] = (int) ($metadata['resume_attempts'] ?? 0) + 1;
+        $metadata['retry_model_change'] = $updates;
+
+        $conversation->update(array_merge($updates, [
+            'status' => 'active',
+            'metadata' => $metadata,
+        ]));
+
+        Cache::forget("conversation.stop.{$conversation->id}");
+        dispatch(new RunChatSession($conversation->id, $remainingRounds));
+
+        Log::info('Conversation retried with updated models', [
+            'conversation_id' => $conversation->id,
+            'user_id' => auth()->id(),
+            'updates' => $updates,
+            'remaining_rounds' => $remainingRounds,
+        ]);
+
+        return back()->with('success', 'Conversation restarted with updated settings.');
     }
 
     public function destroy(Conversation $conversation): RedirectResponse

@@ -15,7 +15,7 @@ https://quantummindsunited.com/
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Made with Love](https://img.shields.io/badge/Made%20with-%E2%9D%A4%EF%B8%8F-red)](https://github.com/meistro57/chat_bridge)
 
-**Current Version:** 0.8.0
+**Current Version:** 1.0.0
 
 **Orchestrate intelligent conversations between AI agents. Test, experiment, and explore multi-agent AI systems with enterprise-grade tooling.**
 

@@ -43,7 +43,10 @@ class EmbeddingService
         if ($this->shouldFallbackToOpenRouter($response->status(), $response->body())) {
             $openRouterKey = $this->resolveApiKey('openrouter');
             if (! empty($openRouterKey)) {
+                $embeddingTimeoutSeconds = max(10, (int) config('ai.http_timeout_seconds', 90));
+
                 $fallbackResponse = Http::withHeaders($this->openRouterHeaders($openRouterKey))
+                    ->timeout($embeddingTimeoutSeconds)
                     ->post(
                         "{$this->openRouterBaseUrl}/embeddings",
                         $this->embeddingPayload($this->openRouterEmbeddingModel(), $text),

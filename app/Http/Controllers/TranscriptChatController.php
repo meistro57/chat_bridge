@@ -126,8 +126,7 @@ class TranscriptChatController extends Controller
     }
 
     /**
-     * Resolve the OpenRouter API key, preferring the authenticated user's stored key
-     * before falling back to the global config value.
+     * Resolve the OpenRouter API key: user's key → any active DB key → config.
      */
     protected function resolveOpenRouterKey(): ?string
     {
@@ -143,6 +142,16 @@ class TranscriptChatController extends Controller
             if (! empty($dbKey)) {
                 return $dbKey;
             }
+        }
+
+        // Fall back to any active OpenRouter key in the database
+        $fallbackKey = ApiKey::where('provider', 'openrouter')
+            ->where('is_active', true)
+            ->latest()
+            ->value('key');
+
+        if (! empty($fallbackKey)) {
+            return $fallbackKey;
         }
 
         return config('services.openrouter.key') ?: null;
@@ -205,7 +214,8 @@ MSG;
                 return $response->json('choices.0.message.content', 'No answer could be generated.');
             }
 
-            Log::error('TranscriptChat OpenAI error', [
+            $logLevel = $this->shouldAttemptOpenRouterFallback($response) ? 'warning' : 'error';
+            Log::$logLevel('TranscriptChat OpenAI error', [
                 'status' => $response->status(),
                 'response' => $response->body(),
             ]);

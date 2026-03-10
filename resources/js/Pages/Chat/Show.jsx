@@ -80,6 +80,17 @@ const PlainTextContent = ({ content }) => (
     <p className="text-zinc-100 whitespace-pre-wrap">{String(content ?? '')}</p>
 );
 
+const PROVIDERS = [
+    { id: 'anthropic', name: 'Anthropic' },
+    { id: 'openai', name: 'OpenAI' },
+    { id: 'openrouter', name: 'OpenRouter' },
+    { id: 'bedrock', name: 'Bedrock' },
+    { id: 'gemini', name: 'Gemini' },
+    { id: 'deepseek', name: 'DeepSeek' },
+    { id: 'ollama', name: 'Ollama' },
+    { id: 'lmstudio', name: 'LM Studio' },
+];
+
 export default function Show({ conversation, stopSignal }) {
     const [messages, setMessages] = useState(conversation.messages || []);
     const [streamingContent, setStreamingContent] = useState('');
@@ -87,6 +98,16 @@ export default function Show({ conversation, stopSignal }) {
     const [status, setStatus] = useState(conversation.status);
     const [isStopping, setIsStopping] = useState(stopSignal);
     const [isResuming, setIsResuming] = useState(false);
+    const [showRetryModal, setShowRetryModal] = useState(false);
+    const [retryProviderA, setRetryProviderA] = useState(conversation.provider_a ?? '');
+    const [retryModelA, setRetryModelA] = useState(conversation.model_a ?? '');
+    const [retryProviderB, setRetryProviderB] = useState(conversation.provider_b ?? '');
+    const [retryModelB, setRetryModelB] = useState(conversation.model_b ?? '');
+    const [retryModelsA, setRetryModelsA] = useState([]);
+    const [retryModelsB, setRetryModelsB] = useState([]);
+    const [retryLoadingA, setRetryLoadingA] = useState(false);
+    const [retryLoadingB, setRetryLoadingB] = useState(false);
+    const [isRetrying, setIsRetrying] = useState(false);
     const [liveLogs, setLiveLogs] = useState([]);
     const [isLogOpen, setIsLogOpen] = useState(true);
     const scrollRef = useRef(null);
@@ -230,6 +251,38 @@ export default function Show({ conversation, stopSignal }) {
         });
     };
 
+    const fetchRetryModels = async (provider, setModels, setLoading) => {
+        if (!provider) { setModels([]); return; }
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/providers/models?provider=${provider}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setModels(data.models || []);
+            }
+        } catch { /* silently ignore */ } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchRetryModels(retryProviderA, setRetryModelsA, setRetryLoadingA); }, [retryProviderA]);
+    useEffect(() => { fetchRetryModels(retryProviderB, setRetryModelsB, setRetryLoadingB); }, [retryProviderB]);
+
+    const handleRetryWith = () => {
+        router.post(`/chat/${conversation.id}/retry-with`, {
+            provider_a: retryProviderA,
+            model_a: retryModelA,
+            provider_b: retryProviderB,
+            model_b: retryModelB,
+        }, {
+            onStart: () => setIsRetrying(true),
+            onSuccess: () => setShowRetryModal(false),
+            onFinish: () => setIsRetrying(false),
+        });
+    };
+
     return (
         <AuthenticatedLayout>
             <Head title={`Session ${conversation.id.substring(0,8)}`} />
@@ -280,13 +333,21 @@ export default function Show({ conversation, stopSignal }) {
                             </button>
                         )}
                         {status === 'failed' && (
-                            <button
-                                onClick={handleResume}
-                                disabled={isResuming}
-                                className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                {isResuming ? 'RESUMING...' : 'RESUME'}
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleResume}
+                                    disabled={isResuming}
+                                    className="bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500 hover:text-white border border-emerald-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    {isResuming ? 'RESUMING...' : 'RESUME'}
+                                </button>
+                                <button
+                                    onClick={() => setShowRetryModal(true)}
+                                    className="bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500 hover:text-white border border-indigo-500/20 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300"
+                                >
+                                    EDIT & RETRY
+                                </button>
+                            </>
                         )}
                         {isStopping && (
                             <span className="text-red-400 text-xs font-mono animate-pulse">STOPPING...</span>
@@ -508,6 +569,129 @@ export default function Show({ conversation, stopSignal }) {
                 </div>
             </div>
             </div>
+
+            {/* Edit & Retry Modal */}
+            {showRetryModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        aria-label="Close"
+                        onClick={() => setShowRetryModal(false)}
+                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                    />
+                    <div className="relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-zinc-950/95 p-6 shadow-[0_28px_90px_rgba(0,0,0,0.7)]">
+                        <div className="mb-5 flex items-start justify-between gap-3">
+                            <div>
+                                <h2 className="text-lg font-bold text-zinc-100">Edit & Retry</h2>
+                                <p className="mt-1 text-xs text-zinc-500">Change provider/model for either agent, then retry from where it left off.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowRetryModal(false)}
+                                className="rounded-lg border border-white/10 p-1.5 text-zinc-400 hover:text-white"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Agent A */}
+                            <div className="space-y-2 rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+                                <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">
+                                    Agent A — {conversation.personaA?.name ?? 'Persona A'}
+                                </p>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] uppercase tracking-wider text-zinc-500">Provider</label>
+                                    <select
+                                        value={retryProviderA}
+                                        onChange={(e) => { setRetryProviderA(e.target.value); setRetryModelA(''); }}
+                                        className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-indigo-500/50"
+                                    >
+                                        {PROVIDERS.map((p) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] uppercase tracking-wider text-zinc-500">Model</label>
+                                    <select
+                                        value={retryModelA}
+                                        onChange={(e) => setRetryModelA(e.target.value)}
+                                        disabled={retryLoadingA}
+                                        className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-indigo-500/50 disabled:opacity-50"
+                                    >
+                                        {retryLoadingA
+                                            ? <option>Loading...</option>
+                                            : retryModelsA.length === 0
+                                                ? <option value={retryModelA}>{retryModelA || 'No models'}</option>
+                                                : retryModelsA.map((m) => (
+                                                    <option key={m.id} value={m.id}>{m.name}{m.cost ? ` — ${m.cost}` : ''}</option>
+                                                ))
+                                        }
+                                    </select>
+                                    <p className="text-[10px] text-zinc-600 truncate">Current: {conversation.model_a}</p>
+                                </div>
+                            </div>
+
+                            {/* Agent B */}
+                            <div className="space-y-2 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+                                <p className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                                    Agent B — {conversation.personaB?.name ?? 'Persona B'}
+                                </p>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] uppercase tracking-wider text-zinc-500">Provider</label>
+                                    <select
+                                        value={retryProviderB}
+                                        onChange={(e) => { setRetryProviderB(e.target.value); setRetryModelB(''); }}
+                                        className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-purple-500/50"
+                                    >
+                                        {PROVIDERS.map((p) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] uppercase tracking-wider text-zinc-500">Model</label>
+                                    <select
+                                        value={retryModelB}
+                                        onChange={(e) => setRetryModelB(e.target.value)}
+                                        disabled={retryLoadingB}
+                                        className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-purple-500/50 disabled:opacity-50"
+                                    >
+                                        {retryLoadingB
+                                            ? <option>Loading...</option>
+                                            : retryModelsB.length === 0
+                                                ? <option value={retryModelB}>{retryModelB || 'No models'}</option>
+                                                : retryModelsB.map((m) => (
+                                                    <option key={m.id} value={m.id}>{m.name}{m.cost ? ` — ${m.cost}` : ''}</option>
+                                                ))
+                                        }
+                                    </select>
+                                    <p className="text-[10px] text-zinc-600 truncate">Current: {conversation.model_b}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex justify-end gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setShowRetryModal(false)}
+                                className="rounded-xl border border-white/10 px-4 py-2 text-sm text-zinc-400 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRetryWith}
+                                disabled={isRetrying}
+                                className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+                            >
+                                {isRetrying ? 'Starting...' : 'Retry Now'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

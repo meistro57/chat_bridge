@@ -40,13 +40,16 @@ class ConversationService
         $settings = $conversation->settingsForPersona($persona);
         $driver = $this->ai->driverForProvider($settings['provider'], $settings['model']);
 
-        $messages = $this->buildMessages($conversation, $persona, $history);
+        $messages = $this->fitMessagesWithinPromptBudget(
+            $this->buildMessages($conversation, $persona, $history),
+            $settings['provider'] ?? null
+        );
 
         // Check if driver supports tools and tools are enabled
         if ($driver->supportsTools() && config('ai.tools_enabled', true)) {
             try {
                 // Use agentic loop with tools (non-streaming)
-                $result = $this->generateWithTools($driver, $messages, $settings['temperature'], [
+                $result = $this->generateWithTools($driver, $this->copyMessages($messages), $settings['temperature'], [
                     'provider' => $settings['provider'] ?? null,
                     'model' => $settings['model'] ?? null,
                 ]);
@@ -154,13 +157,7 @@ class ConversationService
 
             $relevantContext = $this->getRelevantContext($persona, $history, $ragConfig);
             if ($relevantContext->isNotEmpty()) {
-                $contextMessage = "Relevant context from previous conversations:\n\n";
-
-                foreach ($relevantContext as $contextMsg) {
-                    $contextMessage .= "- [{$contextMsg->created_at->diffForHumans()}] {$contextMsg->content}\n";
-                }
-
-                $messages->push(new MessageData('system', $contextMessage));
+                $messages->push(new MessageData('system', $this->formatRelevantContextMessage($relevantContext)));
 
                 Log::info('Added RAG context to conversation', [
                     'persona_id' => $persona->id,
@@ -243,18 +240,7 @@ class ConversationService
             }
 
             // Add tool results back to messages for next iteration
-            $toolResultsText = "Tool execution results:\n\n";
-            foreach ($toolResults as $tr) {
-                $toolResultsText .= "Tool: {$tr['tool_name']}\n";
-                if ($tr['error']) {
-                    $toolResultsText .= "Error: {$tr['error']}\n";
-                } else {
-                    $toolResultsText .= 'Result: '.json_encode($tr['result'], JSON_PRETTY_PRINT)."\n";
-                }
-                $toolResultsText .= "\n";
-            }
-
-            $messages->push(new MessageData('system', $toolResultsText));
+            $messages->push(new MessageData('system', $this->formatToolResultsForPrompt($toolResults)));
         }
 
         // Max iterations reached - ask AI to respond without more tools
@@ -393,6 +379,159 @@ class ConversationService
         }
 
         return "Relevant template file excerpts:\n\n".implode("\n\n---\n\n", $snippets);
+    }
+
+    /**
+     * @param  Collection<int, MessageData>  $messages
+     * @return Collection<int, MessageData>
+     */
+    protected function copyMessages(Collection $messages): Collection
+    {
+        return $messages->map(fn (MessageData $message) => MessageData::fromArray($message->toArray()));
+    }
+
+    /**
+     * @param  Collection<int, MessageData>  $messages
+     * @return Collection<int, MessageData>
+     */
+    protected function fitMessagesWithinPromptBudget(Collection $messages, ?string $provider): Collection
+    {
+        $budget = $this->promptCharBudgetForProvider($provider);
+        $sanitizedMessages = $messages
+            ->map(function (MessageData $message): MessageData {
+                if ($message->role !== 'system') {
+                    return $message;
+                }
+
+                return new MessageData(
+                    role: $message->role,
+                    content: $this->compactSystemMessage($message->content),
+                    name: $message->name,
+                );
+            })
+            ->values();
+
+        while ($this->estimatedPromptChars($sanitizedMessages) > $budget) {
+            $dropIndex = $sanitizedMessages->search(
+                fn (MessageData $message): bool => $message->role !== 'system'
+            );
+
+            if ($dropIndex === false) {
+                break;
+            }
+
+            $sanitizedMessages->forget($dropIndex);
+            $sanitizedMessages = $sanitizedMessages->values();
+        }
+
+        return $sanitizedMessages;
+    }
+
+    /**
+     * @param  Collection<int, object>  $relevantContext
+     */
+    protected function formatRelevantContextMessage(Collection $relevantContext): string
+    {
+        $perMessageChars = max(120, (int) config('ai.rag_context_message_max_chars', 600));
+        $maxChars = max($perMessageChars, (int) config('ai.rag_context_max_chars', 4000));
+        $lines = [];
+
+        foreach ($relevantContext as $contextMessage) {
+            $createdAt = $contextMessage->created_at ?? null;
+            $relativeTime = is_object($createdAt) && method_exists($createdAt, 'diffForHumans')
+                ? $contextMessage->created_at->diffForHumans()
+                : 'earlier';
+
+            $lines[] = sprintf(
+                '- [%s] %s',
+                $relativeTime,
+                Str::limit(trim((string) $contextMessage->content), $perMessageChars, '...')
+            );
+        }
+
+        return Str::limit(
+            "Relevant context from previous conversations:\n\n".implode("\n", $lines),
+            $maxChars,
+            '...'
+        );
+    }
+
+    /**
+     * @param  array<int, array{tool_call_id:string,tool_name:string,result:mixed,error:mixed}>  $toolResults
+     */
+    protected function formatToolResultsForPrompt(array $toolResults): string
+    {
+        $maxEntries = max(1, (int) config('ai.tool_result_max_entries', 3));
+        $entryMaxChars = max(120, (int) config('ai.tool_result_entry_max_chars', 1200));
+        $totalMaxChars = max($entryMaxChars, (int) config('ai.tool_result_max_chars', 4000));
+        $lines = ['Tool execution results:'];
+
+        foreach (array_slice($toolResults, 0, $maxEntries) as $toolResult) {
+            $resultText = $toolResult['error']
+                ? 'Error: '.Str::limit($this->encodeToolResult($toolResult['error']), $entryMaxChars, '...')
+                : 'Result: '.Str::limit($this->encodeToolResult($toolResult['result']), $entryMaxChars, '...');
+
+            $lines[] = "Tool: {$toolResult['tool_name']}";
+            $lines[] = $resultText;
+        }
+
+        if (count($toolResults) > $maxEntries) {
+            $lines[] = sprintf('Additional tool results omitted: %d', count($toolResults) - $maxEntries);
+        }
+
+        return Str::limit(implode("\n", $lines), $totalMaxChars, '...');
+    }
+
+    protected function encodeToolResult(mixed $result): string
+    {
+        $encoded = json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if ($encoded !== false) {
+            return $encoded;
+        }
+
+        if (is_scalar($result) || $result === null) {
+            return (string) $result;
+        }
+
+        return '[unserializable tool result]';
+    }
+
+    protected function compactSystemMessage(string $content): string
+    {
+        if (str_starts_with($content, 'Relevant context from previous conversations:')) {
+            return Str::limit($content, max(120, (int) config('ai.rag_context_max_chars', 4000)), '...');
+        }
+
+        if (str_starts_with($content, 'Relevant template file excerpts:')) {
+            return Str::limit($content, max(120, (int) config('ai.rag_template_prompt_max_chars', 2500)), '...');
+        }
+
+        if (str_starts_with($content, 'Tool execution results:')) {
+            return Str::limit($content, max(120, (int) config('ai.tool_result_max_chars', 4000)), '...');
+        }
+
+        return $content;
+    }
+
+    /**
+     * @param  Collection<int, MessageData>  $messages
+     */
+    protected function estimatedPromptChars(Collection $messages): int
+    {
+        return $messages->sum(fn (MessageData $message): int => mb_strlen($message->content) + 32);
+    }
+
+    protected function promptCharBudgetForProvider(?string $provider): int
+    {
+        $providerKey = is_string($provider) && $provider !== '' ? strtolower($provider) : 'default';
+        $providerBudget = config("ai.prompt_char_budgets.{$providerKey}");
+
+        if (is_numeric($providerBudget)) {
+            return max(1000, (int) $providerBudget);
+        }
+
+        return max(1000, (int) config('ai.prompt_char_budgets.default', 120000));
     }
 
     protected function readTemplateFileSnippet(string $path, int $maxChars): ?string

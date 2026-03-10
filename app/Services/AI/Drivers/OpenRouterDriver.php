@@ -44,8 +44,12 @@ class OpenRouterDriver extends OpenAIDriver
                 'body' => json_encode($requestBody),
             ]);
 
+            $timeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+            $connectTimeoutSeconds = max(1, (int) config('ai.http_connect_timeout_seconds', 15));
+
             $response = Http::withHeaders($this->getHeaders())
-                ->timeout(30)  // 30 seconds timeout
+                ->timeout($timeoutSeconds)
+                ->connectTimeout($connectTimeoutSeconds)
                 ->post("{$this->baseUrl}/chat/completions", $requestBody);
 
             \Log::info('OpenRouter Response', [
@@ -115,8 +119,15 @@ class OpenRouterDriver extends OpenAIDriver
 
     public function streamChat(Collection $messages, float $temperature = 0.7): iterable
     {
+        $this->lastTokenUsage = null;
+
+        $readTimeoutSeconds = max(1, (int) config('ai.http_timeout_seconds', 90));
+
         $response = Http::withHeaders($this->getHeaders())
-            ->withOptions(['stream' => true])
+            ->withOptions([
+                'stream' => true,
+                'read_timeout' => $readTimeoutSeconds,
+            ])
             ->post("{$this->baseUrl}/chat/completions", [
                 'model' => $this->model,
                 'messages' => $messages->map->toArray()->all(),
@@ -124,9 +135,21 @@ class OpenRouterDriver extends OpenAIDriver
             ]);
 
         $body = $response->toPsrResponse()->getBody();
+        $yieldedContent = false;
 
         while (! $body->eof()) {
-            $line = $this->readLine($body);
+            try {
+                $line = $this->readLine($body);
+            } catch (\RuntimeException $e) {
+                if ($yieldedContent && $this->isStreamReadError($e)) {
+                    \Log::warning('OpenRouter stream read error after partial content; stopping gracefully', [
+                        'model' => $this->model,
+                        'error' => $e->getMessage(),
+                    ]);
+                    break;
+                }
+                throw $e;
+            }
 
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
@@ -140,9 +163,15 @@ class OpenRouterDriver extends OpenAIDriver
                     throw new \Exception('OpenRouter Stream Error: '.json_encode($json['error']));
                 }
 
+                // Capture token usage if present in the stream chunk
+                if (isset($json['usage']['total_tokens'])) {
+                    $this->lastTokenUsage = $json['usage']['total_tokens'];
+                }
+
                 $content = $json['choices'][0]['delta']['content'] ?? '';
 
                 if ($content) {
+                    $yieldedContent = true;
                     yield $content;
                 }
             }

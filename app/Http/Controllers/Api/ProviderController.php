@@ -82,6 +82,7 @@ class ProviderController extends Controller
             return collect($response->json('data'))->map(fn ($model) => [
                 'id' => $model['id'],
                 'name' => $model['display_name'],
+                'supports_tools' => true,
             ])->toArray();
         }
 
@@ -113,6 +114,7 @@ class ProviderController extends Controller
                 ->map(fn ($model) => [
                     'id' => $model['id'],
                     'name' => $model['id'],
+                    'supports_tools' => true,
                 ])
                 ->values()
                 ->toArray();
@@ -143,6 +145,9 @@ class ProviderController extends Controller
                             $cost = sprintf('$%.2f/$%.2f', $promptPerMillion, $completionPerMillion);
                         }
 
+                        $supportedParams = $model['supported_parameters'] ?? [];
+                        $supportsTools = is_array($supportedParams) && in_array('tools', $supportedParams, true);
+
                         return [
                             'id' => $model['id'],
                             'name' => $model['name'] ?? $model['id'],
@@ -150,6 +155,7 @@ class ProviderController extends Controller
                             'cost' => $cost,
                             'prompt_per_million' => $promptPerMillion,
                             'completion_per_million' => $completionPerMillion,
+                            'supports_tools' => $supportsTools,
                         ];
                     })
                     ->sortBy('name')
@@ -162,20 +168,20 @@ class ProviderController extends Controller
 
         // Fallback curated list
         return [
-            ['id' => 'openai/gpt-4o', 'name' => 'GPT-4o', 'context' => 128000, 'cost' => '$2.50/$10.00'],
-            ['id' => 'openai/gpt-4o-mini', 'name' => 'GPT-4o Mini', 'context' => 128000, 'cost' => '$0.15/$0.60'],
-            ['id' => 'openai/gpt-4-turbo', 'name' => 'GPT-4 Turbo', 'context' => 128000, 'cost' => '$10/$30'],
-            ['id' => 'anthropic/claude-3-sonnet', 'name' => 'Claude 3 Sonnet', 'context' => 200000, 'cost' => '$3/$15'],
-            ['id' => 'anthropic/claude-sonnet-4-5-20250929', 'name' => 'Claude Sonnet 4.5', 'context' => 200000, 'cost' => '$3/$15'],
-            ['id' => 'anthropic/claude-opus-4-5-20251101', 'name' => 'Claude Opus 4.5', 'context' => 200000, 'cost' => '$15/$75'],
-            ['id' => 'anthropic/claude-haiku-4-5-20251001', 'name' => 'Claude Haiku 4.5', 'context' => 200000, 'cost' => '$0.25/$1.25'],
-            ['id' => 'google/gemini-2.0-flash-exp', 'name' => 'Gemini 2.0 Flash', 'context' => 1000000, 'cost' => 'FREE'],
-            ['id' => 'google/gemini-1.5-pro', 'name' => 'Gemini 1.5 Pro', 'context' => 2000000, 'cost' => '$1.25/$5.00'],
-            ['id' => 'meta-llama/llama-3.3-70b-instruct', 'name' => 'Llama 3.3 70B', 'context' => 128000, 'cost' => '$0.35/$0.40'],
-            ['id' => 'deepseek/deepseek-chat', 'name' => 'DeepSeek Chat', 'context' => 64000, 'cost' => '$0.14/$0.28'],
-            ['id' => 'deepseek/deepseek-r1', 'name' => 'DeepSeek R1', 'context' => 64000, 'cost' => '$0.55/$2.19'],
-            ['id' => 'qwen/qwen-2.5-72b-instruct', 'name' => 'Qwen 2.5 72B', 'context' => 128000, 'cost' => '$0.35/$0.40'],
-            ['id' => 'mistralai/mistral-large', 'name' => 'Mistral Large', 'context' => 128000, 'cost' => '$2/$6'],
+            ['id' => 'openai/gpt-4o', 'name' => 'GPT-4o', 'context' => 128000, 'cost' => '$2.50/$10.00', 'supports_tools' => true],
+            ['id' => 'openai/gpt-4o-mini', 'name' => 'GPT-4o Mini', 'context' => 128000, 'cost' => '$0.15/$0.60', 'supports_tools' => true],
+            ['id' => 'openai/gpt-4-turbo', 'name' => 'GPT-4 Turbo', 'context' => 128000, 'cost' => '$10/$30', 'supports_tools' => true],
+            ['id' => 'anthropic/claude-3-sonnet', 'name' => 'Claude 3 Sonnet', 'context' => 200000, 'cost' => '$3/$15', 'supports_tools' => true],
+            ['id' => 'anthropic/claude-sonnet-4-5-20250929', 'name' => 'Claude Sonnet 4.5', 'context' => 200000, 'cost' => '$3/$15', 'supports_tools' => true],
+            ['id' => 'anthropic/claude-opus-4-5-20251101', 'name' => 'Claude Opus 4.5', 'context' => 200000, 'cost' => '$15/$75', 'supports_tools' => true],
+            ['id' => 'anthropic/claude-haiku-4-5-20251001', 'name' => 'Claude Haiku 4.5', 'context' => 200000, 'cost' => '$0.25/$1.25', 'supports_tools' => true],
+            ['id' => 'google/gemini-2.0-flash-exp', 'name' => 'Gemini 2.0 Flash', 'context' => 1000000, 'cost' => 'FREE', 'supports_tools' => true],
+            ['id' => 'google/gemini-1.5-pro', 'name' => 'Gemini 1.5 Pro', 'context' => 2000000, 'cost' => '$1.25/$5.00', 'supports_tools' => true],
+            ['id' => 'meta-llama/llama-3.3-70b-instruct', 'name' => 'Llama 3.3 70B', 'context' => 128000, 'cost' => '$0.35/$0.40', 'supports_tools' => true],
+            ['id' => 'deepseek/deepseek-chat', 'name' => 'DeepSeek Chat', 'context' => 64000, 'cost' => '$0.14/$0.28', 'supports_tools' => true],
+            ['id' => 'deepseek/deepseek-r1', 'name' => 'DeepSeek R1', 'context' => 64000, 'cost' => '$0.55/$2.19', 'supports_tools' => false],
+            ['id' => 'qwen/qwen-2.5-72b-instruct', 'name' => 'Qwen 2.5 72B', 'context' => 128000, 'cost' => '$0.35/$0.40', 'supports_tools' => true],
+            ['id' => 'mistralai/mistral-large', 'name' => 'Mistral Large', 'context' => 128000, 'cost' => '$2/$6', 'supports_tools' => true],
         ];
     }
 
@@ -202,6 +208,7 @@ class ProviderController extends Controller
                                 'id' => $id,
                                 'name' => $displayName,
                                 'cost' => $pricingMap[$id] ?? null,
+                                'supports_tools' => true,
                             ];
                         })
                         ->filter(fn ($model) => str_starts_with($model['id'], 'gemini-'))
@@ -240,29 +247,166 @@ class ProviderController extends Controller
     private function getDefaultGeminiModels(): array
     {
         return [
-            ['id' => 'gemini-2.5-flash', 'name' => 'Gemini 2.5 Flash', 'cost' => '$0.15/$0.60'],
-            ['id' => 'gemini-2.5-pro', 'name' => 'Gemini 2.5 Pro', 'cost' => '$1.25/$10.00'],
-            ['id' => 'gemini-2.0-flash-lite', 'name' => 'Gemini 2.0 Flash Lite', 'cost' => '$0.075/$0.30'],
-            ['id' => 'gemini-2.0-flash', 'name' => 'Gemini 2.0 Flash', 'cost' => '$0.10/$0.40'],
+            ['id' => 'gemini-2.5-flash', 'name' => 'Gemini 2.5 Flash', 'cost' => '$0.15/$0.60', 'supports_tools' => true],
+            ['id' => 'gemini-2.5-pro', 'name' => 'Gemini 2.5 Pro', 'cost' => '$1.25/$10.00', 'supports_tools' => true],
+            ['id' => 'gemini-2.0-flash-lite', 'name' => 'Gemini 2.0 Flash Lite', 'cost' => '$0.075/$0.30', 'supports_tools' => true],
+            ['id' => 'gemini-2.0-flash', 'name' => 'Gemini 2.0 Flash', 'cost' => '$0.10/$0.40', 'supports_tools' => true],
         ];
     }
 
     private function fetchDeepSeekModels(): array
     {
+        $apiKey = $this->getApiKey('deepseek');
+
+        if ($apiKey) {
+            try {
+                $response = Http::withHeaders(['Authorization' => "Bearer {$apiKey}"])
+                    ->timeout(5)
+                    ->get('https://api.deepseek.com/v1/models');
+
+                if ($response->successful()) {
+                    $models = collect($response->json('data', []))
+                        ->filter(fn ($model) => isset($model['id']))
+                        ->map(function ($model) {
+                            $id = $model['id'];
+                            $isReasoner = str_contains(strtolower($id), 'reasoner');
+
+                            return [
+                                'id' => $id,
+                                'name' => $model['id'],
+                                'supports_tools' => ! $isReasoner,
+                            ];
+                        })
+                        ->sortBy('name')
+                        ->values()
+                        ->all();
+
+                    if (! empty($models)) {
+                        return $models;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::info('DeepSeek model discovery failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return [
-            ['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat', 'cost' => '$0.14/$0.28'],
-            ['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner', 'cost' => '$0.55/$2.19'],
+            ['id' => 'deepseek-chat', 'name' => 'DeepSeek Chat', 'cost' => '$0.14/$0.28', 'supports_tools' => true],
+            ['id' => 'deepseek-reasoner', 'name' => 'DeepSeek Reasoner', 'cost' => '$0.55/$2.19', 'supports_tools' => false],
         ];
     }
 
     private function fetchBedrockModels(): array
     {
+        $accessKeyId = config('services.bedrock.access_key_id');
+        $secretAccessKey = config('services.bedrock.secret_access_key');
+        $sessionToken = config('services.bedrock.session_token');
+        $region = config('services.bedrock.region', 'us-east-1');
+
+        if (! empty($accessKeyId) && ! empty($secretAccessKey)) {
+            try {
+                $response = $this->sendBedrockGetRequest(
+                    $accessKeyId,
+                    $secretAccessKey,
+                    $sessionToken,
+                    $region,
+                    'bedrock',
+                    "bedrock.{$region}.amazonaws.com",
+                    '/foundation-models'
+                );
+
+                if ($response->successful()) {
+                    $models = collect($response->json('modelSummaries', []))
+                        ->filter(function ($model) {
+                            $inferenceTypes = $model['inferenceTypesSupported'] ?? $model['supportedInferenceTypes'] ?? [];
+                            $outputModalities = $model['outputModalities'] ?? [];
+
+                            return in_array('ON_DEMAND', $inferenceTypes, true)
+                                && in_array('TEXT', $outputModalities, true);
+                        })
+                        ->map(function ($model) {
+                            $id = $model['modelId'];
+                            $name = $model['modelName'] ?? $id;
+                            $provider = $model['providerName'] ?? '';
+
+                            return [
+                                'id' => $id,
+                                'name' => "{$name} ({$provider})",
+                                'supports_tools' => str_contains(strtolower($id), 'claude'),
+                            ];
+                        })
+                        ->sortBy('name')
+                        ->values()
+                        ->all();
+
+                    if (! empty($models)) {
+                        return $models;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::info('Bedrock model discovery failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         return [
-            ['id' => 'anthropic.claude-3-5-sonnet-20241022-v2:0', 'name' => 'Claude 3.5 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00'],
-            ['id' => 'anthropic.claude-3-7-sonnet-20250219-v1:0', 'name' => 'Claude 3.7 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00'],
-            ['id' => 'anthropic.claude-sonnet-4-20250514-v1:0', 'name' => 'Claude Sonnet 4 (Bedrock)', 'cost' => '$3.00/$15.00'],
-            ['id' => 'anthropic.claude-3-5-haiku-20241022-v1:0', 'name' => 'Claude 3.5 Haiku (Bedrock)', 'cost' => '$0.80/$4.00'],
+            ['id' => 'anthropic.claude-3-5-sonnet-20241022-v2:0', 'name' => 'Claude 3.5 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00', 'supports_tools' => true],
+            ['id' => 'anthropic.claude-3-7-sonnet-20250219-v1:0', 'name' => 'Claude 3.7 Sonnet (Bedrock)', 'cost' => '$3.00/$15.00', 'supports_tools' => true],
+            ['id' => 'anthropic.claude-sonnet-4-20250514-v1:0', 'name' => 'Claude Sonnet 4 (Bedrock)', 'cost' => '$3.00/$15.00', 'supports_tools' => true],
+            ['id' => 'anthropic.claude-3-5-haiku-20241022-v1:0', 'name' => 'Claude 3.5 Haiku (Bedrock)', 'cost' => '$0.80/$4.00', 'supports_tools' => true],
         ];
+    }
+
+    private function sendBedrockGetRequest(
+        string $accessKeyId,
+        string $secretAccessKey,
+        ?string $sessionToken,
+        string $region,
+        string $service,
+        string $host,
+        string $uri
+    ): \Illuminate\Http\Client\Response {
+        $algorithm = 'AWS4-HMAC-SHA256';
+        $amzDate = gmdate('Ymd\THis\Z');
+        $dateStamp = gmdate('Ymd');
+        $emptyPayloadHash = hash('sha256', '');
+        $credentialScope = "{$dateStamp}/{$region}/{$service}/aws4_request";
+
+        $headers = ['host' => $host, 'x-amz-date' => $amzDate, 'x-amz-content-sha256' => $emptyPayloadHash];
+        if (! empty($sessionToken)) {
+            $headers['x-amz-security-token'] = $sessionToken;
+        }
+        ksort($headers);
+
+        $canonicalHeaders = '';
+        foreach ($headers as $name => $value) {
+            $canonicalHeaders .= strtolower($name).':'.trim((string) $value)."\n";
+        }
+        $signedHeaders = implode(';', array_keys($headers));
+
+        $canonicalRequest = implode("\n", ['GET', $uri, '', $canonicalHeaders, $signedHeaders, $emptyPayloadHash]);
+        $stringToSign = implode("\n", [$algorithm, $amzDate, $credentialScope, hash('sha256', $canonicalRequest)]);
+
+        $kDate = hash_hmac('sha256', $dateStamp, 'AWS4'.$secretAccessKey, true);
+        $kRegion = hash_hmac('sha256', $region, $kDate, true);
+        $kService = hash_hmac('sha256', $service, $kRegion, true);
+        $signingKey = hash_hmac('sha256', 'aws4_request', $kService, true);
+        $signature = hash_hmac('sha256', $stringToSign, $signingKey);
+
+        $authorization = "{$algorithm} Credential={$accessKeyId}/{$credentialScope}, SignedHeaders={$signedHeaders}, Signature={$signature}";
+
+        $outboundHeaders = [
+            'Authorization' => $authorization,
+            'Host' => $host,
+            'X-Amz-Date' => $amzDate,
+            'X-Amz-Content-Sha256' => $emptyPayloadHash,
+        ];
+        if (! empty($sessionToken)) {
+            $outboundHeaders['X-Amz-Security-Token'] = $sessionToken;
+        }
+
+        return Http::withHeaders($outboundHeaders)
+            ->timeout(5)
+            ->get("https://{$host}{$uri}");
     }
 
     private function fetchOllamaModels(): array
@@ -396,45 +540,51 @@ class ProviderController extends Controller
             return $configKey;
         }
 
-        // Try user's database key
+        // Try the authenticated user's key
         if (auth()->check()) {
-            $dbKey = ApiKey::where('provider', $provider)
+            $userKey = ApiKey::where('provider', $provider)
                 ->where('user_id', auth()->id())
                 ->where('is_active', true)
                 ->latest()
-                ->first();
+                ->value('key');
 
-            if ($dbKey) {
-                return $dbKey->key;
+            if (! empty($userKey)) {
+                return $userKey;
             }
         }
 
-        return null;
+        // Fall back to any active key for this provider
+        $globalKey = ApiKey::where('provider', $provider)
+            ->where('is_active', true)
+            ->latest()
+            ->value('key');
+
+        return ! empty($globalKey) ? $globalKey : null;
     }
 
     private function getDefaultAnthropicModels(): array
     {
         return [
-            ['id' => 'claude-sonnet-4-5-20250929', 'name' => 'Claude Sonnet 4.5', 'cost' => '$3/$15'],
-            ['id' => 'claude-opus-4-5-20251101', 'name' => 'Claude Opus 4.5', 'cost' => '$15/$75'],
-            ['id' => 'claude-haiku-4-5-20251001', 'name' => 'Claude Haiku 4.5', 'cost' => '$0.25/$1.25'],
-            ['id' => 'claude-3-7-sonnet-20250219', 'name' => 'Claude Sonnet 3.7', 'cost' => '$3/$15'],
+            ['id' => 'claude-sonnet-4-5-20250929', 'name' => 'Claude Sonnet 4.5', 'cost' => '$3/$15', 'supports_tools' => true],
+            ['id' => 'claude-opus-4-5-20251101', 'name' => 'Claude Opus 4.5', 'cost' => '$15/$75', 'supports_tools' => true],
+            ['id' => 'claude-haiku-4-5-20251001', 'name' => 'Claude Haiku 4.5', 'cost' => '$0.25/$1.25', 'supports_tools' => true],
+            ['id' => 'claude-3-7-sonnet-20250219', 'name' => 'Claude Sonnet 3.7', 'cost' => '$3/$15', 'supports_tools' => true],
         ];
     }
 
     private function getDefaultOpenAIModels(): array
     {
         return [
-            ['id' => 'gpt-5', 'name' => 'GPT-5', 'cost' => '$1.25/$10.00'],
-            ['id' => 'gpt-5-mini', 'name' => 'GPT-5 Mini', 'cost' => '$0.25/$2.00'],
-            ['id' => 'gpt-5-nano', 'name' => 'GPT-5 Nano', 'cost' => '$0.05/$0.40'],
-            ['id' => 'gpt-4.1', 'name' => 'GPT-4.1', 'cost' => '$2.00/$8.00'],
-            ['id' => 'gpt-4.1-mini', 'name' => 'GPT-4.1 Mini', 'cost' => '$0.40/$1.60'],
-            ['id' => 'gpt-4.1-nano', 'name' => 'GPT-4.1 Nano', 'cost' => '$0.10/$0.40'],
-            ['id' => 'gpt-4o', 'name' => 'GPT-4o', 'cost' => '$2.50/$10.00'],
-            ['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini', 'cost' => '$0.15/$0.60'],
-            ['id' => 'o1', 'name' => 'o1', 'cost' => '$15.00/$60.00'],
-            ['id' => 'o3-mini', 'name' => 'o3-mini', 'cost' => '$1.10/$4.40'],
+            ['id' => 'gpt-5', 'name' => 'GPT-5', 'cost' => '$1.25/$10.00', 'supports_tools' => true],
+            ['id' => 'gpt-5-mini', 'name' => 'GPT-5 Mini', 'cost' => '$0.25/$2.00', 'supports_tools' => true],
+            ['id' => 'gpt-5-nano', 'name' => 'GPT-5 Nano', 'cost' => '$0.05/$0.40', 'supports_tools' => true],
+            ['id' => 'gpt-4.1', 'name' => 'GPT-4.1', 'cost' => '$2.00/$8.00', 'supports_tools' => true],
+            ['id' => 'gpt-4.1-mini', 'name' => 'GPT-4.1 Mini', 'cost' => '$0.40/$1.60', 'supports_tools' => true],
+            ['id' => 'gpt-4.1-nano', 'name' => 'GPT-4.1 Nano', 'cost' => '$0.10/$0.40', 'supports_tools' => true],
+            ['id' => 'gpt-4o', 'name' => 'GPT-4o', 'cost' => '$2.50/$10.00', 'supports_tools' => true],
+            ['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini', 'cost' => '$0.15/$0.60', 'supports_tools' => true],
+            ['id' => 'o1', 'name' => 'o1', 'cost' => '$15.00/$60.00', 'supports_tools' => true],
+            ['id' => 'o3-mini', 'name' => 'o3-mini', 'cost' => '$1.10/$4.40', 'supports_tools' => true],
         ];
     }
 

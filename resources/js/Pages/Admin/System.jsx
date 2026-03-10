@@ -1,13 +1,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
 
 export default function System({ systemInfo }) {
+    const { maintenanceBanner } = usePage().props;
     const [output, setOutput] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeAction, setActiveAction] = useState(null);
     const [openaiKey, setOpenaiKey] = useState('');
+    const [bannerEnabled, setBannerEnabled] = useState(maintenanceBanner?.enabled ?? false);
+    const [bannerMessage, setBannerMessage] = useState(maintenanceBanner?.message ?? 'We are currently performing maintenance. Some features may be temporarily unavailable.');
+    const [bannerSaving, setBannerSaving] = useState(false);
     const [openaiStatus, setOpenaiStatus] = useState({
         isSet: systemInfo.openai_key_set,
         last4: systemInfo.openai_key_last4,
@@ -101,6 +105,20 @@ export default function System({ systemInfo }) {
             setOutput(`Error: ${error.response?.data?.message || error.message}`);
         } finally {
             setClearingKey(false);
+        }
+    };
+
+    const saveBanner = async () => {
+        setBannerSaving(true);
+        try {
+            await axios.post('/admin/system/maintenance-banner', {
+                enabled: bannerEnabled,
+                message: bannerMessage,
+            });
+        } catch (error) {
+            setOutput(`Error saving banner: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setBannerSaving(false);
         }
     };
 
@@ -427,6 +445,53 @@ export default function System({ systemInfo }) {
                                 )}
                             </div>
                         </form>
+                    </div>
+
+                    {/* Maintenance Banner */}
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal">
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500/80 via-yellow-500/80 to-amber-400/80" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                        <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Maintenance Banner</h3>
+                        <div className="relative space-y-4">
+                            <label className="flex items-center gap-3 cursor-pointer w-fit">
+                                <button
+                                    type="button"
+                                    onClick={() => setBannerEnabled((v) => !v)}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${bannerEnabled ? 'bg-amber-500' : 'bg-zinc-700'}`}
+                                    role="switch"
+                                    aria-checked={bannerEnabled}
+                                >
+                                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${bannerEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                                <span className={`text-sm font-semibold ${bannerEnabled ? 'text-amber-300' : 'text-zinc-400'}`}>
+                                    {bannerEnabled ? '🚧 Banner Active' : 'Banner Off'}
+                                </span>
+                            </label>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Message</label>
+                                <input
+                                    type="text"
+                                    value={bannerMessage}
+                                    onChange={(e) => setBannerMessage(e.target.value)}
+                                    maxLength={300}
+                                    className="w-full rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20"
+                                    placeholder="Maintenance message shown to all users..."
+                                />
+                            </div>
+                            {bannerEnabled && (
+                                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-300">
+                                    Preview: 🚧 Under Construction — {bannerMessage} 🚧
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={saveBanner}
+                                disabled={bannerSaving}
+                                className="rounded-xl bg-amber-600/80 px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-amber-500 disabled:opacity-50"
+                            >
+                                {bannerSaving ? 'Saving...' : 'Save Banner Settings'}
+                            </button>
+                        </div>
                     </div>
 
                     {/* Output Console */}

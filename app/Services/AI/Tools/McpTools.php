@@ -3,7 +3,10 @@
 namespace App\Services\AI\Tools;
 
 use App\Http\Controllers\Api\McpController;
+use Illuminate\Contracts\Support\Arrayable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\Response;
 
 class McpTools
 {
@@ -45,7 +48,7 @@ class McpTools
             executor: function (array $args) {
                 $request = new \Illuminate\Http\Request(['keyword' => $args['keyword'] ?? '']);
 
-                return $this->mcpController->search($request)->getData(true);
+                return $this->normalizeToolResult($this->mcpController->search($request));
             }
         );
     }
@@ -76,7 +79,12 @@ class McpTools
                     'limit' => min($args['limit'] ?? 5, 20),
                 ]);
 
-                return $this->mcpController->contextualMemory($request, app(\App\Services\AI\EmbeddingService::class))->getData(true);
+                return $this->normalizeToolResult(
+                    $this->mcpController->contextualMemory(
+                        $request,
+                        app(\App\Services\AI\EmbeddingService::class)
+                    )
+                );
             }
         );
     }
@@ -102,7 +110,7 @@ class McpTools
                     'limit' => min($args['limit'] ?? 10, 50),
                 ]);
 
-                return $this->mcpController->recentChats($request)->getData(true);
+                return $this->normalizeToolResult($this->mcpController->recentChats($request));
             }
         );
     }
@@ -133,7 +141,7 @@ class McpTools
                     return ['error' => 'Conversation not found'];
                 }
 
-                return $this->mcpController->conversation($conversation)->getData(true);
+                return $this->normalizeToolResult($this->mcpController->conversation($conversation));
             }
         );
     }
@@ -149,8 +157,31 @@ class McpTools
                 'required' => [],
             ],
             executor: function (array $args) {
-                return $this->mcpController->stats()->getData(true);
+                return $this->normalizeToolResult($this->mcpController->stats());
             }
         );
+    }
+
+    protected function normalizeToolResult(mixed $result): mixed
+    {
+        if ($result instanceof JsonResponse) {
+            return $result->getData(true);
+        }
+
+        if ($result instanceof Arrayable) {
+            return $result->toArray();
+        }
+
+        if ($result instanceof \JsonSerializable) {
+            return $result->jsonSerialize();
+        }
+
+        if ($result instanceof Response) {
+            $content = $result->getContent();
+
+            return is_string($content) ? json_decode($content, true) ?? $content : $content;
+        }
+
+        return $result;
     }
 }

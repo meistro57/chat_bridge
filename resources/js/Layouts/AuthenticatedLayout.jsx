@@ -2,60 +2,17 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
+import { LiveStatusProvider, useLiveStatus } from '@/Contexts/LiveStatusContext';
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-export default function AuthenticatedLayout({ header, children }) {
+function LayoutInner({ header, children }) {
     const user = usePage().props.auth.user;
+    const maintenanceBanner = usePage().props.maintenanceBanner;
     const isDashboard = route().current('dashboard');
-
-    const [showingNavigationDropdown, setShowingNavigationDropdown] =
-        useState(false);
-    const [liveStatus, setLiveStatus] = useState({
-        active_count: 0,
-        items: [],
-    });
-    const [liveStatusError, setLiveStatusError] = useState(false);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadLiveStatus = async () => {
-            try {
-                const response = await fetch(route('chat.live-status'), {
-                    headers: {
-                        Accept: 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const payload = await response.json();
-                if (isMounted) {
-                    setLiveStatus({
-                        active_count: Number(payload.active_count ?? 0),
-                        items: Array.isArray(payload.items) ? payload.items : [],
-                    });
-                    setLiveStatusError(false);
-                }
-            } catch (error) {
-                if (isMounted) {
-                    setLiveStatusError(true);
-                }
-            }
-        };
-
-        loadLiveStatus();
-        const interval = setInterval(loadLiveStatus, 10000);
-
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
-        };
-    }, []);
+    const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+    const { active_count, items, error: liveStatusError } = useLiveStatus();
+    const liveStatus = { active_count, items };
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -252,6 +209,18 @@ export default function AuthenticatedLayout({ header, children }) {
                 </div>
             </nav>
 
+            {maintenanceBanner?.enabled && (
+                <div className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-center">
+                    <div className="mx-auto max-w-7xl flex items-center justify-center gap-2 flex-wrap">
+                        <span className="text-lg">🚧</span>
+                        <span className="text-sm font-semibold text-amber-200">Under Construction</span>
+                        <span className="text-amber-300/70 text-xs hidden sm:inline">—</span>
+                        <span className="text-xs text-amber-300/80">{maintenanceBanner.message}</span>
+                        <span className="text-lg">🚧</span>
+                    </div>
+                </div>
+            )}
+
             {header && (
                 <header className="bg-zinc-900/50 shadow border-b border-white/5 backdrop-blur-sm">
                     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
@@ -262,5 +231,13 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <main>{children}</main>
         </div>
+    );
+}
+
+export default function AuthenticatedLayout({ header, children }) {
+    return (
+        <LiveStatusProvider>
+            <LayoutInner header={header}>{children}</LayoutInner>
+        </LiveStatusProvider>
     );
 }

@@ -68,6 +68,19 @@ return [
 
     'tools_enabled' => env('AI_TOOLS_ENABLED', true),
     'max_tool_iterations' => env('AI_MAX_TOOL_ITERATIONS', 5),
+    'tool_result_max_entries' => (int) env('AI_TOOL_RESULT_MAX_ENTRIES', 3),
+    'tool_result_entry_max_chars' => (int) env('AI_TOOL_RESULT_ENTRY_MAX_CHARS', 1200),
+    'tool_result_max_chars' => (int) env('AI_TOOL_RESULT_MAX_CHARS', 4000),
+    'rag_context_message_max_chars' => (int) env('AI_RAG_CONTEXT_MESSAGE_MAX_CHARS', 600),
+    'rag_context_max_chars' => (int) env('AI_RAG_CONTEXT_MAX_CHARS', 4000),
+    'rag_template_prompt_max_chars' => (int) env('AI_RAG_TEMPLATE_PROMPT_MAX_CHARS', 2500),
+    'prompt_char_budgets' => [
+        'default' => (int) env('AI_PROMPT_CHAR_BUDGET_DEFAULT', 120000),
+        'anthropic' => (int) env('AI_PROMPT_CHAR_BUDGET_ANTHROPIC', 90000),
+        'openai' => (int) env('AI_PROMPT_CHAR_BUDGET_OPENAI', 140000),
+        'openrouter' => (int) env('AI_PROMPT_CHAR_BUDGET_OPENROUTER', 140000),
+        'gemini' => (int) env('AI_PROMPT_CHAR_BUDGET_GEMINI', 140000),
+    ],
 
     /*
     |--------------------------------------------------------------------------

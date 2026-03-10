@@ -26,10 +26,7 @@ class PerformanceMonitorService
             return;
         }
 
-        $samples = Cache::get(self::REQUEST_SAMPLES_KEY, []);
-        if (! is_array($samples)) {
-            $samples = [];
-        }
+        $samples = $this->cachedSamples();
 
         $samples[] = [
             'timestamp' => now()->toIso8601String(),
@@ -49,7 +46,11 @@ class PerformanceMonitorService
             $samples = array_slice($samples, -self::MAX_SAMPLES);
         }
 
-        Cache::forever(self::REQUEST_SAMPLES_KEY, $samples);
+        try {
+            Cache::forever(self::REQUEST_SAMPLES_KEY, $samples);
+        } catch (\Throwable) {
+            return;
+        }
     }
 
     /**
@@ -258,12 +259,21 @@ class PerformanceMonitorService
      */
     private function queueStats(): array
     {
-        $jobsTablePresent = Schema::hasTable('jobs');
-        $failedJobsTablePresent = Schema::hasTable('failed_jobs');
+        try {
+            $jobsTablePresent = Schema::hasTable('jobs');
+            $failedJobsTablePresent = Schema::hasTable('failed_jobs');
+        } catch (\Throwable) {
+            return [
+                'queued_jobs' => 0,
+                'failed_jobs' => 0,
+                'jobs_table_present' => false,
+                'failed_jobs_table_present' => false,
+            ];
+        }
 
         return [
-            'queued_jobs' => $jobsTablePresent ? DB::table('jobs')->count() : 0,
-            'failed_jobs' => $failedJobsTablePresent ? DB::table('failed_jobs')->count() : 0,
+            'queued_jobs' => $jobsTablePresent ? $this->safeCountTable('jobs') : 0,
+            'failed_jobs' => $failedJobsTablePresent ? $this->safeCountTable('failed_jobs') : 0,
             'jobs_table_present' => $jobsTablePresent,
             'failed_jobs_table_present' => $failedJobsTablePresent,
         ];
@@ -274,16 +284,33 @@ class PerformanceMonitorService
      */
     private function validSamples(): array
     {
-        $samples = Cache::get(self::REQUEST_SAMPLES_KEY, []);
-
-        if (! is_array($samples)) {
-            return [];
-        }
-
-        return collect($samples)
+        return collect($this->cachedSamples())
             ->filter(fn ($sample): bool => is_array($sample) && isset($sample['timestamp'], $sample['duration_ms']))
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function cachedSamples(): array
+    {
+        try {
+            $samples = Cache::get(self::REQUEST_SAMPLES_KEY, []);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return is_array($samples) ? $samples : [];
+    }
+
+    private function safeCountTable(string $table): int
+    {
+        try {
+            return DB::table($table)->count();
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     /**

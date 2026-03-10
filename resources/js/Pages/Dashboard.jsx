@@ -1,8 +1,10 @@
 import { GlassCard } from '@/Components/ui/GlassCard';
+import { useLiveStatus } from '@/Contexts/LiveStatusContext';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 
 export default function Dashboard({ user, hasOpenAiKey }) {
+    const { active_count, items } = useLiveStatus();
     const modules = [
         {
             name: 'Chat Bridge',
@@ -15,6 +17,7 @@ export default function Dashboard({ user, hasOpenAiKey }) {
             ),
             color: 'from-blue-500 to-cyan-500',
             accent: 'blue',
+            liveStatus: true,
         },
         {
             name: 'Personas',
@@ -269,7 +272,21 @@ export default function Dashboard({ user, hasOpenAiKey }) {
                                     {module.description}
                                 </p>
 
-                                <div className="relative mt-4 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">
+                                {module.liveStatus && (
+                                    <div className="relative mt-4 mb-1 flex items-center gap-2 rounded-lg border border-white/[0.07] bg-zinc-900/40 px-3 py-2">
+                                        <span className={`h-2 w-2 shrink-0 rounded-full ${active_count > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                            {active_count > 0 ? `${active_count} live` : 'idle'}
+                                        </span>
+                                        {items.slice(0, 1).map((item) => (
+                                            <span key={item.id} className="ml-1 truncate text-[10px] text-zinc-500">
+                                                {item.label} · {item.current_turn}/{item.max_rounds}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="relative mt-3 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">
                                     <span className="text-sm font-medium mr-2">Open</span>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="group-hover:translate-x-1 transition-transform duration-500 ease-out">
                                         <line x1="5" y1="12" x2="19" y2="12"/>

@@ -8,5 +8,7 @@
         "codex",
         "vscode"
     ],
+    "mcp_mode": "laravel-native",
+    "vector_search": true,
     "guidelines": []
 }

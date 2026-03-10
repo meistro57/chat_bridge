@@ -16,45 +16,45 @@ const PROVIDERS = [
 
 const FALLBACK_MODELS_BY_PROVIDER = {
     anthropic: [
-        { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3/$15' },
-        { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', cost: '$15/$75' },
-        { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', cost: '$0.25/$1.25' },
-        { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7', cost: '$3/$15' },
+        { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3/$15', supports_tools: true },
+        { id: 'claude-opus-4-5-20251101', name: 'Claude Opus 4.5', cost: '$15/$75', supports_tools: true },
+        { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', cost: '$0.25/$1.25', supports_tools: true },
+        { id: 'claude-3-7-sonnet-20250219', name: 'Claude Sonnet 3.7', cost: '$3/$15', supports_tools: true },
     ],
     openai: [
-        { id: 'gpt-5', name: 'GPT-5', cost: '$1.25/$10.00' },
-        { id: 'gpt-5-mini', name: 'GPT-5 Mini', cost: '$0.25/$2.00' },
-        { id: 'gpt-5-nano', name: 'GPT-5 Nano', cost: '$0.05/$0.40' },
-        { id: 'gpt-4.1', name: 'GPT-4.1', cost: '$2.00/$8.00' },
-        { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', cost: '$0.40/$1.60' },
-        { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', cost: '$0.10/$0.40' },
-        { id: 'gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
-        { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
-        { id: 'o1', name: 'o1', cost: '$15.00/$60.00' },
-        { id: 'o3-mini', name: 'o3-mini', cost: '$1.10/$4.40' },
+        { id: 'gpt-5', name: 'GPT-5', cost: '$1.25/$10.00', supports_tools: true },
+        { id: 'gpt-5-mini', name: 'GPT-5 Mini', cost: '$0.25/$2.00', supports_tools: true },
+        { id: 'gpt-5-nano', name: 'GPT-5 Nano', cost: '$0.05/$0.40', supports_tools: true },
+        { id: 'gpt-4.1', name: 'GPT-4.1', cost: '$2.00/$8.00', supports_tools: true },
+        { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', cost: '$0.40/$1.60', supports_tools: true },
+        { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', cost: '$0.10/$0.40', supports_tools: true },
+        { id: 'gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00', supports_tools: true },
+        { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60', supports_tools: true },
+        { id: 'o1', name: 'o1', cost: '$15.00/$60.00', supports_tools: true },
+        { id: 'o3-mini', name: 'o3-mini', cost: '$1.10/$4.40', supports_tools: true },
     ],
     openrouter: [
-        { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60' },
-        { id: 'openai/gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00' },
-        { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet', cost: '$3.00/$15.00' },
-        { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3.00/$15.00' },
-        { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
+        { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', cost: '$0.15/$0.60', supports_tools: true },
+        { id: 'openai/gpt-4o', name: 'GPT-4o', cost: '$2.50/$10.00', supports_tools: true },
+        { id: 'anthropic/claude-3-sonnet', name: 'Claude 3 Sonnet', cost: '$3.00/$15.00', supports_tools: true },
+        { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', cost: '$3.00/$15.00', supports_tools: true },
+        { id: 'deepseek/deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28', supports_tools: true },
     ],
     bedrock: [
-        { id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', name: 'Claude 3.5 Sonnet (Bedrock)', cost: '$3.00/$15.00' },
-        { id: 'anthropic.claude-3-7-sonnet-20250219-v1:0', name: 'Claude 3.7 Sonnet (Bedrock)', cost: '$3.00/$15.00' },
-        { id: 'anthropic.claude-sonnet-4-20250514-v1:0', name: 'Claude Sonnet 4 (Bedrock)', cost: '$3.00/$15.00' },
-        { id: 'anthropic.claude-3-5-haiku-20241022-v1:0', name: 'Claude 3.5 Haiku (Bedrock)', cost: '$0.80/$4.00' },
+        { id: 'anthropic.claude-3-5-sonnet-20241022-v2:0', name: 'Claude 3.5 Sonnet (Bedrock)', cost: '$3.00/$15.00', supports_tools: true },
+        { id: 'anthropic.claude-3-7-sonnet-20250219-v1:0', name: 'Claude 3.7 Sonnet (Bedrock)', cost: '$3.00/$15.00', supports_tools: true },
+        { id: 'anthropic.claude-sonnet-4-20250514-v1:0', name: 'Claude Sonnet 4 (Bedrock)', cost: '$3.00/$15.00', supports_tools: true },
+        { id: 'anthropic.claude-3-5-haiku-20241022-v1:0', name: 'Claude 3.5 Haiku (Bedrock)', cost: '$0.80/$4.00', supports_tools: true },
     ],
     gemini: [
-        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', cost: '$0.15/$0.60' },
-        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', cost: '$1.25/$10.00' },
-        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', cost: '$0.10/$0.40' },
-        { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', cost: '$0.075/$0.30' },
+        { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', cost: '$0.15/$0.60', supports_tools: true },
+        { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', cost: '$1.25/$10.00', supports_tools: true },
+        { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', cost: '$0.10/$0.40', supports_tools: true },
+        { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', cost: '$0.075/$0.30', supports_tools: true },
     ],
     deepseek: [
-        { id: 'deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28' },
-        { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', cost: '$0.55/$2.19' },
+        { id: 'deepseek-chat', name: 'DeepSeek Chat', cost: '$0.14/$0.28', supports_tools: true },
+        { id: 'deepseek-reasoner', name: 'DeepSeek Reasoner', cost: '$0.55/$2.19', supports_tools: false },
     ],
     ollama: [
         { id: 'llama3.1', name: 'Llama 3.1', cost: 'FREE (local)' },
@@ -72,6 +72,7 @@ export default function Create({
     openRouterModels = [],
     discordDefaults = {},
     discourseDefaults = {},
+    mcpEnabled = false,
 }) {
     const modelMatchesQuery = (model, rawQuery) => {
         const query = rawQuery.trim().toLowerCase();
@@ -152,13 +153,29 @@ export default function Create({
         ? modelsB
         : (data.provider_b ? (fallbackModelsByProvider[data.provider_b] || []) : []);
 
+    const modelSupportsTools = (model) => model.supports_tools !== false;
+
     const filteredModelsA = useMemo(() => {
-        return visibleModelsA.filter((model) => modelMatchesQuery(model, modelFilterA));
-    }, [visibleModelsA, modelFilterA]);
+        return visibleModelsA
+            .filter((model) => !mcpEnabled || modelSupportsTools(model))
+            .filter((model) => modelMatchesQuery(model, modelFilterA));
+    }, [visibleModelsA, modelFilterA, mcpEnabled]);
 
     const filteredModelsB = useMemo(() => {
-        return visibleModelsB.filter((model) => modelMatchesQuery(model, modelFilterB));
-    }, [visibleModelsB, modelFilterB]);
+        return visibleModelsB
+            .filter((model) => !mcpEnabled || modelSupportsTools(model))
+            .filter((model) => modelMatchesQuery(model, modelFilterB));
+    }, [visibleModelsB, modelFilterB, mcpEnabled]);
+
+    const toolFilteredCountA = useMemo(() => {
+        if (!mcpEnabled) return 0;
+        return visibleModelsA.filter((model) => !modelSupportsTools(model)).length;
+    }, [visibleModelsA, mcpEnabled]);
+
+    const toolFilteredCountB = useMemo(() => {
+        if (!mcpEnabled) return 0;
+        return visibleModelsB.filter((model) => !modelSupportsTools(model)).length;
+    }, [visibleModelsB, mcpEnabled]);
 
     const templateForm = useForm({
         name: '',
@@ -460,6 +477,9 @@ export default function Create({
                                 </select>
                                 {errors.model_a && <div className="text-red-400 text-sm">{errors.model_a}</div>}
                                 <p className="text-xs text-zinc-600 ml-1">{filteredModelsA.length}/{visibleModelsA.length} models shown</p>
+                                {mcpEnabled && toolFilteredCountA > 0 && (
+                                    <p className="text-xs text-amber-500/80 ml-1">{toolFilteredCountA} hidden — no tool support (MCP active)</p>
+                                )}
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 
@@ -527,6 +547,9 @@ export default function Create({
                                 </select>
                                 {errors.model_b && <div className="text-red-400 text-sm">{errors.model_b}</div>}
                                 <p className="text-xs text-zinc-600 ml-1">{filteredModelsB.length}/{visibleModelsB.length} models shown</p>
+                                {mcpEnabled && toolFilteredCountB > 0 && (
+                                    <p className="text-xs text-amber-500/80 ml-1">{toolFilteredCountB} hidden — no tool support (MCP active)</p>
+                                )}
                                 <p className="text-xs text-zinc-600 ml-1">Cost shown as input/output per 1M tokens</p>
                             </div>
 

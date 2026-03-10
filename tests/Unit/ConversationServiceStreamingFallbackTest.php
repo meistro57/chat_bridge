@@ -156,7 +156,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -215,7 +215,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -276,7 +276,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -344,7 +344,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -412,7 +412,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 0.7,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -478,7 +478,7 @@ class ConversationServiceStreamingFallbackTest extends TestCase
             'temp_b' => 1.0,
             'starter_message' => 'Hello',
             'status' => 'active',
-            'metadata' => [],
+            'metadata' => ['rag' => ['enabled' => false]],
             'max_rounds' => 3,
             'stop_word_detection' => false,
             'stop_words' => [],
@@ -522,6 +522,166 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $chunks = iterator_to_array($result['content']);
 
         $this->assertSame(['Recovered after tool failure'], $chunks);
+    }
+
+    public function test_generate_turn_truncates_tool_results_and_uses_clean_messages_for_standard_fallback(): void
+    {
+        config()->set('services.qdrant.enabled', false);
+        config()->set('ai.tools_enabled', true);
+        config()->set('ai.tool_result_max_chars', 220);
+        config()->set('ai.tool_result_entry_max_chars', 180);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'anthropic',
+            'provider_b' => 'anthropic',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
+            'starter_message' => 'Hello',
+            'status' => 'active',
+            'metadata' => ['rag' => ['enabled' => false]],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(true);
+        $driver->shouldReceive('chatWithTools')
+            ->once()
+            ->andReturnUsing(function (Collection $messages, Collection $tools, float $temperature) {
+                $this->assertSame(0.7, $temperature);
+                $this->assertCount(0, $tools);
+                $contents = $messages->pluck('content')->implode("\n");
+
+                $this->assertStringNotContainsString('Tool execution results:', $contents);
+
+                return [
+                    'response' => null,
+                    'tool_calls' => [
+                        ['id' => 'call-1', 'name' => 'get_contextual_memory', 'arguments' => ['topic' => 'abc']],
+                    ],
+                ];
+            });
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->withArgs(function (Collection $messages): bool {
+                $contents = $messages->pluck('content')->implode("\n");
+
+                $this->assertStringNotContainsString('Tool execution results:', $contents);
+
+                return true;
+            })
+            ->andReturn(new \ArrayIterator(['Recovered via clean fallback']));
+        $driver->shouldReceive('chat')->never();
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $toolExecutor = Mockery::mock(ToolExecutor::class);
+        $toolExecutor->shouldReceive('getAllTools')
+            ->once()
+            ->andReturn(collect());
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: Mockery::mock(RagService::class),
+            toolExecutor: $toolExecutor,
+            streamingChunker: new StreamingChunker
+        );
+
+        $result = $service->generateTurn($conversation, $personaA, new Collection([
+            new MessageData('user', 'Please answer this.'),
+        ]));
+
+        $this->assertSame(['Recovered via clean fallback'], iterator_to_array($result['content']));
+    }
+
+    public function test_generate_turn_drops_oldest_history_when_prompt_budget_is_exceeded(): void
+    {
+        config()->set('services.qdrant.enabled', false);
+        config()->set('ai.tools_enabled', false);
+        config()->set('ai.prompt_char_budgets.anthropic', 1300);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $conversation = Conversation::create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'anthropic',
+            'provider_b' => 'anthropic',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 0.7,
+            'temp_b' => 0.7,
+            'starter_message' => 'Hello',
+            'status' => 'active',
+            'metadata' => ['rag' => ['enabled' => false]],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(false);
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->withArgs(function (Collection $messages): bool {
+                $contents = $messages->pluck('content')->implode("\n");
+
+                $this->assertStringContainsString('Newest message should remain', $contents);
+                $this->assertStringNotContainsString('Oldest message should be removed', $contents);
+
+                return true;
+            })
+            ->andReturn(new \ArrayIterator(['ok']));
+        $driver->shouldReceive('chat')->never();
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: Mockery::mock(RagService::class),
+            toolExecutor: Mockery::mock(ToolExecutor::class),
+            streamingChunker: new StreamingChunker
+        );
+
+        $history = new Collection([
+            new MessageData('user', 'Oldest message should be removed '.str_repeat('a', 1100)),
+            new MessageData('assistant', 'Newest message should remain '.str_repeat('b', 80), $personaB->name),
+        ]);
+
+        $result = $service->generateTurn($conversation, $personaA, $history);
+
+        $this->assertSame(['ok'], iterator_to_array($result['content']));
     }
 
     protected function tearDown(): void

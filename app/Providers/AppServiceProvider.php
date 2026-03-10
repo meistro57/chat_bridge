@@ -46,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
 
         $databasePath = str_starts_with($configuredPath, DIRECTORY_SEPARATOR)
             ? $configuredPath
-            : database_path($configuredPath);
+            : $this->resolveSqliteDatabasePath($configuredPath);
 
         try {
             $directory = dirname($databasePath);
@@ -61,6 +61,21 @@ class AppServiceProvider extends ServiceProvider
         } catch (\Throwable) {
             return;
         }
+    }
+
+    private function resolveSqliteDatabasePath(string $configuredPath): string
+    {
+        $normalizedPath = str_replace('\\', '/', $configuredPath);
+
+        if ($normalizedPath === 'database.sqlite') {
+            return database_path('database.sqlite');
+        }
+
+        if (str_starts_with($normalizedPath, 'database/')) {
+            return base_path($normalizedPath);
+        }
+
+        return database_path($configuredPath);
     }
 
     private function registerReadOnlyDatabaseGuard(): void

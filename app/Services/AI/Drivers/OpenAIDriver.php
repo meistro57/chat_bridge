@@ -57,9 +57,21 @@ class OpenAIDriver implements AIDriverInterface
         }
 
         $body = $response->toPsrResponse()->getBody();
+        $yieldedContent = false;
 
         while (! $body->eof()) {
-            $line = $this->readLine($body);
+            try {
+                $line = $this->readLine($body);
+            } catch (\RuntimeException $e) {
+                if ($yieldedContent && $this->isStreamReadError($e)) {
+                    \Log::warning('OpenAI stream read error after partial content; stopping gracefully', [
+                        'model' => $this->model,
+                        'error' => $e->getMessage(),
+                    ]);
+                    break;
+                }
+                throw $e;
+            }
 
             if (str_starts_with($line, 'data: ')) {
                 $data = substr($line, 6);
@@ -78,6 +90,7 @@ class OpenAIDriver implements AIDriverInterface
                 $content = $json['choices'][0]['delta']['content'] ?? '';
 
                 if ($content) {
+                    $yieldedContent = true;
                     yield $content;
                 }
             }
@@ -144,6 +157,16 @@ class OpenAIDriver implements AIDriverInterface
     public function supportsTools(): bool
     {
         return true;
+    }
+
+    protected function isStreamReadError(\RuntimeException $e): bool
+    {
+        $msg = strtolower($e->getMessage());
+
+        return str_contains($msg, 'unable to read from stream')
+            || str_contains($msg, 'stream is detached')
+            || str_contains($msg, 'connection reset')
+            || str_contains($msg, 'broken pipe');
     }
 
     protected function readLine($stream): string

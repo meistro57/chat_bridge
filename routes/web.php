@@ -57,6 +57,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/system/openai-key', [\App\Http\Controllers\Admin\SystemController::class, 'updateOpenAiKey'])->name('system.openai-key');
         Route::post('/system/openai-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testOpenAiKey'])->name('system.openai-key.test');
         Route::post('/system/openai-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearOpenAiKey'])->name('system.openai-key.clear');
+        Route::post('/system/maintenance-banner', [\App\Http\Controllers\Admin\SystemController::class, 'updateMaintenanceBanner'])->name('system.maintenance-banner');
         Route::get('/database/backup', [DatabaseController::class, 'backup'])->name('database.backup');
         Route::post('/database/backup/run', [DatabaseController::class, 'runBackup'])->name('database.backup.run');
         Route::get('/database/restore', [DatabaseController::class, 'restore'])->name('database.restore');
@@ -107,6 +108,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{conversation}/stop', [ChatController::class, 'stop'])->name('chat.stop');
     Route::post('/chat/{conversation}/resume', [ChatController::class, 'resume'])->name('chat.resume');
+    Route::post('/chat/{conversation}/retry-with', [ChatController::class, 'retryWith'])->name('chat.retry-with');
     Route::delete('/chat/{conversation}', [ChatController::class, 'destroy'])->name('chat.destroy');
     Route::get('/chat/{conversation}/transcript', [ChatController::class, 'transcript'])->name('chat.transcript');
 

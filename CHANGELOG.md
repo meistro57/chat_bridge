@@ -2,6 +2,38 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [1.0.0] - 2026-03-10
+
+### 🛡️ Stream Resilience
+- Fixed "Unable to read from stream" crash when TCP connection drops mid-response during large AI outputs (notably via OpenRouter with verbose models like `openai/gpt-oss-120b`).
+- `OpenAIDriver` and `OpenRouterDriver` now catch `RuntimeException` from the PSR-7 stream reader after content has already been yielded — logging a warning and breaking cleanly rather than crashing the job.
+- Added `isStreamReadError()` helper recognising Guzzle/PSR-7 stream failure signatures: `unable to read from stream`, `stream is detached`, `connection reset`, `broken pipe`.
+
+### 🔧 MCP Tool Filtering
+- Model selector on the chat creation page now hides tool-call-incapable models when MCP is enabled.
+- All provider model list endpoints return a `supports_tools` flag derived from live API metadata.
+- Amber hint beneath the model count shows how many models were hidden due to missing tool support.
+
+### 🌐 Live Provider Model Queries
+- All AI providers now query their live APIs for available models using the configured key rather than returning static lists.
+- OpenRouter: reads `supported_parameters` to set `supports_tools`.
+- DeepSeek: queries `https://api.deepseek.com/v1/models` (OpenAI-compatible); infers tool support from model ID.
+- Bedrock: queries `https://bedrock.{region}.amazonaws.com/foundation-models` with full SigV4 GET signing; filters to `ON_DEMAND` + `TEXT` output models.
+- `ProviderController::getApiKey()` falls back to any active key for the provider if no user-scoped key exists.
+
+### 🚧 Maintenance Banner
+- Admin panel toggle to display a site-wide amber "Under Construction" banner during maintenance windows.
+- State persisted to `storage/app/maintenance_banner.json` — survives cache clears and container restarts.
+- Shared to every page as an Inertia prop via `HandleInertiaRequests`; rendered in `AuthenticatedLayout` with no extra client requests.
+
+### ✏️ Edit & Retry for Failed Conversations
+- New "Edit & Retry" button on failed conversation pages opens a modal to change provider/model for Agent A and/or Agent B before re-dispatching from the last completed round.
+- `ChatController::retryWith()` validates and updates only the fields provided, records `retry_model_change` metadata, and resumes from remaining rounds.
+- Route: `POST /chat/{conversation}/retry-with` (`chat.retry-with`).
+- 4 new feature tests covering model update, both-agent update, non-failed rejection, and ownership enforcement.
+
+---
+
 ## [Unreleased] - 2026-03-05
 
 ### 📊 Analytics Chart Data Integrity
@@ -204,6 +236,12 @@ All notable changes to Chat Bridge will be documented in this file.
 ### 🧰 Admin & Diagnostics
 - Added analytics search page and tests
 - Improved Codex invocation handling for non-git environments
+
+## [0.9.0] - 2026-03-05
+
+_(Entries above this line were carried forward as unreleased work and are now captured in [1.0.0].)_
+
+---
 
 ## [0.8.0] - 2026-01-24
 

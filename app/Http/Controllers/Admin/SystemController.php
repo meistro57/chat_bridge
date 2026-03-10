@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -187,6 +188,25 @@ class SystemController extends Controller
             'success' => true,
             'openai_key_set' => false,
         ]);
+    }
+
+    public function updateMaintenanceBanner(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'enabled' => 'required|boolean',
+            'message' => 'nullable|string|max:300',
+        ]);
+
+        $state = [
+            'enabled' => $validated['enabled'],
+            'message' => $validated['message'] ?? 'We are currently performing maintenance. Some features may be temporarily unavailable.',
+        ];
+
+        Storage::disk('local')->put('maintenance_banner.json', json_encode($state));
+
+        Log::info('Maintenance banner updated', array_merge($state, ['user_id' => auth()->id()]));
+
+        return response()->json(['success' => true, 'banner' => $state]);
     }
 
     private function getSystemInfo(): array

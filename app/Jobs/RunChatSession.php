@@ -332,6 +332,8 @@ class RunChatSession implements ShouldQueue
                 // 5. Save & Finalize Turn
                 $tokensUsed = $driver?->getLastTokenUsage();
                 $message = $service->saveTurn($conversation, $currentPersona, $fullResponse, $tokensUsed);
+                // Touch the conversation so the watchdog sees it as recently active
+                $conversation->touch();
                 $broadcaster->broadcast(
                     new MessageCompleted($message),
                     [

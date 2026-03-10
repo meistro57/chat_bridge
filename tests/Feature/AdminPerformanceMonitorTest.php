@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Services\PerformanceMonitorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Testing\AssertableInertia;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 class AdminPerformanceMonitorTest extends TestCase
@@ -94,5 +98,35 @@ class AdminPerformanceMonitorTest extends TestCase
         ]);
 
         $this->assertGreaterThanOrEqual(1, $response->json('window.requests_last_5m'));
+    }
+
+    public function test_performance_monitor_snapshot_handles_cache_failures_gracefully(): void
+    {
+        Cache::shouldReceive('get')
+            ->once()
+            ->andThrow(new \RuntimeException('cache table unavailable'));
+
+        $snapshot = app(PerformanceMonitorService::class)->snapshot();
+
+        $this->assertSame(0, $snapshot['window']['requests_last_5m']);
+        $this->assertSame([], $snapshot['route_breakdown']);
+    }
+
+    public function test_performance_monitor_record_request_ignores_cache_write_failures(): void
+    {
+        Cache::shouldReceive('get')
+            ->once()
+            ->andThrow(new \RuntimeException('cache table unavailable'));
+        Cache::shouldReceive('forever')
+            ->once();
+
+        app(PerformanceMonitorService::class)->recordRequest(
+            Request::create('/dashboard', 'GET'),
+            new Response('ok', 200),
+            42.0,
+            []
+        );
+
+        $this->assertTrue(true);
     }
 }
