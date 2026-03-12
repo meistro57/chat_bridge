@@ -191,9 +191,7 @@ class BoostDashboardController extends Controller
 
         $agents = $this->stringListFrom($decoded['agents'] ?? []);
         $editors = $this->stringListFrom($decoded['editors'] ?? []);
-        $vectorSearch = is_bool($decoded['vector_search'] ?? null)
-            ? $decoded['vector_search']
-            : (bool) config('services.qdrant.enabled', false);
+        $vectorSearch = (bool) config('services.qdrant.enabled', false);
 
         return [
             'present' => true,

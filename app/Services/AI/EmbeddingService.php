@@ -13,38 +13,12 @@ class EmbeddingService
     protected string $openRouterBaseUrl = 'https://openrouter.ai/api/v1';
 
     /**
-     * Generate embedding using OpenRouter (primary) or OpenAI (fallback).
+     * Generate embedding using OpenAI (primary) or OpenRouter (fallback on quota exhaustion).
      */
     public function getEmbedding(string $text): array
     {
-        $openRouterKey = $this->resolveApiKey('openrouter');
-
-        if (! empty($openRouterKey)) {
-            $timeout = max(10, (int) config('ai.http_timeout_seconds', 90));
-
-            $response = Http::withHeaders($this->openRouterHeaders($openRouterKey))
-                ->timeout($timeout)
-                ->post("{$this->openRouterBaseUrl}/embeddings", $this->embeddingPayload($this->openRouterEmbeddingModel(), $text));
-
-            if ($response->successful()) {
-                $embedding = $this->extractEmbedding($response);
-                if ($embedding !== null) {
-                    return $embedding;
-                }
-
-                Log::warning('OpenRouter embedding response missing valid vector', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                throw new \Exception('OpenRouter Embedding Error: response did not include a valid embedding vector.');
-            }
-
-            throw new \Exception('OpenRouter Embedding Error: '.$response->body());
-        }
-
-        // Fallback to OpenAI when no OpenRouter key is configured.
         $openAiKey = $this->resolveApiKey('openai');
+
         if (empty($openAiKey)) {
             // Return dummy vector for demo/development if no key is available.
             return array_fill(0, 1536, 0.0);
@@ -65,6 +39,35 @@ class EmbeddingService
             ]);
 
             throw new \Exception('OpenAI Embedding Error: response did not include a valid embedding vector.');
+        }
+
+        // Fall back to OpenRouter when OpenAI quota is exhausted.
+        if ($response->status() === 429) {
+            $openRouterKey = $this->resolveApiKey('openrouter');
+
+            if (! empty($openRouterKey)) {
+                $timeout = max(10, (int) config('ai.http_timeout_seconds', 90));
+
+                $orResponse = Http::withHeaders($this->openRouterHeaders($openRouterKey))
+                    ->timeout($timeout)
+                    ->post("{$this->openRouterBaseUrl}/embeddings", $this->embeddingPayload($this->openRouterEmbeddingModel(), $text));
+
+                if ($orResponse->successful()) {
+                    $embedding = $this->extractEmbedding($orResponse);
+                    if ($embedding !== null) {
+                        return $embedding;
+                    }
+
+                    Log::warning('OpenRouter embedding response missing valid vector', [
+                        'status' => $orResponse->status(),
+                        'body' => $orResponse->body(),
+                    ]);
+
+                    throw new \Exception('OpenRouter Embedding Error: response did not include a valid embedding vector.');
+                }
+
+                throw new \Exception('OpenRouter Embedding Error: '.$orResponse->body());
+            }
         }
 
         throw new \Exception('OpenAI Embedding Error: '.$response->body());
