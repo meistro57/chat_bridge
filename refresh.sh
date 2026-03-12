@@ -3,7 +3,8 @@ set -e
 
 # --- CONFIGURATION ---
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLEAN_MODE=false
+cd "$REPO_DIR"
+
 QUICK_MODE=false
 WIPE_VOLUMES=false
 SKIP_FRONTEND_BUILD=false
@@ -15,7 +16,6 @@ HOST_GID="$(id -g)"
 # Parse arguments
 for arg in "$@"; do
     case $arg in
-        --clean) CLEAN_MODE=true ;;
         --quick) QUICK_MODE=true ;;
         --clean-volumes|--wipe-volumes) WIPE_VOLUMES=true ;;
         --skip-build) SKIP_FRONTEND_BUILD=true ;;
@@ -83,14 +83,6 @@ else
     git pull --rebase || echo "⚠️ Git pull had issues, but we are pressing on!"
 fi
 
-# 3. BACKUP & PREP
-# (Inline backup logic to keep it simple)
-if [ -f ".env" ]; then
-    echo "📦 Backing up environment keys..."
-    # Capture keys safely
-    source .env 2>/dev/null || true
-fi
-
 # 4. STOP & REBUILD
 if [ "$QUICK_MODE" = "false" ]; then
     echo "🛑 Stopping containers..."
@@ -112,7 +104,26 @@ sleep 5 # Give DBs a moment to wake up
 
 docker compose up -d app queue reverb
 
-# 6. POST-STARTUP CLEANUP
+# 6. WAIT FOR DEPENDENCIES BEFORE EXEC'ING INTO APP
+echo "⏳ Waiting for dependency health..."
+for i in {1..30}; do
+    POSTGRES_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' chatbridge-postgres 2>/dev/null || echo "missing")
+    REDIS_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' chatbridge-redis 2>/dev/null || echo "missing")
+
+    if [ "$POSTGRES_HEALTH" = "healthy" ] && [ "$REDIS_HEALTH" = "healthy" ]; then
+        echo "✅ Dependencies are healthy."
+        break
+    fi
+
+    if [ $i -eq 30 ]; then
+        echo "❌ Dependencies did not become healthy in time."
+        exit 1
+    fi
+
+    sleep 2
+done
+
+# 7. POST-STARTUP CLEANUP
 echo "✨ Clearing application cache..."
 # We run this INSIDE the container to avoid permission issues
 docker compose exec -T app php artisan optimize:clear
@@ -158,25 +169,8 @@ fi
 echo "🔎 Running post-refresh health checks..."
 docker compose ps
 
-echo "⏳ Waiting for dependency health..."
-for i in {1..30}; do
-    POSTGRES_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' chatbridge-postgres 2>/dev/null || echo "missing")
-    REDIS_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' chatbridge-redis 2>/dev/null || echo "missing")
-
-    if [ "$POSTGRES_HEALTH" = "healthy" ] && [ "$REDIS_HEALTH" = "healthy" ]; then
-        echo "✅ Dependencies are healthy."
-        break
-    fi
-
-    if [ $i -eq 30 ]; then
-        echo "❌ Dependencies did not become healthy in time."
-        exit 1
-    fi
-
-    sleep 2
-done
-
-HEALTH_PORT="${APP_PORT:-8000}"
+HEALTH_PORT="$(grep -E '^APP_PORT=' .env 2>/dev/null | cut -d '=' -f2- | tr -d '\r')"
+HEALTH_PORT="${HEALTH_PORT:-8000}"
 HEALTH_URL="http://localhost:${HEALTH_PORT}"
 echo "🌐 Verifying HTTP endpoint..."
 for i in {1..30}; do

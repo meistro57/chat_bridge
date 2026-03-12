@@ -273,6 +273,7 @@ export default function System({ systemInfo }) {
         { id: 'run_tests', label: 'Run Tests', icon: '🧪', color: 'pink' },
         { id: 'fix_code_style', label: 'Fix Code Style', icon: '✨', color: 'indigo' },
         { id: 'update_laravel', label: 'Update Laravel', icon: '⬆️', color: 'blue' },
+        { id: 'view_logs', label: 'View Logs', icon: '📋', color: 'orange' },
     ];
 
     const handleActionSelect = (actionId) => {
@@ -393,6 +394,39 @@ export default function System({ systemInfo }) {
                                     active={activeAction === action.id}
                                 />
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Monitoring Dashboards */}
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500/80 via-purple-500/80 to-fuchsia-500/80" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                        <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Monitoring Dashboards</h3>
+                        <div className="relative flex flex-wrap gap-3">
+                            <a
+                                href="/horizon"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
+                            >
+                                <span>🔭</span> Horizon
+                            </a>
+                            <a
+                                href="/telescope"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
+                            >
+                                <span>🔬</span> Telescope
+                            </a>
+                            <a
+                                href="/pulse"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
+                            >
+                                <span>💓</span> Pulse
+                            </a>
                         </div>
                     </div>
 

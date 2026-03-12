@@ -35,6 +35,8 @@ class StoreChatRequest extends FormRequest
             'memory_rag_enabled' => ['nullable', 'boolean'],
             'memory_rag_source_limit' => ['nullable', 'integer', 'min:1', 'max:20'],
             'memory_rag_score_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'rag_session_files' => ['nullable', 'array', 'max:10'],
+            'rag_session_files.*' => ['file', 'max:10240', 'mimes:txt,md,pdf,doc,docx,csv,json'],
             'stop_word_detection' => ['boolean'],
             'stop_words' => ['required_if:stop_word_detection,true', 'array'],
             'stop_words.*' => ['string'],

@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('chat:recover-stale')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('pulse:snapshot')
+    ->everyMinute()
+    ->withoutOverlapping();

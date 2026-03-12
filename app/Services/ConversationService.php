@@ -358,11 +358,12 @@ class ConversationService
         $paths = $paths->take($maxFiles);
         $maxChars = max(600, (int) config('ai.rag_template_max_chars', 3000));
         $charsPerFile = max(200, (int) floor($maxChars / max(1, $paths->count())));
-        $prefix = "template-rag/{$userId}/";
+        $allowedPrefixes = ["template-rag/{$userId}/", "session-rag/{$userId}/"];
         $snippets = [];
 
         foreach ($paths as $path) {
-            if (! str_starts_with($path, $prefix) || ! Storage::disk('local')->exists($path)) {
+            $hasAllowedPrefix = collect($allowedPrefixes)->contains(fn (string $prefix) => str_starts_with($path, $prefix));
+            if (! $hasAllowedPrefix || ! Storage::disk('local')->exists($path)) {
                 continue;
             }
 

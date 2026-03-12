@@ -233,6 +233,14 @@ class ChatController extends Controller
             'discourse_topic_id' => $validated['discourse_topic_id'] ?? null,
         ]);
 
+        $sessionFiles = $request->file('rag_session_files', []);
+        if ($sessionFiles !== []) {
+            $storedPaths = $this->storeSessionRagFiles($conversation, $sessionFiles);
+            $metadata = $conversation->metadata;
+            $metadata['rag']['files'] = array_merge($metadata['rag']['files'] ?? [], $storedPaths);
+            $conversation->update(['metadata' => $metadata]);
+        }
+
         $conversation->messages()->create([
             'user_id' => auth()->id(),
             'role' => 'user',
@@ -415,6 +423,30 @@ class ChatController extends Controller
         return Storage::disk('local')->download($path, basename($path), [
             'Content-Type' => 'text/markdown; charset=utf-8',
         ]);
+    }
+
+    /**
+     * @param  array<int, \Illuminate\Http\UploadedFile>  $files
+     * @return array<int, string>
+     */
+    protected function storeSessionRagFiles(Conversation $conversation, array $files): array
+    {
+        $paths = [];
+
+        foreach ($files as $file) {
+            $safeFilename = \Illuminate\Support\Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
+            $filename = trim($safeFilename) !== '' ? $safeFilename : 'rag-document';
+            $storedPath = $file->storeAs(
+                "session-rag/{$conversation->user_id}/{$conversation->id}",
+                $filename.'-'.\Illuminate\Support\Str::uuid().'.'.$file->getClientOriginalExtension()
+            );
+
+            if ($storedPath !== false) {
+                $paths[] = $storedPath;
+            }
+        }
+
+        return $paths;
     }
 
     protected function maybeKickstartStaleConversation(Conversation $conversation, int $assistantTurns, bool $stopRequested): void

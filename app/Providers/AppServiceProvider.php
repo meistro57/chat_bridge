@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureSqliteDatabaseFileExists();
         $this->registerReadOnlyDatabaseGuard();
+
+        Gate::define('viewPulse', fn ($user = null) => $user?->isAdmin() ?? false);
 
         Vite::prefetch(concurrency: 3);
     }

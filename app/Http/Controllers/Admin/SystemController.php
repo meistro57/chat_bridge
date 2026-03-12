@@ -89,6 +89,10 @@ class SystemController extends Controller
                     $output = $this->updateLaravelFramework();
                     break;
 
+                case 'view_logs':
+                    $output = $this->viewLogs((int) $request->input('lines', 200));
+                    break;
+
                 case 'invoke_codex':
                     $output = $this->invokeCodex($request->input('prompt', ''));
                     break;
@@ -945,6 +949,28 @@ PROMPT;
             'summary' => $summary,
             'details' => $details,
         ];
+    }
+
+    private function viewLogs(int $lines = 200): string
+    {
+        $path = $this->resolveLatestLaravelLogPath();
+        if ($path === null) {
+            return 'No Laravel log file found.';
+        }
+
+        $lines = max(50, min(1000, $lines));
+        $allLines = collect(explode("\n", File::get($path)));
+        $tail = $allLines->take(-$lines)->implode("\n");
+
+        $fileSize = File::size($path);
+        $fileSizeKb = round($fileSize / 1024, 1);
+        $totalLines = $allLines->count();
+
+        $header = '=== '.basename($path)." ({$fileSizeKb} KB, {$totalLines} total lines) ===\n";
+        $header .= "Showing last {$lines} lines\n";
+        $header .= str_repeat('=', 60)."\n\n";
+
+        return $header.$this->redactSecrets($tail);
     }
 
     private function getRecentErrors(int $limit = 20): string

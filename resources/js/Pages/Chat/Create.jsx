@@ -120,6 +120,7 @@ export default function Create({
         discord_webhook_url: discordDefaults.webhook_url ?? '',
         discourse_streaming_enabled: Boolean(discourseDefaults.enabled ?? false),
         discourse_topic_id: '',
+        rag_session_files: [],
     });
 
     transform((payload) => ({
@@ -265,6 +266,7 @@ export default function Create({
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route('chat.store'), {
+            forceFormData: true,
             onError: () => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             },
@@ -684,7 +686,61 @@ export default function Create({
                                 </label>
                                 <p className="text-xs text-zinc-600 ml-7">Automatically stop when specific words are detected</p>
                             </div>
+                        </div>
 
+                        {/* RAG File Attachments */}
+                        <div className="pt-4 border-t border-white/5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">RAG Attachments</label>
+                                    <p className="text-xs text-zinc-600 ml-1 mt-0.5">Attach files to inject as context for this session (txt, md, pdf, doc, csv, json — max 10MB each)</p>
+                                </div>
+                                <label className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-xs font-semibold hover:bg-yellow-500/20 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                                    Add Files
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept=".txt,.md,.pdf,.doc,.docx,.csv,.json"
+                                        className="hidden"
+                                        onChange={e => {
+                                            const newFiles = Array.from(e.target.files || []);
+                                            const combined = [...(data.rag_session_files || []), ...newFiles].slice(0, 10);
+                                            setData('rag_session_files', combined);
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </label>
+                            </div>
+
+                            {data.rag_session_files && data.rag_session_files.length > 0 && (
+                                <ul className="space-y-1.5">
+                                    {data.rag_session_files.map((file, index) => (
+                                        <li key={index} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-zinc-900/50 border border-white/5">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 shrink-0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                                <span className="text-xs text-zinc-300 truncate">{file.name}</span>
+                                                <span className="text-xs text-zinc-600 shrink-0">{(file.size / 1024).toFixed(0)} KB</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = data.rag_session_files.filter((_, i) => i !== index);
+                                                    setData('rag_session_files', updated);
+                                                }}
+                                                className="text-zinc-600 hover:text-red-400 transition-colors shrink-0"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {errors.rag_session_files && <div className="text-red-400 text-sm">{errors.rag_session_files}</div>}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
                             <div className="space-y-2">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input

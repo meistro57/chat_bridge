@@ -15,6 +15,9 @@ mkdir -p /var/www/html/storage/framework/cache/data \
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database 2>/dev/null || true
 find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type d -exec chmod 775 {} + 2>/dev/null || true
 find /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database -type f -exec chmod 664 {} + 2>/dev/null || true
+# Restore postgres data directory ownership — must be owned by postgres (UID 70), not www-data.
+# The chown above clobbers it because storage/postgres is a bind-mounted sub-path.
+chown -R 70:70 /var/www/html/storage/postgres 2>/dev/null || true
 
 # Ensure .env file has correct permissions
 touch /var/www/html/.env

@@ -599,4 +599,115 @@ class ChatControllerTest extends TestCase
         $this->assertSame('completed', $conversation->status);
         Bus::assertNotDispatched(RunChatSession::class);
     }
+
+    public function test_store_uploads_rag_session_files_and_stores_paths_in_metadata(): void
+    {
+        Bus::fake();
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $file = \Illuminate\Http\UploadedFile::fake()->create('research-notes.txt', 20, 'text/plain');
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'Use the attached notes.',
+            'max_rounds' => 4,
+            'stop_word_detection' => false,
+            'rag_session_files' => [$file],
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $ragFiles = $conversation->metadata['rag']['files'] ?? [];
+        $this->assertCount(1, $ragFiles);
+        $this->assertStringStartsWith("session-rag/{$user->id}/{$conversation->id}/", $ragFiles[0]);
+        $this->assertStringContainsString('research-notes', $ragFiles[0]);
+        Storage::disk('local')->assertExists($ragFiles[0]);
+    }
+
+    public function test_store_without_rag_session_files_leaves_files_from_template(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'rag_files' => ['template-rag/1/42/context.txt'],
+        ]);
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'template_id' => $template->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'No additional files.',
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertRedirect();
+
+        $conversation = Conversation::query()
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($conversation);
+        $this->assertSame(['template-rag/1/42/context.txt'], $conversation->metadata['rag']['files'] ?? null);
+    }
+
+    public function test_store_rejects_rag_session_files_exceeding_maximum_count(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+
+        $files = array_map(
+            fn ($i) => \Illuminate\Http\UploadedFile::fake()->create("file-{$i}.txt", 5, 'text/plain'),
+            range(1, 11)
+        );
+
+        $payload = [
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'openai',
+            'provider_b' => 'openai',
+            'model_a' => 'gpt-4o-mini',
+            'model_b' => 'gpt-4o-mini',
+            'starter_message' => 'Too many files.',
+            'max_rounds' => 2,
+            'stop_word_detection' => false,
+            'rag_session_files' => $files,
+        ];
+
+        $response = $this->actingAs($user)->post(route('chat.store'), $payload);
+
+        $response->assertSessionHasErrors('rag_session_files');
+    }
 }

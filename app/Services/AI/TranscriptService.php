@@ -77,6 +77,26 @@ class TranscriptService
         $md .= "- **Stop Word Threshold**: {$conversation->stop_word_threshold}\n";
         $md .= '- **Configured Stop Words**: '.($stopWords !== [] ? implode(', ', $stopWords) : 'None')."\n\n";
 
+        $ragConfig = is_array($conversation->metadata['rag'] ?? null) ? $conversation->metadata['rag'] : [];
+        $ragEnabled = (bool) ($ragConfig['enabled'] ?? false);
+        $ragFiles = array_filter((array) ($ragConfig['files'] ?? []), fn ($p) => is_string($p) && $p !== '');
+
+        $md .= "## RAG Configuration\n\n";
+        $md .= '- **Cross-Chat Memory**: '.($ragEnabled ? 'Enabled' : 'Disabled')."\n";
+        $md .= '- **Source Limit**: '.($ragConfig['source_limit'] ?? 'N/A')."\n";
+        $md .= '- **Score Threshold**: '.($ragConfig['score_threshold'] ?? 'N/A')."\n";
+
+        if ($ragFiles !== []) {
+            $md .= "- **Attached Files**:\n";
+            foreach ($ragFiles as $path) {
+                $md .= '  - `'.basename($path)."`\n";
+            }
+        } else {
+            $md .= "- **Attached Files**: None\n";
+        }
+
+        $md .= "\n";
+
         $md .= "## Starter Prompt\n\n";
         $md .= $conversation->starter_message."\n\n";
 
