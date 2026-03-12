@@ -57,6 +57,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/system/openai-key', [\App\Http\Controllers\Admin\SystemController::class, 'updateOpenAiKey'])->name('system.openai-key');
         Route::post('/system/openai-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testOpenAiKey'])->name('system.openai-key.test');
         Route::post('/system/openai-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearOpenAiKey'])->name('system.openai-key.clear');
+        Route::post('/system/embeddings-key', [\App\Http\Controllers\Admin\SystemController::class, 'updateEmbeddingsKey'])->name('system.embeddings-key');
+        Route::post('/system/embeddings-key/test', [\App\Http\Controllers\Admin\SystemController::class, 'testEmbeddingsKey'])->name('system.embeddings-key.test');
+        Route::post('/system/embeddings-key/clear', [\App\Http\Controllers\Admin\SystemController::class, 'clearEmbeddingsKey'])->name('system.embeddings-key.clear');
         Route::post('/system/maintenance-banner', [\App\Http\Controllers\Admin\SystemController::class, 'updateMaintenanceBanner'])->name('system.maintenance-banner');
         Route::get('/database/backup', [DatabaseController::class, 'backup'])->name('database.backup');
         Route::post('/database/backup/run', [DatabaseController::class, 'runBackup'])->name('database.backup.run');
@@ -87,9 +90,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/templates/{template}/clone', [\App\Http\Controllers\ConversationTemplateController::class, 'clone'])->name('templates.clone');
     Route::post('/templates/save-from-chat', [\App\Http\Controllers\ConversationTemplateController::class, 'storeFromChat'])->name('templates.storeFromChat');
 
-    // API Keys routes
+    // AI provider API keys
     Route::resource('api-keys', \App\Http\Controllers\ApiKeyController::class);
     Route::post('/api-keys/{apiKey}/test', [\App\Http\Controllers\ApiKeyController::class, 'test'])->name('api-keys.test');
+
+    // Personal access tokens (for Chat Bridge API access)
+    Route::get('/personal-tokens', [\App\Http\Controllers\PersonalAccessTokenController::class, 'index'])->name('personal-tokens.index');
+    Route::post('/personal-tokens', [\App\Http\Controllers\PersonalAccessTokenController::class, 'store'])->name('personal-tokens.store');
+    Route::delete('/personal-tokens/{personalAccessToken}', [\App\Http\Controllers\PersonalAccessTokenController::class, 'destroy'])->name('personal-tokens.destroy');
 
     // Analytics routes
     Route::get('/analytics', [\App\Http\Controllers\AnalyticsController::class, 'index'])->name('analytics.index');

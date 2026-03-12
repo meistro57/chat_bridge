@@ -13,13 +13,40 @@ class EmbeddingService
     protected string $openRouterBaseUrl = 'https://openrouter.ai/api/v1';
 
     /**
-     * Generate embedding using text-embedding-3-small
+     * Generate embedding using OpenRouter (primary) or OpenAI (fallback).
      */
     public function getEmbedding(string $text): array
     {
+        $openRouterKey = $this->resolveApiKey('openrouter');
+
+        if (! empty($openRouterKey)) {
+            $timeout = max(10, (int) config('ai.http_timeout_seconds', 90));
+
+            $response = Http::withHeaders($this->openRouterHeaders($openRouterKey))
+                ->timeout($timeout)
+                ->post("{$this->openRouterBaseUrl}/embeddings", $this->embeddingPayload($this->openRouterEmbeddingModel(), $text));
+
+            if ($response->successful()) {
+                $embedding = $this->extractEmbedding($response);
+                if ($embedding !== null) {
+                    return $embedding;
+                }
+
+                Log::warning('OpenRouter embedding response missing valid vector', [
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                throw new \Exception('OpenRouter Embedding Error: response did not include a valid embedding vector.');
+            }
+
+            throw new \Exception('OpenRouter Embedding Error: '.$response->body());
+        }
+
+        // Fallback to OpenAI when no OpenRouter key is configured.
         $openAiKey = $this->resolveApiKey('openai');
         if (empty($openAiKey)) {
-            // Return dummy vector for demo/development if key is missing
+            // Return dummy vector for demo/development if no key is available.
             return array_fill(0, 1536, 0.0);
         }
 
@@ -38,36 +65,6 @@ class EmbeddingService
             ]);
 
             throw new \Exception('OpenAI Embedding Error: response did not include a valid embedding vector.');
-        }
-
-        if ($this->shouldFallbackToOpenRouter($response->status(), $response->body())) {
-            $openRouterKey = $this->resolveApiKey('openrouter');
-            if (! empty($openRouterKey)) {
-                $embeddingTimeoutSeconds = max(10, (int) config('ai.http_timeout_seconds', 90));
-
-                $fallbackResponse = Http::withHeaders($this->openRouterHeaders($openRouterKey))
-                    ->timeout($embeddingTimeoutSeconds)
-                    ->post(
-                        "{$this->openRouterBaseUrl}/embeddings",
-                        $this->embeddingPayload($this->openRouterEmbeddingModel(), $text),
-                    );
-
-                if ($fallbackResponse->successful()) {
-                    $embedding = $this->extractEmbedding($fallbackResponse);
-                    if ($embedding !== null) {
-                        return $embedding;
-                    }
-
-                    Log::warning('OpenRouter embedding response missing valid vector', [
-                        'status' => $fallbackResponse->status(),
-                        'body' => $fallbackResponse->body(),
-                    ]);
-
-                    throw new \Exception('OpenRouter Embedding Error: response did not include a valid embedding vector.');
-                }
-
-                throw new \Exception('OpenRouter Embedding Error: '.$fallbackResponse->body());
-            }
         }
 
         throw new \Exception('OpenAI Embedding Error: '.$response->body());
@@ -115,20 +112,6 @@ class EmbeddingService
             'input' => $text,
             'model' => $model,
         ];
-    }
-
-    private function shouldFallbackToOpenRouter(int $status, string $body): bool
-    {
-        if ($status !== 429) {
-            return false;
-        }
-
-        $normalizedBody = strtolower($body);
-
-        return str_contains($normalizedBody, 'insufficient_quota')
-            || str_contains($normalizedBody, 'quota')
-            || str_contains($normalizedBody, 'credit')
-            || str_contains($normalizedBody, 'billing_hard_limit_reached');
     }
 
     private function openRouterHeaders(string $apiKey): array

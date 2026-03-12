@@ -2,6 +2,36 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-12
+
+### 🔑 Personal Access Tokens
+- New `/personal-tokens` page for users to create and manage Sanctum personal access tokens.
+- Tokens can be used in place of the shared `CHAT_BRIDGE_TOKEN` env variable for API authentication.
+- Token name input + copy-on-creation modal with one-time plaintext display.
+- Full delete support with per-user ownership enforcement.
+
+### 🔐 API Authentication Upgrade
+- Chat Bridge API (`POST /api/chat-bridge/respond`) now accepts either the legacy shared env token or a user personal Sanctum token via `EnsureChatBridgeOrSanctumToken` middleware.
+- MCP API routes (`/api/mcp/*` and `POST /api/mcp`) now require a personal Sanctum token (`EnsureSanctumToken`), scoping all tool calls to the authenticated user.
+
+### 🧠 Embedding Provider Priority Swap
+- `EmbeddingService` now uses **OpenRouter as the primary embedding provider** and falls back to OpenAI when no OpenRouter key is configured.
+- Removes the previous OpenAI-primary / OpenRouter-fallback order that required a failed OpenAI call before trying OpenRouter.
+
+### 🔧 System Diagnostics Additions
+- **Embeddings Key panel** — Admin can update, test, and clear the `OPENROUTER_API_KEY` used for embeddings directly from `/admin/system`.
+- **Reload PHP-FPM** — New diagnostic action to gracefully reload PHP-FPM without downtime.
+
+### 🎨 Dashboard Live Status Redesign
+- Active-conversation indicator on the dashboard now shows an animated glow card with pulsing rings, waveform bars, and a per-session label/turn counter.
+- Idle state simplified to a muted indicator.
+
+### 🗄️ Database
+- Migration to widen `model_prices` decimal columns for providers that return prices with more decimal places.
+
+### 🖼️ Favicons
+- Added `public/favicon-32.png` and `public/favicon-192.png` for browser tab and PWA icon use.
+
 ## [1.0.0] - 2026-03-10
 
 ### 🛡️ Stream Resilience

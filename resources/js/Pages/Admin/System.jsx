@@ -9,6 +9,14 @@ export default function System({ systemInfo }) {
     const [loading, setLoading] = useState(false);
     const [activeAction, setActiveAction] = useState(null);
     const [openaiKey, setOpenaiKey] = useState('');
+    const [embeddingsKey, setEmbeddingsKey] = useState('');
+    const [embeddingsStatus, setEmbeddingsStatus] = useState({
+        isSet: systemInfo.openrouter_key_set,
+        last4: systemInfo.openrouter_key_last4,
+    });
+    const [savingEmbeddingsKey, setSavingEmbeddingsKey] = useState(false);
+    const [testingEmbeddingsKey, setTestingEmbeddingsKey] = useState(false);
+    const [clearingEmbeddingsKey, setClearingEmbeddingsKey] = useState(false);
     const [bannerEnabled, setBannerEnabled] = useState(maintenanceBanner?.enabled ?? false);
     const [bannerMessage, setBannerMessage] = useState(maintenanceBanner?.message ?? 'We are currently performing maintenance. Some features may be temporarily unavailable.');
     const [bannerSaving, setBannerSaving] = useState(false);
@@ -108,6 +116,66 @@ export default function System({ systemInfo }) {
         }
     };
 
+    const saveEmbeddingsKey = async (e) => {
+        e.preventDefault();
+        setSavingEmbeddingsKey(true);
+        setOutput('Saving embeddings service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/embeddings-key', {
+                openrouter_key: embeddingsKey,
+            });
+            setEmbeddingsStatus({
+                isSet: response.data.openrouter_key_set,
+                last4: response.data.openrouter_key_last4,
+            });
+            setEmbeddingsKey('');
+            setOutput('✓ Embeddings service key updated.\n');
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setSavingEmbeddingsKey(false);
+        }
+    };
+
+    const testEmbeddingsKey = async () => {
+        setTestingEmbeddingsKey(true);
+        setOutput('Testing embeddings service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/embeddings-key/test', {
+                openrouter_key: embeddingsKey.length ? embeddingsKey : null,
+            });
+            setOutput(`${response.data.message}\n`);
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setTestingEmbeddingsKey(false);
+        }
+    };
+
+    const clearEmbeddingsKey = async () => {
+        if (!confirm('Clear the embeddings service key?')) {
+            return;
+        }
+
+        setClearingEmbeddingsKey(true);
+        setOutput('Clearing embeddings service key...\n\n');
+
+        try {
+            const response = await axios.post('/admin/system/embeddings-key/clear');
+            setEmbeddingsStatus({
+                isSet: response.data.openrouter_key_set,
+                last4: null,
+            });
+            setOutput('✓ Embeddings service key cleared.\n');
+        } catch (error) {
+            setOutput(`Error: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setClearingEmbeddingsKey(false);
+        }
+    };
+
     const saveBanner = async () => {
         setBannerSaving(true);
         try {
@@ -198,6 +266,7 @@ export default function System({ systemInfo }) {
         { id: 'runtime_refresh', label: 'Runtime Refresh', icon: '🔄', color: 'emerald' },
         { id: 'fix_permissions', label: 'Fix Permissions', icon: '🔐', color: 'purple' },
         { id: 'clear_cache', label: 'Clear All Caches', icon: '🗑️', color: 'orange' },
+        { id: 'reload_php_fpm', label: 'Reload PHP-FPM', icon: '⚙️', color: 'violet' },
         { id: 'optimize', label: 'Optimize App', icon: '⚡', color: 'yellow' },
         { id: 'validate_ai', label: 'Validate AI Services', icon: '🤖', color: 'cyan' },
         { id: 'check_database', label: 'Check Database', icon: '🗄️', color: 'emerald' },
@@ -378,6 +447,61 @@ export default function System({ systemInfo }) {
                                 className="px-4 py-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {clearingKey ? 'Clearing...' : 'Clear Key'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Embeddings Service Key */}
+                    <div className="relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter butter-reveal butter-reveal-delay-3">
+                        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-teal-500/80 via-emerald-500/80 to-cyan-500/80" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+                        <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Embeddings Service Key</h3>
+                        <p className="relative text-sm text-zinc-500 mb-4">
+                            OpenRouter API key used for generating conversation embeddings (vector search).
+                        </p>
+                        <div className="relative flex items-center gap-3 mb-4">
+                            <StatusBadge
+                                label="OpenRouter Key"
+                                status={embeddingsStatus.isSet}
+                            />
+                            {embeddingsStatus.isSet && embeddingsStatus.last4 && (
+                                <div className="text-xs text-zinc-500 font-mono">
+                                    Last 4: {embeddingsStatus.last4}
+                                </div>
+                            )}
+                        </div>
+                        <form onSubmit={saveEmbeddingsKey} className="relative flex flex-col md:flex-row gap-3">
+                            <input
+                                type="password"
+                                value={embeddingsKey}
+                                onChange={(event) => setEmbeddingsKey(event.target.value)}
+                                placeholder="sk-or-..."
+                                className="flex-1 bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-2 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+                            />
+                            <button
+                                type="submit"
+                                disabled={savingEmbeddingsKey || embeddingsKey.length === 0}
+                                className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {savingEmbeddingsKey ? 'Saving...' : 'Save Key'}
+                            </button>
+                        </form>
+                        <div className="relative mt-4 flex flex-col sm:flex-row gap-3">
+                            <button
+                                type="button"
+                                onClick={testEmbeddingsKey}
+                                disabled={testingEmbeddingsKey || (!embeddingsStatus.isSet && embeddingsKey.length === 0)}
+                                className="px-4 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {testingEmbeddingsKey ? 'Testing...' : 'Test Key'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={clearEmbeddingsKey}
+                                disabled={clearingEmbeddingsKey || !embeddingsStatus.isSet}
+                                className="px-4 py-2 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {clearingEmbeddingsKey ? 'Clearing...' : 'Clear Key'}
                             </button>
                         </div>
                     </div>

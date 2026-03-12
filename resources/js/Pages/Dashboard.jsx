@@ -273,17 +273,64 @@ export default function Dashboard({ user, hasOpenAiKey }) {
                                 </p>
 
                                 {module.liveStatus && (
-                                    <div className="relative mt-4 mb-1 flex items-center gap-2 rounded-lg border border-white/[0.07] bg-zinc-900/40 px-3 py-2">
-                                        <span className={`h-2 w-2 shrink-0 rounded-full ${active_count > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                                            {active_count > 0 ? `${active_count} live` : 'idle'}
-                                        </span>
-                                        {items.slice(0, 1).map((item) => (
-                                            <span key={item.id} className="ml-1 truncate text-[10px] text-zinc-500">
-                                                {item.label} · {item.current_turn}/{item.max_rounds}
+                                    active_count > 0 ? (
+                                        <div className="relative mt-4 mb-1 overflow-hidden rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-4 py-3 shadow-[0_0_20px_rgba(52,211,153,0.08)]">
+                                            {/* Background glow sweep */}
+                                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-emerald-500/5" />
+
+                                            <div className="relative flex items-center gap-3">
+                                                {/* Pulsing rings indicator */}
+                                                <div className="relative shrink-0 flex items-center justify-center w-7 h-7">
+                                                    <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-20 animate-ping" />
+                                                    <span className="absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-30 animate-ping [animation-delay:150ms]" />
+                                                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                                </div>
+
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                                                            Live
+                                                        </span>
+                                                        <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
+                                                            {active_count} active
+                                                        </span>
+                                                    </div>
+                                                    {items.slice(0, 1).map((item) => (
+                                                        <div key={item.id} className="mt-0.5 flex items-center gap-1.5">
+                                                            <span className="truncate text-[10px] text-emerald-300/70">
+                                                                {item.label}
+                                                            </span>
+                                                            <span className="shrink-0 text-[9px] font-mono text-emerald-500/60">
+                                                                {item.current_turn}/{item.max_rounds}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Waveform bars */}
+                                                <div className="shrink-0 flex items-end gap-0.5 h-5">
+                                                    {[...Array(4)].map((_, i) => (
+                                                        <span
+                                                            key={i}
+                                                            className="w-0.5 rounded-full bg-emerald-400/60 animate-pulse"
+                                                            style={{
+                                                                height: `${[60, 100, 75, 45][i]}%`,
+                                                                animationDelay: `${i * 120}ms`,
+                                                                animationDuration: `${800 + i * 150}ms`,
+                                                            }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="relative mt-4 mb-1 flex items-center gap-2 rounded-lg border border-white/[0.07] bg-zinc-900/40 px-3 py-2">
+                                            <span className="h-2 w-2 shrink-0 rounded-full bg-zinc-600" />
+                                            <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+                                                idle
                                             </span>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    )
                                 )}
 
                                 <div className="relative mt-3 flex items-center text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">

@@ -57,6 +57,10 @@ class SystemController extends Controller
                     $output = $this->clearAllCache();
                     break;
 
+                case 'reload_php_fpm':
+                    $output = $this->reloadPhpFpm();
+                    break;
+
                 case 'optimize':
                     $output = $this->optimizeApplication();
                     break;
@@ -190,6 +194,93 @@ class SystemController extends Controller
         ]);
     }
 
+    public function updateEmbeddingsKey(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'openrouter_key' => 'required|string|min:20',
+        ]);
+
+        $this->envService->updateKey('OPENROUTER_API_KEY', $validated['openrouter_key']);
+        Artisan::call('config:clear');
+
+        Log::info('Embeddings OpenRouter key updated by admin', [
+            'user_id' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'openrouter_key_set' => true,
+            'openrouter_key_last4' => substr($validated['openrouter_key'], -4),
+        ]);
+    }
+
+    public function testEmbeddingsKey(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'openrouter_key' => 'nullable|string|min:20',
+        ]);
+
+        $key = $validated['openrouter_key'] ?? (string) config('services.openrouter.key', '');
+
+        if ($key === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'No OpenRouter embeddings key configured.',
+            ], 422);
+        }
+
+        $model = (string) config('services.openrouter.embedding_model', 'openai/text-embedding-3-small');
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders(array_filter([
+                'Authorization' => "Bearer {$key}",
+                'HTTP-Referer' => config('services.openrouter.referer'),
+                'X-Title' => config('services.openrouter.app_name'),
+                'Content-Type' => 'application/json',
+            ]))->post('https://openrouter.ai/api/v1/embeddings', [
+                'input' => 'test',
+                'model' => $model,
+            ]);
+
+            if (! $response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'OpenRouter embeddings key test failed: '.$response->body(),
+                ], 422);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('OpenRouter embeddings key test failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'OpenRouter embeddings key test failed: '.$e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'OpenRouter embeddings key is valid.',
+        ]);
+    }
+
+    public function clearEmbeddingsKey(): JsonResponse
+    {
+        $this->envService->updateKey('OPENROUTER_API_KEY', '');
+        Artisan::call('config:clear');
+
+        Log::info('Embeddings OpenRouter key cleared by admin', [
+            'user_id' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'openrouter_key_set' => false,
+        ]);
+    }
+
     public function updateMaintenanceBanner(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -212,6 +303,7 @@ class SystemController extends Controller
     private function getSystemInfo(): array
     {
         $openaiKey = (string) config('services.openai.key', '');
+        $openRouterKey = (string) config('services.openrouter.key', '');
         $boostConfig = $this->getBoostConfig();
         $mcpHealth = $this->getMcpHealth();
 
@@ -230,6 +322,8 @@ class SystemController extends Controller
             'max_execution_time' => ini_get('max_execution_time'),
             'openai_key_set' => $openaiKey !== '',
             'openai_key_last4' => $openaiKey !== '' ? substr($openaiKey, -4) : null,
+            'openrouter_key_set' => $openRouterKey !== '',
+            'openrouter_key_last4' => $openRouterKey !== '' ? substr($openRouterKey, -4) : null,
             'boost' => $boostConfig,
             'mcp' => $mcpHealth,
         ];
@@ -463,6 +557,30 @@ class SystemController extends Controller
         }
 
         $output[] = "\n✓ Optimization complete!";
+
+        return implode("\n", $output);
+    }
+
+    private function reloadPhpFpm(): string
+    {
+        $output = [];
+        $output[] = 'Reloading PHP-FPM opcache...';
+
+        $pid = trim((string) shell_exec('pgrep -o php-fpm 2>/dev/null'));
+
+        if (! $pid || ! is_numeric($pid)) {
+            $output[] = '✗ Could not find PHP-FPM master process.';
+
+            return implode("\n", $output);
+        }
+
+        $output[] = "→ Sending USR2 signal to PHP-FPM master (PID {$pid}) after response";
+        $artisan = base_path('artisan');
+        // Delay the signal so this HTTP response is fully sent before FPM reloads,
+        // then regenerate the route cache once FPM is back up
+        shell_exec("nohup sh -c 'sleep 3 && kill -USR2 {$pid} && sleep 2 && php {$artisan} route:cache' > /dev/null 2>&1 &");
+
+        $output[] = '✓ PHP-FPM reload scheduled. Opcache and route cache will refresh in ~5 seconds.';
 
         return implode("\n", $output);
     }

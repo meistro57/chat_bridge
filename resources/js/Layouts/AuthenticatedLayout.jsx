@@ -102,6 +102,12 @@ function LayoutInner({ header, children }) {
                                             Profile
                                         </Dropdown.Link>
                                         <Dropdown.Link
+                                            href={route('personal-tokens.index')}
+                                            className="hover:bg-zinc-700 text-zinc-300 hover:text-white"
+                                        >
+                                            API Tokens
+                                        </Dropdown.Link>
+                                        <Dropdown.Link
                                             href={route('logout')}
                                             method="post"
                                             as="button"

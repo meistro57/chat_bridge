@@ -86,6 +86,14 @@
 - **Error Tracking** - Store and display validation errors
 - **Last Validated** - Timestamp tracking
 
+### 🪙 Personal Access Tokens (`/personal-tokens`)
+- **Sanctum Token Management** - Create and revoke personal API tokens for Chat Bridge access
+- **Named Tokens** - Label each token for easy identification
+- **One-Time Display** - Plaintext token shown once at creation and never again
+- **Last Used Tracking** - See when each token was last used
+- **Ownership Enforcement** - Users can only delete their own tokens
+- **API Compatibility** - Accepted anywhere the shared `CHAT_BRIDGE_TOKEN` env variable is used
+
 ### 🧠 RAG (Retrieval-Augmented Generation)
 - **Vector Database** - Qdrant for similarity search
 - **Automatic Embeddings** - Generated for all messages
@@ -138,7 +146,7 @@
 
 ### 🧪 System Diagnostics (`/admin/system`)
 
-**9 Diagnostic Actions:**
+**11 Diagnostic Actions:**
 
 1. **Health Check** 🏥
    - PHP version
@@ -200,6 +208,15 @@
    - No-interaction safe execution
    - Full command output in diagnostics console
    - Skips in testing environment
+
+10. **Reload PHP-FPM** 🔄
+    - Gracefully reloads PHP-FPM workers without dropping connections
+    - Useful after deploying code changes
+
+11. **Embeddings Key Management** 🔑
+    - Update, test, and clear the OpenRouter API key used for embeddings
+    - Test validates connectivity against the configured embedding model
+    - Shows last 4 characters of stored key for identification
 
 **System Information Panel:**
 - PHP & Laravel versions
@@ -462,10 +479,11 @@
 
 ### 🔗 API & Integration
 - **RESTful API** - Clean API design
-- **API Authentication** - Sanctum tokens
+- **Dual API Authentication** - Accepts shared env `CHAT_BRIDGE_TOKEN` (backward-compatible) or personal Sanctum tokens
+- **MCP API Auth** - MCP routes require personal Sanctum tokens for user-scoped context
 - **Webhook Support** - Event notifications
 - **MCP Integration** - Model Context Protocol
-- **External API** - Chat bridge endpoint
+- **External API** - Chat bridge endpoint (`POST /api/chat-bridge/respond`)
 - **Provider Models API** - Dynamic model listing endpoint
   - `/api/providers/models?provider=<name>`
   - Real-time model discovery from AI providers

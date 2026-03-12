@@ -105,6 +105,58 @@ class SystemDiagnosticsTest extends TestCase
         $this->assertStringContainsString('Runtime refresh complete', $output);
     }
 
+    public function test_system_info_includes_openrouter_key_status(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->get(route('admin.system'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Admin/System')
+            ->has('systemInfo', fn (AssertableInertia $systemInfo) => $systemInfo
+                ->has('openrouter_key_set')
+                ->has('openrouter_key_last4')
+                ->etc()
+            )
+        );
+    }
+
+    public function test_admin_can_test_embeddings_key(): void
+    {
+        Http::fake([
+            'https://openrouter.ai/api/v1/embeddings' => Http::response([
+                'data' => [
+                    ['embedding' => array_fill(0, 1536, 0.1)],
+                ],
+            ], 200),
+        ]);
+
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.system.embeddings-key.test'), [
+            'openrouter_key' => str_repeat('x', 40),
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'message' => 'OpenRouter embeddings key is valid.',
+        ]);
+    }
+
+    public function test_admin_embeddings_key_test_fails_with_no_key(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post(route('admin.system.embeddings-key.test'), [
+            'openrouter_key' => null,
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+    }
+
     public function test_admin_openai_key_test_uses_response_content(): void
     {
         Http::fake([
