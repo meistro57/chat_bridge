@@ -20,6 +20,7 @@ class PersonaFactory extends Factory
             'name' => $this->faker->unique()->name(),
             'system_prompt' => $this->faker->sentence(),
             'temperature' => 0.7,
+            'is_favorite' => true,
         ];
     }
 }

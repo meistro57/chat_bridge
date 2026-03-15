@@ -26,6 +26,7 @@
 - **Shared Library** - 56 pre-configured personas included
 - **Ownership Tracking** - Creator attribution for all personas
 - **Full CRUD** - Create, Read, Update, Delete operations
+- **Favorites** - Star any persona to pin it to the top of the list; toggle via inline star button or `PATCH /personas/{persona}/favorite`
 - **JSON Import** - Import a persona from a `.json` file on the create page
 - **JSON Export** - Export any persona from the edit page as a portable `.json` file
 - **Template Download** - Download a sample template to understand the persona JSON format
@@ -97,12 +98,14 @@
 ### 🧠 RAG (Retrieval-Augmented Generation)
 - **Vector Database** - Qdrant for similarity search
 - **Automatic Embeddings** - Generated for all messages
+- **Embedding Tracking** - Per-message status (`embedded`, `failed`, `skipped`), attempt counter, last error, and exponential-backoff retry scheduling
 - **Semantic Search** - Find relevant past conversations
 - **Persistent Memory** - AI remembers across sessions
 - **Session Memory Profiles** - Each conversation can tune history window and retrieval behavior
 - **Context Injection** - Relevant history added to prompts
 - **Sub-10ms Retrieval** - Lightning-fast vector search
 - **Scalable Storage** - Efficient compression and indexing
+- **Document RAG** - Attach `.txt`, `.md`, `.csv`, `.json`, `.docx`, or `.pdf` files as RAG context; injected even when cross-chat memory is disabled
 
 ### 🤖 AI Chatbot (`/transcript-chat`)
 - **Ask the Archive** - Natural-language Q&A over all your chat transcripts
@@ -303,6 +306,7 @@
 - **Provider Capability Checks** - Validate tool support status for active providers (including Ollama)
 - **Live MCP Traffic Watch** - Inspect recent MCP/tool execution events with provider filtering
 - **Auto-Refresh Monitoring** - Polling controls for near-real-time troubleshooting
+- **Admin API Endpoints** - Sanctum-authenticated API routes for embedding compare, populate, flush, and traffic (under `/api/admin/mcp-utilities`)
 
 ---
 

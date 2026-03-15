@@ -12,6 +12,6 @@ Schedule::command('chat:recover-stale')
     ->everyMinute()
     ->withoutOverlapping();
 
-Schedule::command('pulse:snapshot')
+Schedule::command('pulse:check')
     ->everyMinute()
     ->withoutOverlapping();

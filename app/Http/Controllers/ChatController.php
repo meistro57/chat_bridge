@@ -84,7 +84,10 @@ class ChatController extends Controller
         ]);
 
         return Inertia::render('Chat', [
-            'personas' => Persona::orderBy('name')->get(),
+            'personas' => Persona::query()
+                ->orderByDesc('is_favorite')
+                ->orderBy('name')
+                ->get(),
             'conversations' => auth()->user()->conversations()->latest()->limit(50)->get(),
         ]);
     }
@@ -152,7 +155,10 @@ class ChatController extends Controller
         }
 
         return Inertia::render('Chat/Create', [
-            'personas' => Persona::orderBy('name')->get(),
+            'personas' => Persona::query()
+                ->orderByDesc('is_favorite')
+                ->orderBy('name')
+                ->get(),
             'template' => $template,
             'openRouterModels' => $openRouterModels,
             'mcpEnabled' => (bool) config('ai.tools_enabled', true),

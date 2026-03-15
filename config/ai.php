@@ -238,6 +238,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Embedding Population Resilience
+    |--------------------------------------------------------------------------
+    |
+    | Controls retries and input normalization for admin-driven embedding
+    | population to keep permanently unembeddable records from retry loops.
+    |
+    */
+
+    'embedding_population_max_attempts' => (int) env('AI_EMBEDDING_POPULATION_MAX_ATTEMPTS', 5),
+    'embedding_input_max_chars' => (int) env('AI_EMBEDDING_INPUT_MAX_CHARS', 8000),
+
+    /*
+    |--------------------------------------------------------------------------
     | Empty Turn Fallback Message
     |--------------------------------------------------------------------------
     |

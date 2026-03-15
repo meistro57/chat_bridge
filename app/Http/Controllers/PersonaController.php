@@ -20,7 +20,10 @@ class PersonaController extends Controller
 {
     public function index(): InertiaResponse
     {
-        $personas = Persona::latest()->get();
+        $personas = Persona::query()
+            ->orderByDesc('is_favorite')
+            ->latest()
+            ->get();
         $sessionCountsA = Conversation::query()
             ->where('user_id', auth()->id())
             ->whereNotNull('persona_a_id')
@@ -63,7 +66,10 @@ class PersonaController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        auth()->user()->personas()->create($validated);
+        auth()->user()->personas()->create([
+            ...$validated,
+            'is_favorite' => true,
+        ]);
 
         return redirect()->route('personas.index')->with('success', 'Persona created.');
     }
@@ -107,6 +113,19 @@ class PersonaController extends Controller
         $persona->delete();
 
         return redirect()->route('personas.index')->with('success', 'Persona deleted.');
+    }
+
+    public function toggleFavorite(Persona $persona): RedirectResponse
+    {
+        if ($persona->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $persona->update([
+            'is_favorite' => ! $persona->is_favorite,
+        ]);
+
+        return back()->with('success', 'Persona favorite status updated.');
     }
 
     public function generate(GeneratePersonaRequest $request): JsonResponse

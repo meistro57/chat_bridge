@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ChatBridgeController;
 use App\Http\Controllers\Api\McpController as ApiMcpController;
 use App\Http\Controllers\McpController;
+use App\Http\Controllers\Admin\McpUtilitiesController;
 use App\Http\Middleware\EnsureChatBridgeOrSanctumToken;
 use App\Http\Middleware\EnsureSanctumToken;
 use Illuminate\Http\Request;
@@ -24,9 +25,17 @@ Route::middleware(EnsureSanctumToken::class)->group(function () {
         Route::get('/recent-chats', [ApiMcpController::class, 'recentChats']);
         Route::get('/search-chats', [ApiMcpController::class, 'search']);
         Route::get('/contextual-memory', [ApiMcpController::class, 'contextualMemory']);
+        Route::get('/contextual_memory', [ApiMcpController::class, 'contextualMemory']);
         Route::get('/conversation/{conversation}', [ApiMcpController::class, 'conversation']);
     });
     Route::post('/mcp', [McpController::class, 'handle']);
+});
+
+Route::prefix('admin/mcp-utilities')->middleware([EnsureSanctumToken::class, 'admin'])->group(function () {
+    Route::get('/embeddings/compare', [McpUtilitiesController::class, 'compareEmbeddings']);
+    Route::post('/embeddings/populate', [McpUtilitiesController::class, 'populateEmbeddings']);
+    Route::post('/flush', [McpUtilitiesController::class, 'flush']);
+    Route::get('/traffic', [McpUtilitiesController::class, 'traffic']);
 });
 
 // Provider API routes (no auth required — used by the Create Conversation UI)

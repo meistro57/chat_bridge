@@ -37,6 +37,11 @@ class TranscriptService
         $messageLengthSummary = $this->messageLengthSummary($messages);
         $metadataJson = json_encode($conversation->metadata ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $formattedDuration = gmdate('H:i:s', max(0, $durationSeconds));
+        $memoryConfig = is_array($conversation->metadata['memory'] ?? null) ? $conversation->metadata['memory'] : [];
+        $ragConfig = is_array($conversation->metadata['rag'] ?? null) ? $conversation->metadata['rag'] : [];
+        $ragEnabled = (bool) ($ragConfig['enabled'] ?? false);
+        $ragFiles = array_filter((array) ($ragConfig['files'] ?? []), fn ($p) => is_string($p) && $p !== '');
+        $ragDocNames = collect($ragFiles)->map(fn (string $path) => basename($path))->values();
 
         $md = "# Conversation Report\n\n";
         $md .= "## Executive Summary\n\n";
@@ -50,6 +55,22 @@ class TranscriptService
         $md .= "- **Total Messages**: {$messages->count()}\n";
         $md .= "- **Total Tokens Recorded**: {$totalTokens}\n";
         $md .= '- **Notifications Enabled**: '.($notificationsEnabled ? 'Yes' : 'No')."\n\n";
+
+        $md .= "## Chat Header\n\n";
+        $md .= "- **Session Label**: {$personaAName} vs {$personaBName}\n";
+        $md .= '- **Starter Prompt Preview**: '.Str::limit((string) $conversation->starter_message, 160)."\n";
+        $md .= '- **Memory Window (Recent Messages)**: '.($memoryConfig['history_limit'] ?? 'N/A')."\n";
+        $md .= '- **Cross-Chat Memory**: '.($ragEnabled ? 'Enabled' : 'Disabled')."\n";
+        $md .= '- **RAG Documents Attached**: '.$ragDocNames->count()."\n";
+
+        if ($ragDocNames->isNotEmpty()) {
+            $md .= "- **RAG Document Names**:\n";
+            foreach ($ragDocNames as $docName) {
+                $md .= "  - `{$docName}`\n";
+            }
+        }
+
+        $md .= "\n";
 
         $md .= "## Participants\n\n";
         $md .= "| Side | Persona | Provider | Model | Temperature |\n";
@@ -76,10 +97,6 @@ class TranscriptService
         $md .= '- **Stop Word Detection**: '.($conversation->stop_word_detection ? 'Enabled' : 'Disabled')."\n";
         $md .= "- **Stop Word Threshold**: {$conversation->stop_word_threshold}\n";
         $md .= '- **Configured Stop Words**: '.($stopWords !== [] ? implode(', ', $stopWords) : 'None')."\n\n";
-
-        $ragConfig = is_array($conversation->metadata['rag'] ?? null) ? $conversation->metadata['rag'] : [];
-        $ragEnabled = (bool) ($ragConfig['enabled'] ?? false);
-        $ragFiles = array_filter((array) ($ragConfig['files'] ?? []), fn ($p) => is_string($p) && $p !== '');
 
         $md .= "## RAG Configuration\n\n";
         $md .= '- **Cross-Chat Memory**: '.($ragEnabled ? 'Enabled' : 'Disabled')."\n";
@@ -113,13 +130,21 @@ class TranscriptService
 
             if ($msg->role === 'user') {
                 $role = 'Starter';
+                $provider = 'N/A';
+                $model = 'N/A';
             } elseif ($isPersonaA) {
                 $role = "Agent A: {$personaAName} ({$conversation->provider_a})";
+                $provider = $conversation->provider_a ?? 'N/A';
+                $model = $conversation->model_a ?? 'N/A';
             } elseif ($isPersonaB) {
                 $role = "Agent B: {$personaBName} ({$conversation->provider_b})";
+                $provider = $conversation->provider_b ?? 'N/A';
+                $model = $conversation->model_b ?? 'N/A';
             } else {
                 $personaName = $msg->persona->name ?? 'Agent';
                 $role = $personaName;
+                $provider = 'N/A';
+                $model = 'N/A';
             }
 
             if ($msg->role !== 'user') {
@@ -130,6 +155,8 @@ class TranscriptService
             $md .= "- Timestamp: {$msg->created_at}\n";
             $md .= "- Role: {$msg->role}\n";
             $md .= '- Persona ID: '.($msg->persona_id ?? 'N/A')."\n";
+            $md .= "- Provider: {$provider}\n";
+            $md .= "- Model: {$model}\n";
             $md .= '- Tokens Used: '.($msg->tokens_used ?? 0)."\n";
             $md .= '- Character Count: '.strlen((string) $msg->content)."\n\n";
             $md .= "{$msg->content}\n\n";

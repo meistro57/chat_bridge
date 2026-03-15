@@ -17,10 +17,18 @@ class Message extends Model
         'content',
         'tokens_used',
         'embedding',
+        'embedding_status',
+        'embedding_attempts',
+        'embedding_last_error',
+        'embedding_skip_reason',
+        'embedding_last_attempt_at',
+        'embedding_next_retry_at',
     ];
 
     protected $casts = [
         'embedding' => 'array',
+        'embedding_last_attempt_at' => 'datetime',
+        'embedding_next_retry_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo

@@ -52,13 +52,25 @@ class TranscriptServiceTest extends TestCase
             'content' => 'Start the conversation.',
         ]);
 
+        $conversation->messages()->create([
+            'persona_id' => $personaA->id,
+            'role' => 'assistant',
+            'content' => 'Loaded context from attached docs.',
+            'tokens_used' => 120,
+        ]);
+
         $path = $this->service->generate($conversation);
         $content = Storage::disk('local')->get($path);
 
-        $this->assertStringContainsString('## RAG Configuration', $content);
-        $this->assertStringContainsString('Cross-Chat Memory**: Enabled', $content);
+        $this->assertStringContainsString('## Chat Header', $content);
+        $this->assertStringContainsString('RAG Documents Attached**: 2', $content);
+        $this->assertStringContainsString('RAG Document Names', $content);
         $this->assertStringContainsString('`research-notes-uuid.txt`', $content);
         $this->assertStringContainsString('`context-uuid.pdf`', $content);
+        $this->assertStringContainsString('## RAG Configuration', $content);
+        $this->assertStringContainsString('Cross-Chat Memory**: Enabled', $content);
+        $this->assertStringContainsString('- Provider: openai', $content);
+        $this->assertStringContainsString('- Model: gpt-4o-mini', $content);
     }
 
     public function test_transcript_rag_section_shows_none_when_no_files_attached(): void
@@ -90,6 +102,8 @@ class TranscriptServiceTest extends TestCase
         $path = $this->service->generate($conversation);
         $content = Storage::disk('local')->get($path);
 
+        $this->assertStringContainsString('## Chat Header', $content);
+        $this->assertStringContainsString('RAG Documents Attached**: 0', $content);
         $this->assertStringContainsString('## RAG Configuration', $content);
         $this->assertStringContainsString('Cross-Chat Memory**: Disabled', $content);
         $this->assertStringContainsString('Attached Files**: None', $content);

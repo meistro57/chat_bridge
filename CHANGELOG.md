@@ -2,6 +2,46 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-15
+
+### ⭐ Persona Favorites
+- Added `is_favorite` boolean field to personas (default `true` for all new personas).
+- New `PATCH /personas/{persona}/favorite` route (`personas.favorite`) to toggle favorite status.
+- Personas list now sorts favorites to the top, then by most recently created.
+- Star toggle rendered inline on the Personas index page.
+
+### 🧠 Embedding Tracking & Retry
+- New `embedding_status`, `embedding_attempts`, `embedding_last_error`, `embedding_skip_reason`, `embedding_last_attempt_at`, and `embedding_next_retry_at` columns on `messages` table for observability.
+- `MessageEmbeddingPopulator` service handles embedding generation with exponential backoff (60s → 5m → 15m → 30m), max 5 attempts.
+- `PopulateMessageEmbeddingJob` dispatched per message; skips already-embedded or `skipped`-status messages and respects `embedding_next_retry_at` cooldown.
+- New `ai.embedding_population_max_attempts` and `ai.embedding_input_max_chars` config keys.
+
+### 📄 Document RAG — DOCX & PDF Support
+- Template file context now supports `.docx` and `.pdf` uploads in addition to `.txt`, `.md`, `.csv`, and `.json`.
+- DOCX text extracted via `ZipArchive` from `word/document.xml`, paragraph/table tags converted to line breaks.
+- PDF text extracted via regex-based PDF string literal parsing with escape decoding and octal replacement.
+- All extracted content normalized: UTF-8 validation, whitespace collapsing, and length capping via `ai.embedding_input_max_chars`.
+- File context injection decoupled from cross-chat memory — template docs are injected even when cross-chat RAG is disabled.
+
+### 📋 Transcript Enhancements
+- Transcripts now include a **Chat Header** section summarising: session label, starter prompt preview, memory window, cross-chat memory state, and attached RAG document names.
+- Each message entry now includes **Provider** and **Model** fields for traceability.
+
+### 🔧 MCP Tools Fix
+- Tool request construction switched from `new Request([...])` to `Request::create('/', 'GET', [...])` — fixes query-string population for `searchConversations`, `getContextualMemory`, and `getRecentChats`.
+- `conversation_id` parameter type corrected from `integer` to `string` in the `getConversation` tool schema.
+- Added `GET /api/mcp/contextual_memory` alias (underscore) alongside the existing hyphenated route for broader client compatibility.
+
+### 🛠️ Admin MCP Utilities API
+- New API routes under `/api/admin/mcp-utilities` (require Sanctum token + admin role):
+  - `GET /embeddings/compare` — compare DB vs Qdrant embedding counts.
+  - `POST /embeddings/populate` — trigger batch embedding backfill.
+  - `POST /flush` — flush MCP caches.
+  - `GET /traffic` — retrieve recent MCP tool execution events.
+
+### 🔄 Scheduler
+- Replaced `pulse:snapshot` with `pulse:check` in the console schedule for Laravel Pulse compatibility.
+
 ## [Unreleased] - 2026-03-12
 
 ### 🔑 Personal Access Tokens

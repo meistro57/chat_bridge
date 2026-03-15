@@ -430,7 +430,7 @@ export default function Create({
                                 >
                                     <option value="">Select Persona...</option>
                                     {personas.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
                                     ))}
                                 </select>
                                 {errors.persona_a_id && <div className="text-red-400 text-sm">{errors.persona_a_id}</div>}
@@ -448,7 +448,7 @@ export default function Create({
                                 >
                                     <option value="">Select Provider...</option>
                                     {PROVIDERS.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_a && <div className="text-red-400 text-sm">{errors.provider_a}</div>}
@@ -500,7 +500,7 @@ export default function Create({
                                 >
                                     <option value="">Select Persona...</option>
                                     {personas.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
                                     ))}
                                 </select>
                                 {errors.persona_b_id && <div className="text-red-400 text-sm">{errors.persona_b_id}</div>}
@@ -518,7 +518,7 @@ export default function Create({
                                 >
                                     <option value="">Select Provider...</option>
                                     {PROVIDERS.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_b && <div className="text-red-400 text-sm">{errors.provider_b}</div>}

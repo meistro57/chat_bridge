@@ -1,0 +1,85 @@
+function invoke(params) {
+  try {
+    const apiKey = secrets.get("bridge_api_key");
+    const baseUrl = "https://bridge.quantummindsunited.com";
+    let url = "";
+    let method = "GET";
+
+    const rawLimit = Number(params && params.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 5;
+    const provider = params && params.provider ? `&provider=${encodeURIComponent(params.provider)}` : "";
+
+    switch ((params && params.action) || "") {
+      case "health":
+        url = `${baseUrl}/api/mcp/health`;
+        break;
+      case "stats":
+        url = `${baseUrl}/api/mcp/stats`;
+        break;
+      case "recent_chats":
+        url = `${baseUrl}/api/mcp/recent-chats?limit=${limit}`;
+        break;
+      case "search_chats":
+        url = `${baseUrl}/api/mcp/search-chats?keyword=${encodeURIComponent((params && params.keyword) || "")}`;
+        break;
+      case "contextual_memory":
+        url = `${baseUrl}/api/mcp/contextual-memory?topic=${encodeURIComponent((params && params.topic) || "")}&limit=${limit}`;
+        break;
+      case "compare_embeddings":
+        url = `${baseUrl}/api/admin/mcp-utilities/embeddings/compare`;
+        break;
+      case "populate_embeddings":
+        url = `${baseUrl}/api/admin/mcp-utilities/embeddings/populate`;
+        method = "POST";
+        break;
+      case "traffic":
+        url = `${baseUrl}/api/admin/mcp-utilities/traffic?limit=${limit}${provider}`;
+        break;
+      case "flush":
+        url = `${baseUrl}/api/admin/mcp-utilities/flush`;
+        method = "POST";
+        break;
+      default:
+        return { error: "Unknown action", action: (params && params.action) || null };
+    }
+
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    };
+
+    const body =
+      (params && params.action) === "populate_embeddings"
+        ? JSON.stringify({ limit })
+        : "{}";
+
+    const response =
+      method === "GET"
+        ? http.get(url, { headers })
+        : http.post(url, { body, headers });
+
+    let parsed;
+    try {
+      parsed = JSON.parse(response.body || "{}");
+    } catch (parseError) {
+      parsed = { raw: response.body || "", parse_error: String(parseError) };
+    }
+
+    if (response.status === 200) {
+      return parsed;
+    }
+
+    return {
+      error: `Bridge status ${response.status}`,
+      details: parsed,
+      status: response.status,
+      url
+    };
+  } catch (error) {
+    return {
+      error: "Tool invocation failed",
+      details: String(error)
+    };
+  }
+}

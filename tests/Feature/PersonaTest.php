@@ -63,7 +63,10 @@ class PersonaTest extends TestCase
         ]);
 
         $response->assertRedirect('/personas');
-        $this->assertDatabaseHas('personas', ['name' => 'Test Persona']);
+        $this->assertDatabaseHas('personas', [
+            'name' => 'Test Persona',
+            'is_favorite' => true,
+        ]);
     }
 
     public function test_can_update_persona(): void
@@ -86,6 +89,48 @@ class PersonaTest extends TestCase
             'name' => 'Updated Persona',
             'notes' => 'Internal note',
         ]);
+    }
+
+    public function test_can_toggle_persona_favorite(): void
+    {
+        $user = User::factory()->create();
+        $persona = Persona::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => true,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('personas.favorite', $persona));
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('personas', [
+            'id' => $persona->id,
+            'is_favorite' => false,
+        ]);
+    }
+
+    public function test_persona_index_prioritizes_favorites(): void
+    {
+        $user = User::factory()->create();
+
+        $nonFavorite = Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Non Favorite Persona',
+            'is_favorite' => false,
+        ]);
+
+        $favorite = Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Favorite Persona',
+            'is_favorite' => true,
+        ]);
+
+        $response = $this->actingAs($user)->get('/personas');
+
+        $response->assertStatus(200);
+        $personas = collect($response->viewData('page')['props']['personas'] ?? []);
+
+        $this->assertSame($favorite->id, $personas->first()['id'] ?? null);
+        $this->assertSame($nonFavorite->id, $personas->last()['id'] ?? null);
     }
 
     public function test_can_generate_persona_with_ai_creator_endpoint(): void

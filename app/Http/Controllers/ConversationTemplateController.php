@@ -167,8 +167,9 @@ class ConversationTemplateController extends Controller
     private function loadPersonas(): array|\Illuminate\Database\Eloquent\Collection
     {
         return Persona::query()
+            ->orderByDesc('is_favorite')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'is_favorite']);
     }
 
     private function loadCategories(Request $request)

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class ChatTest extends TestCase
@@ -27,6 +28,37 @@ class ChatTest extends TestCase
         $user = User::factory()->create();
         $response = $this->actingAs($user)->get('/chat/search?q=test');
         $response->assertStatus(200);
+    }
+
+    public function test_chat_pages_prioritize_favorite_personas(): void
+    {
+        $user = User::factory()->create();
+
+        Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Zulu Persona',
+            'is_favorite' => false,
+        ]);
+
+        $favoritePersona = Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Alpha Persona',
+            'is_favorite' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/chat')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Chat')
+                ->where('personas.0.id', $favoritePersona->id)
+            );
+
+        $this->actingAs($user)
+            ->get('/chat/create')
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Chat/Create')
+                ->where('personas.0.id', $favoritePersona->id)
+            );
     }
 
     public function test_can_create_new_conversation(): void

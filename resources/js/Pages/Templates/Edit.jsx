@@ -93,7 +93,7 @@ export default function Edit({ template, personas, categories }) {
                                 >
                                     <option value="">Select Persona</option>
                                     {personas.map((persona) => (
-                                        <option key={persona.id} value={persona.id}>{persona.name}</option>
+                                        <option key={persona.id} value={persona.id}>{persona.is_favorite ? `★ ${persona.name}` : persona.name}</option>
                                     ))}
                                 </select>
                                 {errors.persona_a_id && <p className="text-xs text-red-400">{errors.persona_a_id}</p>}
@@ -107,7 +107,7 @@ export default function Edit({ template, personas, categories }) {
                                 >
                                     <option value="">Select Persona</option>
                                     {personas.map((persona) => (
-                                        <option key={persona.id} value={persona.id}>{persona.name}</option>
+                                        <option key={persona.id} value={persona.id}>{persona.is_favorite ? `★ ${persona.name}` : persona.name}</option>
                                     ))}
                                 </select>
                                 {errors.persona_b_id && <p className="text-xs text-red-400">{errors.persona_b_id}</p>}

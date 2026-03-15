@@ -5,6 +5,7 @@ namespace App\Services\AI\Tools;
 use App\Http\Controllers\Api\McpController;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -46,7 +47,7 @@ class McpTools
                 'required' => ['keyword'],
             ],
             executor: function (array $args) {
-                $request = new \Illuminate\Http\Request(['keyword' => $args['keyword'] ?? '']);
+                $request = Request::create('/', 'GET', ['keyword' => $args['keyword'] ?? '']);
 
                 return $this->normalizeToolResult($this->mcpController->search($request));
             }
@@ -74,7 +75,7 @@ class McpTools
                 'required' => ['topic'],
             ],
             executor: function (array $args) {
-                $request = new \Illuminate\Http\Request([
+                $request = Request::create('/', 'GET', [
                     'topic' => $args['topic'] ?? '',
                     'limit' => min($args['limit'] ?? 5, 20),
                 ]);
@@ -106,7 +107,7 @@ class McpTools
                 'required' => [],
             ],
             executor: function (array $args) {
-                $request = new \Illuminate\Http\Request([
+                $request = Request::create('/', 'GET', [
                     'limit' => min($args['limit'] ?? 10, 50),
                 ]);
 
@@ -124,7 +125,7 @@ class McpTools
                 'type' => 'object',
                 'properties' => [
                     'conversation_id' => [
-                        'type' => 'integer',
+                        'type' => 'string',
                         'description' => 'The ID of the conversation to retrieve',
                     ],
                 ],

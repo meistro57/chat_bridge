@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Api\McpController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PopulateEmbeddingsRequest;
+use App\Jobs\PopulateMessageEmbeddingJob;
 use App\Models\Message;
 use App\Services\AI\AIManager;
 use App\Services\AI\EmbeddingService;
+use App\Services\AI\MessageEmbeddingPopulator;
 use App\Support\McpTrafficMonitor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -66,25 +68,25 @@ class McpUtilitiesController extends Controller
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
-                    path: '/admin/mcp-utilities/embeddings/compare',
+                    path: '/api/admin/mcp-utilities/embeddings/compare',
                     description: 'Compare message totals vs. embeddings and return missing counts.',
                     baseUrl: $baseUrl,
                 ),
                 $this->endpointDefinition(
                     method: 'POST',
-                    path: '/admin/mcp-utilities/embeddings/populate',
+                    path: '/api/admin/mcp-utilities/embeddings/populate',
                     description: 'Generate embeddings for messages that are missing them.',
                     baseUrl: $baseUrl,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
-                    path: '/admin/mcp-utilities/traffic?limit=40&provider=ollama',
+                    path: '/api/admin/mcp-utilities/traffic?limit=40&provider=ollama',
                     description: 'Recent in-app MCP tool traffic (filterable by provider).',
                     baseUrl: $baseUrl,
                 ),
                 $this->endpointDefinition(
                     method: 'POST',
-                    path: '/admin/mcp-utilities/flush',
+                    path: '/api/admin/mcp-utilities/flush',
                     description: 'Flush failed queue jobs and stale RunChatSession overlap locks, then restart workers.',
                     baseUrl: $baseUrl,
                 ),
@@ -112,35 +114,59 @@ class McpUtilitiesController extends Controller
         ]);
     }
 
-    public function populateEmbeddings(PopulateEmbeddingsRequest $request, EmbeddingService $embeddingService): JsonResponse
-    {
+    public function populateEmbeddings(
+        PopulateEmbeddingsRequest $request,
+        EmbeddingService $embeddingService,
+        MessageEmbeddingPopulator $messageEmbeddingPopulator,
+    ): JsonResponse {
         $limit = $request->integer('limit');
         $updated = 0;
         $failed = 0;
+        $skipped = 0;
+        $queuedRetries = 0;
+        $maxAttempts = $messageEmbeddingPopulator->maxAttempts();
 
         $messages = Message::query()
             ->whereNull('embedding')
-            ->whereNotNull('content')
+            ->where(function ($query) {
+                $query->whereNull('embedding_status')
+                    ->orWhere('embedding_status', '!=', 'skipped');
+            })
+            ->where(function ($query) {
+                $query->whereNull('embedding_next_retry_at')
+                    ->orWhere('embedding_next_retry_at', '<=', now());
+            })
+            ->where('embedding_attempts', '<', $maxAttempts)
             ->orderBy('id')
             ->limit($limit)
-            ->get(['id', 'content']);
+            ->get();
 
         foreach ($messages as $message) {
-            try {
-                $content = trim((string) $message->content);
+            $result = $messageEmbeddingPopulator->populate($message, $embeddingService);
 
-                if ($content === '') {
-                    $failed++;
-
-                    continue;
-                }
-
-                $embedding = $embeddingService->getEmbedding($content);
-                $message->update(['embedding' => $embedding]);
+            if ($result['status'] === 'embedded') {
                 $updated++;
-            } catch (\Throwable $exception) {
-                $failed++;
-                report($exception);
+
+                continue;
+            }
+
+            if ($result['status'] === 'skipped') {
+                $skipped++;
+
+                continue;
+            }
+
+            $failed++;
+            report($result['error']);
+
+            if (
+                $result['retriable']
+                && $result['next_retry_at'] !== null
+                && config('queue.default') !== 'sync'
+            ) {
+                PopulateMessageEmbeddingJob::dispatch($message->id)
+                    ->delay($result['next_retry_at']);
+                $queuedRetries++;
             }
         }
 
@@ -153,6 +179,8 @@ class McpUtilitiesController extends Controller
                 'processed' => $messages->count(),
                 'updated' => $updated,
                 'failed' => $failed,
+                'skipped' => $skipped,
+                'queued_retries' => $queuedRetries,
                 'remaining_missing' => $audit['missing_embeddings_count'],
             ],
             'audit' => $audit,
@@ -242,13 +270,32 @@ class McpUtilitiesController extends Controller
     }
 
     /**
-     * @return array{messages_count:int,embeddings_count:int,missing_embeddings_count:int,coverage_percent:float,checked_at:string}
+     * @return array{messages_count:int,embeddings_count:int,missing_embeddings_count:int,unembeddable_count:int,retryable_failed_count:int,terminal_failed_count:int,coverage_percent:float,checked_at:string}
      */
     private function embeddingAudit(): array
     {
         $messagesCount = Message::query()->count();
         $embeddingsCount = Message::query()->whereNotNull('embedding')->count();
-        $missingCount = max($messagesCount - $embeddingsCount, 0);
+        $missingCount = Message::query()->whereNull('embedding')->count();
+        $maxAttempts = max(1, (int) config('ai.embedding_population_max_attempts', 5));
+
+        $unembeddableCount = Message::query()
+            ->whereNull('embedding')
+            ->where('embedding_status', 'skipped')
+            ->count();
+
+        $retryableFailedCount = Message::query()
+            ->whereNull('embedding')
+            ->where('embedding_status', 'failed')
+            ->where('embedding_attempts', '<', $maxAttempts)
+            ->count();
+
+        $terminalFailedCount = Message::query()
+            ->whereNull('embedding')
+            ->where('embedding_status', 'failed')
+            ->where('embedding_attempts', '>=', $maxAttempts)
+            ->count();
+
         $coveragePercent = $messagesCount > 0
             ? round(($embeddingsCount / $messagesCount) * 100, 2)
             : 100.0;
@@ -257,6 +304,9 @@ class McpUtilitiesController extends Controller
             'messages_count' => $messagesCount,
             'embeddings_count' => $embeddingsCount,
             'missing_embeddings_count' => $missingCount,
+            'unembeddable_count' => $unembeddableCount,
+            'retryable_failed_count' => $retryableFailedCount,
+            'terminal_failed_count' => $terminalFailedCount,
             'coverage_percent' => $coveragePercent,
             'checked_at' => now()->toIso8601String(),
         ];

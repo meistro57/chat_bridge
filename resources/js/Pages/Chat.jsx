@@ -170,7 +170,10 @@ export default function Chat({ personas, conversations, debug_info }) {
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                             </div>
                                             <div>
-                                                <div className="text-zinc-200 font-medium group-hover:text-indigo-300 transition-colors">{persona.name}</div>
+                                                <div className="text-zinc-200 font-medium group-hover:text-indigo-300 transition-colors">
+                                                    {persona.is_favorite ? '★ ' : ''}
+                                                    {persona.name}
+                                                </div>
                                                 <div className="text-[10px] uppercase tracking-wider text-zinc-500 group-hover:text-indigo-400 transition-colors">Temp {persona.temperature}</div>
                                             </div>
                                         </div>

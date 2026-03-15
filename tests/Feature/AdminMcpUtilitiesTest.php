@@ -68,6 +68,120 @@ class AdminMcpUtilitiesTest extends TestCase
         $response->assertJsonPath('events.0.provider', 'openai');
     }
 
+    public function test_admin_mcp_web_utility_json_endpoints_require_session_auth(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $token = $admin->createToken('mcp-admin-api');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->getJson(route('admin.mcp.utilities.traffic'));
+
+        $response->assertUnauthorized();
+    }
+
+    public function test_admin_mcp_web_utility_post_endpoint_requires_session_auth(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $token = $admin->createToken('mcp-admin-api-post');
+
+        Message::factory()->create([
+            'embedding' => null,
+            'content' => 'Populate this via bearer token',
+        ]);
+
+        $this->mock(EmbeddingService::class, function ($mock): void {
+            $mock->shouldReceive('getEmbedding')
+                ->never();
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->postJson(route('admin.mcp.utilities.embeddings.populate'), [
+            'limit' => 1,
+        ]);
+
+        $response->assertUnauthorized();
+    }
+
+    public function test_admin_can_use_api_mcp_utility_get_endpoint_with_bearer_token(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $token = $admin->createToken('mcp-admin-api-get-via-api');
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->getJson('/api/admin/mcp-utilities/traffic');
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+    }
+
+    public function test_admin_can_use_api_mcp_utility_post_endpoint_with_bearer_token(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $token = $admin->createToken('mcp-admin-api-post-via-api');
+
+        Message::factory()->create([
+            'embedding' => null,
+            'content' => 'Populate through API mirror',
+        ]);
+
+        $this->mock(EmbeddingService::class, function ($mock): void {
+            $mock->shouldReceive('getEmbedding')
+                ->once()
+                ->with('Populate through API mirror')
+                ->andReturn([0.91, 0.82, 0.73]);
+        });
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '.$token->plainTextToken,
+        ])->postJson('/api/admin/mcp-utilities/embeddings/populate', [
+            'limit' => 1,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('summary.processed', 1);
+        $response->assertJsonPath('summary.updated', 1);
+    }
+
+    public function test_api_mcp_utility_endpoints_require_admin_role(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+        ]);
+
+        $token = $user->createToken('mcp-non-admin-api')->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->getJson('/api/admin/mcp-utilities/traffic')->assertForbidden();
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+        ])->postJson('/api/admin/mcp-utilities/flush')->assertForbidden();
+    }
+
+    public function test_api_mcp_utility_endpoints_require_bearer_token(): void
+    {
+        $this->getJson('/api/admin/mcp-utilities/traffic')->assertUnauthorized();
+
+        $this->postJson('/api/admin/mcp-utilities/flush')->assertUnauthorized();
+    }
+
     public function test_admin_can_compare_embedding_coverage(): void
     {
         $admin = User::factory()->create([
@@ -125,6 +239,70 @@ class AdminMcpUtilitiesTest extends TestCase
         $missing->refresh();
         $this->assertNotNull($missing->embedding);
         $this->assertSame([0.42, 0.24, 0.12], $missing->embedding);
+    }
+
+    public function test_populate_embeddings_marks_blank_content_as_skipped(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $message = Message::factory()->create([
+            'embedding' => null,
+            'content' => "   ",
+            'embedding_attempts' => 0,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->postJson(route('admin.mcp.utilities.embeddings.populate'), [
+                'limit' => 1,
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('summary.processed', 1);
+        $response->assertJsonPath('summary.skipped', 1);
+
+        $message->refresh();
+        $this->assertSame('skipped', $message->embedding_status);
+        $this->assertSame('empty_or_invalid_content', $message->embedding_skip_reason);
+        $this->assertSame(1, $message->embedding_attempts);
+        $this->assertNull($message->embedding);
+    }
+
+    public function test_populate_embeddings_tracks_retryable_failures(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $message = Message::factory()->create([
+            'embedding' => null,
+            'content' => 'This provider call will fail',
+            'embedding_attempts' => 0,
+        ]);
+
+        $this->mock(EmbeddingService::class, function ($mock): void {
+            $mock->shouldReceive('getEmbedding')
+                ->once()
+                ->andThrow(new \RuntimeException('Provider unavailable'));
+        });
+
+        $response = $this->actingAs($admin)
+            ->postJson(route('admin.mcp.utilities.embeddings.populate'), [
+                'limit' => 1,
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('ok', true);
+        $response->assertJsonPath('summary.processed', 1);
+        $response->assertJsonPath('summary.failed', 1);
+
+        $message->refresh();
+        $this->assertSame('failed', $message->embedding_status);
+        $this->assertSame(1, $message->embedding_attempts);
+        $this->assertSame('Provider unavailable', $message->embedding_last_error);
+        $this->assertNotNull($message->embedding_next_retry_at);
     }
 
     public function test_admin_can_flush_queue_state(): void

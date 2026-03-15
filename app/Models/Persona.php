@@ -19,11 +19,13 @@ class Persona extends Model
         'guidelines',
         'temperature',
         'notes',
+        'is_favorite',
     ];
 
     protected $casts = [
         'guidelines' => 'json',
         'temperature' => 'float',
+        'is_favorite' => 'boolean',
     ];
 
     public function user(): BelongsTo

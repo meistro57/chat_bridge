@@ -115,6 +115,16 @@ class PersonalAccessTokenTest extends TestCase
             ->assertOk();
     }
 
+    public function test_contextual_memory_alias_route_accepts_sanctum_bearer_token(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-contextual-memory-alias');
+
+        $this->withHeaders(['Authorization' => 'Bearer ' . $token->plainTextToken])
+            ->getJson('/api/mcp/contextual_memory?topic=queues&limit=5')
+            ->assertOk();
+    }
+
     public function test_mcp_routes_reject_env_token(): void
     {
         config(['services.chat_bridge.token' => 'test-env-token']);

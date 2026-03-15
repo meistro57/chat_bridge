@@ -142,19 +142,21 @@ class ConversationService
         }
 
         $ragConfig = $this->conversationRagConfig($conversation);
-        $ragEnabled = (bool) ($ragConfig['enabled'] ?? true);
+        $crossChatMemoryEnabled = (bool) ($ragConfig['enabled'] ?? true);
+        $fileContext = $this->templateFileContextMessage($ragConfig);
 
-        if ($ragEnabled) {
+        if ($crossChatMemoryEnabled || $fileContext !== null) {
             $ragSystemPrompt = trim((string) ($ragConfig['system_prompt'] ?? ''));
             if ($ragSystemPrompt !== '') {
                 $messages->push(new MessageData('system', "RAG instruction: {$ragSystemPrompt}"));
             }
 
-            $fileContext = $this->templateFileContextMessage($ragConfig);
             if ($fileContext !== null) {
                 $messages->push(new MessageData('system', $fileContext));
             }
+        }
 
+        if ($crossChatMemoryEnabled) {
             $relevantContext = $this->getRelevantContext($persona, $history, $ragConfig);
             if ($relevantContext->isNotEmpty()) {
                 $messages->push(new MessageData('system', $this->formatRelevantContextMessage($relevantContext)));
@@ -538,16 +540,113 @@ class ConversationService
     protected function readTemplateFileSnippet(string $path, int $maxChars): ?string
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (! in_array($extension, ['txt', 'md', 'csv', 'json'], true)) {
-            return null;
-        }
+        $rawContent = (string) Storage::disk('local')->get($path);
 
-        $content = trim((string) Storage::disk('local')->get($path));
-        if ($content === '') {
+        $content = match ($extension) {
+            'txt', 'md', 'csv', 'json' => $this->normalizeExtractedText($rawContent),
+            'docx' => $this->extractDocxText($rawContent),
+            'pdf' => $this->extractPdfText($rawContent),
+            default => null,
+        };
+
+        if ($content === null || $content === '') {
             return null;
         }
 
         return Str::limit($content, $maxChars, '...');
+    }
+
+    protected function extractDocxText(string $binaryContent): ?string
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            return null;
+        }
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'rag-docx-');
+        if ($tempPath === false) {
+            return null;
+        }
+
+        file_put_contents($tempPath, $binaryContent);
+
+        $zip = new \ZipArchive;
+        $opened = $zip->open($tempPath);
+
+        if ($opened !== true) {
+            @unlink($tempPath);
+
+            return null;
+        }
+
+        $documentXml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        @unlink($tempPath);
+
+        if (! is_string($documentXml) || trim($documentXml) === '') {
+            return null;
+        }
+
+        $text = str_replace(['</w:p>', '</w:tr>', '</w:tc>'], "\n", $documentXml);
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
+
+        return $this->normalizeExtractedText($text);
+    }
+
+    protected function extractPdfText(string $binaryContent): ?string
+    {
+        preg_match_all('/\((?<text>(?:\\\\.|[^\\\\()])*)\)/s', $binaryContent, $matches);
+
+        $segments = collect($matches['text'] ?? [])
+            ->map(fn (string $segment): string => $this->decodePdfTextSegment($segment))
+            ->filter(fn (string $segment): bool => $segment !== '')
+            ->values();
+
+        if ($segments->isEmpty()) {
+            return null;
+        }
+
+        return $this->normalizeExtractedText($segments->implode("\n"));
+    }
+
+    protected function decodePdfTextSegment(string $segment): string
+    {
+        $decoded = preg_replace_callback('/\\\\([nrtbf()\\\\])/', function (array $matches): string {
+            return match ($matches[1]) {
+                'n' => "\n",
+                'r' => "\r",
+                't' => "\t",
+                'b' => "\x08",
+                'f' => "\f",
+                default => $matches[1],
+            };
+        }, $segment);
+
+        if (! is_string($decoded)) {
+            return '';
+        }
+
+        $decoded = preg_replace('/\\\\[0-7]{1,3}/', ' ', $decoded) ?? $decoded;
+
+        return trim($decoded);
+    }
+
+    protected function normalizeExtractedText(?string $content): ?string
+    {
+        if (! is_string($content)) {
+            return null;
+        }
+
+        if (! mb_check_encoding($content, 'UTF-8')) {
+            $content = mb_convert_encoding($content, 'UTF-8');
+        }
+
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $content = preg_replace('/[ \t]+/', ' ', $content) ?? $content;
+        $content = preg_replace("/\n{3,}/", "\n\n", $content) ?? $content;
+        $content = trim($content);
+
+        return $content === '' ? null : $content;
     }
 
     /**

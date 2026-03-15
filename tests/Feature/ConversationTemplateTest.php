@@ -226,6 +226,43 @@ class ConversationTemplateTest extends TestCase
         ]);
     }
 
+    public function test_template_forms_prioritize_favorite_personas(): void
+    {
+        $user = User::factory()->create();
+
+        Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Zulu Persona',
+            'is_favorite' => false,
+        ]);
+
+        $favoritePersona = Persona::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Alpha Persona',
+            'is_favorite' => true,
+        ]);
+
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'persona_a_id' => $favoritePersona->id,
+            'persona_b_id' => $favoritePersona->id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('templates.create'))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Templates/Create')
+                ->where('personas.0.id', $favoritePersona->id)
+            );
+
+        $this->actingAs($user)
+            ->get(route('templates.edit', $template))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->component('Templates/Edit')
+                ->where('personas.0.id', $favoritePersona->id)
+            );
+    }
+
     public function test_user_can_delete_own_template(): void
     {
         $user = User::factory()->create();

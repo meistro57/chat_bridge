@@ -135,6 +135,190 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $this->assertSame(['ok'], $chunks);
     }
 
+    public function test_generate_turn_includes_attached_file_context_when_cross_chat_memory_is_disabled(): void
+    {
+        Storage::fake('local');
+        config()->set('ai.tools_enabled', false);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+        $conversationId = (string) Str::uuid();
+        $filePath = "session-rag/{$user->id}/{$conversationId}/briefing.md";
+        Storage::disk('local')->put($filePath, 'Attached context: prioritize incident containment over feature work.');
+
+        $conversation = Conversation::create([
+            'id' => $conversationId,
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'mock',
+            'provider_b' => 'mock',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 1.0,
+            'temp_b' => 1.0,
+            'starter_message' => 'Use the attached references.',
+            'status' => 'active',
+            'metadata' => [
+                'rag' => [
+                    'enabled' => false,
+                    'source_limit' => 6,
+                    'score_threshold' => 0.3,
+                    'system_prompt' => 'Rely on attached evidence when present.',
+                    'files' => [$filePath],
+                ],
+            ],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(false);
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->withArgs(function (Collection $messages, float $temperature): bool {
+                $this->assertSame(1.0, $temperature);
+
+                $contents = $messages
+                    ->map(fn (MessageData $message) => $message->content)
+                    ->implode("\n\n");
+
+                $this->assertStringContainsString('RAG instruction: Rely on attached evidence when present.', $contents);
+                $this->assertStringContainsString('Relevant template file excerpts:', $contents);
+                $this->assertStringContainsString('Attached context: prioritize incident containment over feature work.', $contents);
+                $this->assertStringNotContainsString('Relevant context from previous conversations:', $contents);
+
+                return true;
+            })
+            ->andReturn(new \ArrayIterator(['ok']));
+        $driver->shouldReceive('chat')->never();
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $rag = Mockery::mock(RagService::class);
+        $rag->shouldReceive('searchSimilarMessages')->never();
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: $rag,
+            toolExecutor: Mockery::mock(ToolExecutor::class),
+            streamingChunker: new StreamingChunker
+        );
+
+        $history = collect([
+            new MessageData('assistant', 'latest prompt for retrieval', $personaB->name),
+        ]);
+
+        $result = $service->generateTurn($conversation, $personaA, $history);
+        $chunks = iterator_to_array($result['content']);
+
+        $this->assertSame(['ok'], $chunks);
+    }
+
+    public function test_generate_turn_includes_docx_template_rag_content_in_prompt(): void
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            $this->markTestSkipped('ZipArchive extension is required for DOCX extraction test.');
+        }
+
+        Storage::fake('local');
+        config()->set('ai.tools_enabled', false);
+
+        $user = User::factory()->create();
+        $personaA = Persona::factory()->create();
+        $personaB = Persona::factory()->create();
+        $conversationId = (string) Str::uuid();
+        $filePath = "template-rag/{$user->id}/template-123/brief.docx";
+        Storage::disk('local')->put($filePath, $this->buildDocxBinary('Deployment runbook confirms blue-green rollback.'));
+
+        $conversation = Conversation::create([
+            'id' => $conversationId,
+            'user_id' => $user->id,
+            'persona_a_id' => $personaA->id,
+            'persona_b_id' => $personaB->id,
+            'provider_a' => 'mock',
+            'provider_b' => 'mock',
+            'model_a' => null,
+            'model_b' => null,
+            'temp_a' => 1.0,
+            'temp_b' => 1.0,
+            'starter_message' => 'Use the attached references.',
+            'status' => 'active',
+            'metadata' => [
+                'rag' => [
+                    'enabled' => true,
+                    'source_limit' => 6,
+                    'score_threshold' => 0.3,
+                    'system_prompt' => 'Ground responses in retrieved context.',
+                    'files' => [$filePath],
+                ],
+            ],
+            'max_rounds' => 3,
+            'stop_word_detection' => false,
+            'stop_words' => [],
+            'stop_word_threshold' => 0.8,
+        ]);
+
+        $driver = Mockery::mock(AIDriverInterface::class);
+        $driver->shouldReceive('supportsTools')
+            ->once()
+            ->andReturn(false);
+        $driver->shouldReceive('streamChat')
+            ->once()
+            ->withArgs(function (Collection $messages, float $temperature): bool {
+                $this->assertSame(1.0, $temperature);
+
+                $contents = $messages
+                    ->map(fn (MessageData $message) => $message->content)
+                    ->implode("\n\n");
+
+                $this->assertStringContainsString('Relevant template file excerpts:', $contents);
+                $this->assertStringContainsString('Deployment runbook confirms blue-green rollback.', $contents);
+
+                return true;
+            })
+            ->andReturn(new \ArrayIterator(['ok']));
+        $driver->shouldReceive('chat')->never();
+
+        $ai = Mockery::mock(AIManager::class);
+        $ai->shouldReceive('driverForProvider')
+            ->once()
+            ->andReturn($driver);
+
+        $rag = Mockery::mock(RagService::class);
+        $rag->shouldReceive('searchSimilarMessages')
+            ->once()
+            ->andReturn(collect());
+
+        $service = new ConversationService(
+            ai: $ai,
+            transcripts: Mockery::mock(TranscriptService::class),
+            embeddings: Mockery::mock(EmbeddingService::class),
+            rag: $rag,
+            toolExecutor: Mockery::mock(ToolExecutor::class),
+            streamingChunker: new StreamingChunker
+        );
+
+        $history = collect([
+            new MessageData('assistant', 'latest prompt for retrieval', $personaB->name),
+        ]);
+
+        $result = $service->generateTurn($conversation, $personaA, $history);
+        $chunks = iterator_to_array($result['content']);
+
+        $this->assertSame(['ok'], $chunks);
+    }
+
     public function test_generate_turn_falls_back_to_chat_when_stream_is_empty(): void
     {
         config()->set('services.qdrant.enabled', false);
@@ -682,6 +866,39 @@ class ConversationServiceStreamingFallbackTest extends TestCase
         $result = $service->generateTurn($conversation, $personaA, $history);
 
         $this->assertSame(['ok'], iterator_to_array($result['content']));
+    }
+
+    private function buildDocxBinary(string $text): string
+    {
+        $tempPath = tempnam(sys_get_temp_dir(), 'rag-docx-test-');
+
+        if ($tempPath === false) {
+            throw new \RuntimeException('Unable to allocate temporary DOCX path.');
+        }
+
+        $zip = new \ZipArchive;
+        $opened = $zip->open($tempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        if ($opened !== true) {
+            @unlink($tempPath);
+
+            throw new \RuntimeException('Unable to create temporary DOCX archive.');
+        }
+
+        $zip->addFromString('word/document.xml', sprintf(
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>%s</w:t></w:r></w:p></w:body></w:document>',
+            htmlspecialchars($text, ENT_XML1)
+        ));
+        $zip->close();
+
+        $binary = file_get_contents($tempPath);
+        @unlink($tempPath);
+
+        if (! is_string($binary) || $binary === '') {
+            throw new \RuntimeException('Failed to read generated DOCX binary content.');
+        }
+
+        return $binary;
     }
 
     protected function tearDown(): void

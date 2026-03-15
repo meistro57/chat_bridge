@@ -15,6 +15,10 @@ export default function Index({ personas }) {
         }
     };
 
+    const handleToggleFavorite = (id) => {
+        router.patch(route('personas.favorite', id), {}, { preserveScroll: true });
+    };
+
     return (
         <AuthenticatedLayout>
             <Head title="Persona Registry" />
@@ -59,6 +63,13 @@ export default function Index({ personas }) {
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                 </Link>
                                 <button
+                                    onClick={() => handleToggleFavorite(persona.id)}
+                                    className={`p-2 rounded-lg transition-colors ${persona.is_favorite ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:bg-zinc-700 hover:text-amber-300'}`}
+                                    title={persona.is_favorite ? 'Remove Favorite' : 'Mark Favorite'}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={persona.is_favorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                                <button
                                     onClick={() => handleDelete(persona.id)}
                                     className="p-2 rounded-lg bg-red-900/20 hover:bg-red-500 text-red-400 hover:text-white transition-colors"
                                     title="Delete Entity"
@@ -75,6 +86,11 @@ export default function Index({ personas }) {
                                     <div>
                                         <h3 className="font-bold text-lg text-zinc-100 group-hover:text-indigo-300 transition-colors">{persona.name}</h3>
                                         <div className="mt-1 flex items-center gap-2">
+                                            {persona.is_favorite && (
+                                                <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                                                    Favorite
+                                                </span>
+                                            )}
                                             <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white/5 text-zinc-400">
                                                 Persona Template
                                             </span>
