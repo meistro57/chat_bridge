@@ -53,6 +53,6 @@ class Orchestration extends Model
 
     public function latestRun(): HasOne
     {
-        return $this->hasOne(OrchestratorRun::class)->latestOfMany('created_at');
+        return $this->hasOne(OrchestratorRun::class)->latest('created_at');
     }
 }
