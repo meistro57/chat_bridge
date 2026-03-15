@@ -31,6 +31,23 @@
 - **JSON Export** - Export any persona from the edit page as a portable `.json` file
 - **Template Download** - Download a sample template to understand the persona JSON format
 
+### 🎛️ AI Orchestrator (`/orchestrator`)
+- **Pipeline Automation** - Define named sequences of AI conversation steps that run automatically
+- **Conversational Wizard** - Claude-powered setup wizard that asks clarifying questions and auto-generates a pipeline from natural language
+- **Draft Preview** - Wizard emits a structured JSON draft inside `<orchestration>` tags; preview and save with one click
+- **Multi-Step Pipelines** - Chain any number of steps, each launching a full `RunChatSession` conversation
+- **Input/Output Wiring** - Three input sources: `static`, `previous_step_output`, `variable`; four output actions: `log`, `pass_to_next`, `store_as_variable`, `webhook`
+- **Variable Bag** - Named runtime variables flow between steps using dot-notation resolution
+- **Condition Gates** - Steps can be skipped based on the previous step's output (`contains`, `not_contains`, `equals`, `regex`)
+- **Persona & Provider Overrides** - Each step can override the template's personas, providers, and models
+- **Pause for Approval** - Steps with `pause_before_run` halt the run and broadcast a real-time event until a user resumes
+- **Scheduled Runs** - Toggle a cron schedule per orchestration; `orchestration:schedule` command dispatches due runs every minute
+- **Manual Trigger** - Run any orchestration on-demand from the UI or `php artisan orchestration:run {id}`
+- **Run History** - Full audit trail: every run and every step run is recorded with status, output summary, timing, and errors
+- **Conversation Links** - Each step run links directly to the underlying Chat Bridge conversation
+- **Real-time Broadcast** - Three broadcast events (`OrchestratorRunCompleted`, `OrchestratorStepStarted`, `OrchestratorStepPaused`) on the user's private channel
+- **Non-Destructive** - All orchestration activity is layered on top of existing conversations; no changes to `RunChatSession`
+
 ### 💬 Conversation Orchestration
 - **Automated Turns** - Let AI agents talk to each other
 - **Real-time Streaming** - See responses as they're generated

@@ -52,6 +52,20 @@ export default function Dashboard({ user, hasOpenAiKey }) {
             accent: 'indigo',
         },
         {
+            name: 'Orchestrator',
+            description: 'Automate multi-step AI conversation pipelines',
+            href: '/orchestrator',
+            icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+            ),
+            color: 'from-violet-500 to-purple-500',
+            accent: 'violet',
+        },
+        {
             name: 'API Keys',
             description: 'Manage and validate your AI provider credentials',
             href: '/api-keys',

@@ -131,6 +131,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Transmission routes
     Route::get('/transmission', [\App\Http\Controllers\TransmissionController::class, 'index'])->name('transmission.index');
     Route::post('/transmission', [\App\Http\Controllers\TransmissionController::class, 'store'])->name('transmission.store');
+
+    // Orchestrator routes
+    Route::prefix('orchestrator')->name('orchestrator.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\OrchestratorController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\OrchestratorController::class, 'store'])->name('store');
+        Route::get('/wizard', [\App\Http\Controllers\OrchestratorWizardController::class, 'show'])->name('wizard');
+        Route::post('/wizard/chat', [\App\Http\Controllers\OrchestratorWizardController::class, 'chat'])->name('wizard.chat');
+        Route::post('/wizard/materialize', [\App\Http\Controllers\OrchestratorWizardController::class, 'materialize'])->name('wizard.materialize');
+        Route::get('/{orchestration}', [\App\Http\Controllers\OrchestratorController::class, 'show'])->name('show');
+        Route::put('/{orchestration}', [\App\Http\Controllers\OrchestratorController::class, 'update'])->name('update');
+        Route::delete('/{orchestration}', [\App\Http\Controllers\OrchestratorController::class, 'destroy'])->name('destroy');
+        Route::post('/{orchestration}/run', [\App\Http\Controllers\OrchestratorController::class, 'run'])->name('run');
+        Route::post('/{orchestration}/pause', [\App\Http\Controllers\OrchestratorController::class, 'pause'])->name('pause');
+        Route::post('/runs/{run}/resume', [\App\Http\Controllers\OrchestratorController::class, 'resume'])->name('resume');
+        Route::get('/{orchestration}/runs', [\App\Http\Controllers\OrchestratorRunController::class, 'index'])->name('runs.index');
+        Route::get('/runs/{run}', [\App\Http\Controllers\OrchestratorRunController::class, 'show'])->name('runs.show');
+    });
 });
 
 require __DIR__.'/auth.php';

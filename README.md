@@ -31,6 +31,7 @@ Chat Bridge is a **production-ready AI conversation orchestration platform** tha
 
 - 🎭 **Create AI Personas** with custom behaviors, system prompts, and parameters
 - 💬 **Orchestrate Conversations** between different AI agents in real-time
+- 🎛️ **Automate Pipelines** with the AI Orchestrator — multi-step conversation chains with a wizard-driven setup
 - 📊 **Analyze Interactions** with advanced analytics and full conversation history
 - 🔐 **Manage Credentials** securely with encrypted API key storage
 - 🧠 **Leverage RAG** for context-aware conversations with persistent memory

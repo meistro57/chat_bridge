@@ -15,3 +15,7 @@ Schedule::command('chat:recover-stale')
 Schedule::command('pulse:check')
     ->everyMinute()
     ->withoutOverlapping();
+
+Schedule::command('orchestration:schedule')
+    ->everyMinute()
+    ->withoutOverlapping();

@@ -2,6 +2,24 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-15 (AI Orchestrator)
+
+### 🎛️ AI Orchestrator
+- New `/orchestrator` module for defining and running automated multi-step AI conversation pipelines.
+- **Wizard** (`/orchestrator/wizard`) — Claude-powered conversational setup wizard. Asks clarifying questions, then emits a structured JSON draft inside `<orchestration>` tags. User reviews the draft and clicks "Save & Create" to materialize it.
+- **Orchestration model** — Named pipelines with optional cron schedule, timezone, status tracking (`idle` | `running` | `paused` | `completed` | `failed`), and soft deletes.
+- **Steps** — Ordered steps with per-step persona/provider/model overrides, three input sources (`static`, `previous_step_output`, `variable`), four output actions (`log`, `pass_to_next`, `store_as_variable`, `webhook`), condition gates, and `pause_before_run` flag.
+- **Runs** — `OrchestratorRun` and `OrchestratorStepRun` records capture full execution history: status, timing, output summaries, error messages, and links to underlying conversations.
+- **Variable bag** — Runtime `variables` JSON on each run; steps store/read named values using dot notation.
+- **Condition evaluation** — `contains`, `not_contains`, `equals`, `regex` conditions against previous step output; unmatched steps are `skipped`.
+- **`RunOrchestration` job** — Executes steps sequentially, dispatches the existing `RunChatSession` job synchronously per step, captures output, applies output actions, handles pause/resume flow.
+- **`ResumeOrchestratorRun` job** — Picks up execution from the paused step when a user approves.
+- **Artisan commands** — `orchestration:run {orchestration}` for manual triggers; `orchestration:schedule` for cron dispatch (registered in `routes/console.php`, runs every minute via `withoutOverlapping`).
+- **Real-time events** — `OrchestratorRunCompleted`, `OrchestratorStepStarted`, `OrchestratorStepPaused` broadcast on the user's private channel.
+- **Frontend** — `Orchestrator/Index`, `Wizard`, `Show`, `Runs/Index`, `Runs/Show` pages in the Midnight Glass design system.
+- **Dashboard card** — Orchestrator module added to the dashboard with violet-purple gradient.
+- **27 new tests** — Feature tests covering auth, CRUD, run dispatch, authorization, wizard validation; unit tests for all condition evaluation paths.
+
 ## [Unreleased] - 2026-03-15
 
 ### ⭐ Persona Favorites
