@@ -150,7 +150,14 @@ class RunOrchestration implements ShouldQueue
         $maxRounds = $template?->max_rounds ?? 10;
 
         if (! $personaAId || ! $personaBId) {
-            throw new \RuntimeException("Step {$step->step_number} is missing persona configuration.");
+            $userPersonas = \App\Models\Persona::where('user_id', $run->user_id)->pluck('id');
+
+            if ($userPersonas->count() < 2) {
+                throw new \RuntimeException("Step {$step->step_number} is missing persona configuration and no fallback personas are available.");
+            }
+
+            $personaAId = $personaAId ?? $userPersonas->get(0);
+            $personaBId = $personaBId ?? $userPersonas->get(1);
         }
 
         $conversation = Conversation::create([

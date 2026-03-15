@@ -130,9 +130,11 @@ Available providers: openai, anthropic, gemini, openrouter, deepseek, ollama
 
 Ask clarifying questions one at a time until you understand:
 1. The overall goal
-2. Each step (what it does, which template or new template to use, which personas/providers)
+2. Each step (what it does, which template to use, which personas — you MUST assign persona_a_id and persona_b_id from the available personas list above)
 3. Input/output wiring between steps
 4. Whether to schedule and how often
+
+IMPORTANT: Every step must have persona_a_id and persona_b_id set to real IDs from the available personas list. Do not leave them null.
 
 When you have enough information, respond with JSON inside <orchestration> tags:
 <orchestration>
