@@ -60,11 +60,15 @@ class OrchestratorWizardService
 
     /**
      * Materialize a wizard draft into DB records.
+     * Creates any new personas defined in the draft, then builds the orchestration and steps.
      *
      * @param  array<string, mixed>  $draft
      */
     public function materialize(User $user, array $draft): Orchestration
     {
+        // Resolve persona refs → real IDs, creating new personas as needed.
+        $personaMap = $this->resolvePersonas($user, $draft['new_personas'] ?? []);
+
         $orchestration = Orchestration::create([
             'user_id' => $user->id,
             'name' => $draft['name'] ?? 'Untitled Orchestration',
@@ -77,13 +81,16 @@ class OrchestratorWizardService
         ]);
 
         foreach ($draft['steps'] ?? [] as $index => $stepData) {
+            $personaAId = $this->resolvePersonaId($stepData, 'persona_a', $personaMap);
+            $personaBId = $this->resolvePersonaId($stepData, 'persona_b', $personaMap);
+
             OrchestratorStep::create([
                 'orchestration_id' => $orchestration->id,
                 'step_number' => $stepData['step_number'] ?? ($index + 1),
                 'label' => $stepData['label'] ?? null,
                 'template_id' => $stepData['template_id'] ?? null,
-                'persona_a_id' => $stepData['persona_a_id'] ?? null,
-                'persona_b_id' => $stepData['persona_b_id'] ?? null,
+                'persona_a_id' => $personaAId,
+                'persona_b_id' => $personaBId,
                 'provider_a' => $stepData['provider_a'] ?? null,
                 'model_a' => $stepData['model_a'] ?? null,
                 'provider_b' => $stepData['provider_b'] ?? null,
@@ -100,6 +107,60 @@ class OrchestratorWizardService
         }
 
         return $orchestration->load('steps');
+    }
+
+    /**
+     * Create new personas from the draft and return a ref → ID map.
+     * Refs that are existing UUIDs are passed through directly.
+     *
+     * @param  array<int, array<string, mixed>>  $newPersonas
+     * @return array<string, string>
+     */
+    protected function resolvePersonas(User $user, array $newPersonas): array
+    {
+        $map = [];
+
+        foreach ($newPersonas as $personaData) {
+            $ref = $personaData['ref'] ?? null;
+
+            if (! $ref) {
+                continue;
+            }
+
+            $persona = \App\Models\Persona::create([
+                'user_id' => $user->id,
+                'name' => $personaData['name'] ?? 'Unnamed Persona',
+                'system_prompt' => $personaData['system_prompt'] ?? '',
+                'guidelines' => $personaData['guidelines'] ?? null,
+                'temperature' => $personaData['temperature'] ?? 1.0,
+            ]);
+
+            $map[$ref] = $persona->id;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Resolve a persona ID from step data, checking ref map then falling back to direct ID.
+     *
+     * @param  array<string, mixed>  $stepData
+     * @param  array<string, string>  $personaMap
+     */
+    protected function resolvePersonaId(array $stepData, string $key, array $personaMap): ?string
+    {
+        $ref = $stepData["{$key}_ref"] ?? null;
+
+        if ($ref && isset($personaMap[$ref])) {
+            return $personaMap[$ref];
+        }
+
+        // Ref might be a raw UUID for an existing persona
+        if ($ref) {
+            return $ref;
+        }
+
+        return $stepData["{$key}_id"] ?? null;
     }
 
     /**
@@ -121,22 +182,29 @@ class OrchestratorWizardService
             ->values()
             ->implode(', ');
 
+        $existingPersonas = $personas ?: 'None yet';
+        $existingTemplates = $templates ?: 'None yet';
+
         return <<<PROMPT
 You are an AI orchestration assistant for ChatBridge. Help the user design a sequence of AI conversation tasks.
 
-Available personas: {$personas}
-Available templates: {$templates}
+Existing personas: {$existingPersonas}
+Existing templates: {$existingTemplates}
 Available providers: openai, anthropic, gemini, openrouter, deepseek, ollama
+
+Each orchestration step runs a two-persona AI conversation. Every step needs persona_a and persona_b.
+You can either use an existing persona (by ID) or define a brand-new one inline.
 
 Ask clarifying questions one at a time until you understand:
 1. The overall goal
-2. Each step (what it does, which template to use, which personas — you MUST assign persona_a_id and persona_b_id from the available personas list above)
+2. Each step — what it does, and what role each persona plays (create new personas with detailed system prompts if needed)
 3. Input/output wiring between steps
 4. Whether to schedule and how often
 
-IMPORTANT: Every step must have persona_a_id and persona_b_id set to real IDs from the available personas list. Do not leave them null.
+When you have enough information, respond with JSON inside <orchestration> tags.
+Use "persona_a_ref" / "persona_b_ref" to reference a persona by its ref key.
+Define new personas in the top-level "new_personas" array; reference existing ones with ref = their UUID.
 
-When you have enough information, respond with JSON inside <orchestration> tags:
 <orchestration>
 {
   "name": "...",
@@ -145,16 +213,25 @@ When you have enough information, respond with JSON inside <orchestration> tags:
   "is_scheduled": false,
   "cron_expression": null,
   "timezone": "UTC",
+  "new_personas": [
+    {
+      "ref": "persona_researcher",
+      "name": "Research Analyst",
+      "system_prompt": "You are a thorough research analyst. Your job is to ...",
+      "guidelines": null,
+      "temperature": 0.7
+    }
+  ],
   "steps": [
     {
       "step_number": 1,
       "label": "...",
       "template_id": null,
-      "persona_a_id": null,
-      "persona_b_id": null,
-      "provider_a": null,
+      "persona_a_ref": "persona_researcher",
+      "persona_b_ref": "existing-uuid-here",
+      "provider_a": "openai",
       "model_a": null,
-      "provider_b": null,
+      "provider_b": "openai",
       "model_b": null,
       "input_source": "static",
       "input_value": "...",
