@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PROTO
         );
 
+        $middleware->append(\App\Http\Middleware\PropagateRequestId::class);
         $middleware->append(\App\Http\Middleware\PreventWritesInReadOnlyMode::class);
         $middleware->append(\App\Http\Middleware\RecordPerformanceMetrics::class);
 

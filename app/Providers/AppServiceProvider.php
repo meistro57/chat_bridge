@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
@@ -29,10 +31,28 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureSqliteDatabaseFileExists();
         $this->registerReadOnlyDatabaseGuard();
+        $this->registerRateLimiters();
 
         Gate::define('viewPulse', fn ($user = null) => $user?->isAdmin() ?? false);
 
         Vite::prefetch(concurrency: 3);
+    }
+
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('ai-chat-create', function (\Illuminate\Http\Request $request): Limit {
+            $perMinute = (int) config('ai.rate_limiting.chat_create_per_minute', 10);
+
+            return Limit::perMinute($perMinute)
+                ->by($request->user()?->id ?: $request->ip());
+        });
+
+        RateLimiter::for('ai-chat-bridge', function (\Illuminate\Http\Request $request): Limit {
+            $perMinute = (int) config('ai.rate_limiting.chat_bridge_per_minute', 30);
+
+            return Limit::perMinute($perMinute)
+                ->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     private function ensureSqliteDatabaseFileExists(): void

@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Chat\CreateConversationAction;
 use App\Http\Controllers\Api\ProviderController;
+use App\Http\Requests\RetryWithChatRequest;
 use App\Http\Requests\StoreChatRequest;
 use App\Jobs\RunChatSession;
 use App\Models\Conversation;
@@ -172,91 +174,9 @@ class ChatController extends Controller
         ]);
     }
 
-    public function store(StoreChatRequest $request): RedirectResponse
+    public function store(StoreChatRequest $request, CreateConversationAction $action): RedirectResponse
     {
-        $validated = $request->validated();
-        $selectedTemplate = null;
-
-        if (! empty($validated['template_id'])) {
-            $selectedTemplate = ConversationTemplate::query()
-                ->where('id', $validated['template_id'])
-                ->where(function ($query) use ($request) {
-                    $query->where('is_public', true)
-                        ->orWhere('user_id', $request->user()->id);
-                })
-                ->first();
-        }
-
-        $personaA = Persona::findOrFail($validated['persona_a_id']);
-        $personaB = Persona::findOrFail($validated['persona_b_id']);
-
-        Log::info('Creating new conversation', [
-            'user_id' => auth()->id(),
-            'persona_a' => $personaA->name,
-            'persona_b' => $personaB->name,
-            'provider_a' => $validated['provider_a'],
-            'provider_b' => $validated['provider_b'],
-        ]);
-
-        $conversation = auth()->user()->conversations()->create([
-            'persona_a_id' => $personaA->id,
-            'persona_b_id' => $personaB->id,
-            'provider_a' => $validated['provider_a'],
-            'provider_b' => $validated['provider_b'],
-            'model_a' => $validated['model_a'],
-            'model_b' => $validated['model_b'],
-            'temp_a' => 1.0,
-            'temp_b' => 1.0,
-            'starter_message' => $validated['starter_message'],
-            'status' => 'active',
-            'max_rounds' => $validated['max_rounds'],
-            'stop_word_detection' => $validated['stop_word_detection'] ?? false,
-            'stop_words' => $validated['stop_words'] ?? [],
-            'stop_word_threshold' => $validated['stop_word_threshold'] ?? 0.8,
-            'metadata' => [
-                'persona_a_name' => $personaA->name,
-                'persona_b_name' => $personaB->name,
-                'notifications_enabled' => $request->boolean('notifications_enabled', false),
-                'template_id' => $selectedTemplate?->id,
-                'memory' => [
-                    'history_limit' => (int) ($validated['memory_history_limit'] ?? 10),
-                ],
-                'rag' => [
-                    'enabled' => (bool) ($validated['memory_rag_enabled'] ?? ($selectedTemplate?->rag_enabled ?? true)),
-                    'source_limit' => (int) ($validated['memory_rag_source_limit'] ?? ($selectedTemplate?->rag_source_limit ?? 6)),
-                    'score_threshold' => (float) ($validated['memory_rag_score_threshold'] ?? ($selectedTemplate?->rag_score_threshold ?? 0.3)),
-                    'system_prompt' => (string) ($selectedTemplate?->rag_system_prompt ?? ''),
-                    'files' => $selectedTemplate?->rag_files ?? [],
-                ],
-            ],
-            'discord_streaming_enabled' => $request->has('discord_streaming_enabled')
-                ? $request->boolean('discord_streaming_enabled')
-                : (bool) auth()->user()->discord_streaming_default,
-            'discord_webhook_url' => $validated['discord_webhook_url'] ?? null,
-            'discourse_streaming_enabled' => $request->has('discourse_streaming_enabled')
-                ? $request->boolean('discourse_streaming_enabled')
-                : (bool) auth()->user()->discourse_streaming_default,
-            'discourse_topic_id' => $validated['discourse_topic_id'] ?? null,
-        ]);
-
-        $sessionFiles = $request->file('rag_session_files', []);
-        if ($sessionFiles !== []) {
-            $storedPaths = $this->storeSessionRagFiles($conversation, $sessionFiles);
-            $metadata = $conversation->metadata;
-            $metadata['rag']['files'] = array_merge($metadata['rag']['files'] ?? [], $storedPaths);
-            $conversation->update(['metadata' => $metadata]);
-        }
-
-        $conversation->messages()->create([
-            'user_id' => auth()->id(),
-            'role' => 'user',
-            'content' => $validated['starter_message'],
-        ]);
-
-        Log::info('Conversation created successfully', [
-            'conversation_id' => $conversation->id,
-            'starter_message_length' => strlen($validated['starter_message']),
-        ]);
+        $conversation = $action->execute($request);
 
         dispatch(new RunChatSession($conversation->id, $conversation->max_rounds));
 
@@ -344,7 +264,7 @@ class ChatController extends Controller
         return back()->with('success', 'Conversation resumed.');
     }
 
-    public function retryWith(Request $request, Conversation $conversation): RedirectResponse
+    public function retryWith(RetryWithChatRequest $request, Conversation $conversation): RedirectResponse
     {
         if ($conversation->user_id !== auth()->id()) {
             abort(403);
@@ -354,12 +274,7 @@ class ChatController extends Controller
             return back()->with('error', 'Only failed conversations can be retried.');
         }
 
-        $validated = $request->validate([
-            'provider_a' => 'nullable|string|max:50',
-            'model_a' => 'nullable|string|max:200',
-            'provider_b' => 'nullable|string|max:50',
-            'model_b' => 'nullable|string|max:200',
-        ]);
+        $validated = $request->validated();
 
         $updates = array_filter([
             'provider_a' => $validated['provider_a'] ?? null,
@@ -429,30 +344,6 @@ class ChatController extends Controller
         return Storage::disk('local')->download($path, basename($path), [
             'Content-Type' => 'text/markdown; charset=utf-8',
         ]);
-    }
-
-    /**
-     * @param  array<int, \Illuminate\Http\UploadedFile>  $files
-     * @return array<int, string>
-     */
-    protected function storeSessionRagFiles(Conversation $conversation, array $files): array
-    {
-        $paths = [];
-
-        foreach ($files as $file) {
-            $safeFilename = \Illuminate\Support\Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME));
-            $filename = trim($safeFilename) !== '' ? $safeFilename : 'rag-document';
-            $storedPath = $file->storeAs(
-                "session-rag/{$conversation->user_id}/{$conversation->id}",
-                $filename.'-'.\Illuminate\Support\Str::uuid().'.'.$file->getClientOriginalExtension()
-            );
-
-            if ($storedPath !== false) {
-                $paths[] = $storedPath;
-            }
-        }
-
-        return $paths;
     }
 
     protected function maybeKickstartStaleConversation(Conversation $conversation, int $assistantTurns, bool $stopRequested): void
