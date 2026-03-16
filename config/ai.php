@@ -274,4 +274,19 @@ return [
     */
 
     'broadcast_payload_limit' => (int) env('AI_BROADCAST_PAYLOAD_LIMIT', 20000),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | Per-minute limits for AI/chat routes. Override via environment variables
+    | for staging/production tuning.
+    |
+    */
+
+    'rate_limiting' => [
+        'chat_create_per_minute' => (int) env('RATE_LIMIT_CHAT_CREATE_PER_MINUTE', 10),
+        'chat_bridge_per_minute' => (int) env('RATE_LIMIT_CHAT_BRIDGE_PER_MINUTE', 30),
+    ],
 ];

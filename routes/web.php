@@ -112,7 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/create', [ChatController::class, 'create'])->name('chat.create');
     Route::get('/chat/live-status', [ChatController::class, 'liveStatus'])->name('chat.live-status');
-    Route::post('/chat', [ChatController::class, 'store'])->name('chat.store');
+    Route::post('/chat', [ChatController::class, 'store'])->name('chat.store')->middleware('throttle:ai-chat-create');
     Route::get('/chat/search', [ChatController::class, 'search'])->name('chat.search');
     Route::get('/chat/{conversation}', [ChatController::class, 'show'])->name('chat.show');
     Route::post('/chat/{conversation}/stop', [ChatController::class, 'stop'])->name('chat.stop');
