@@ -41,54 +41,64 @@ class McpUtilitiesController extends Controller
                     path: '/api/mcp/health',
                     description: 'Basic MCP health and capability flags.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/mcp/stats',
                     description: 'Conversation, message, and embedding counts.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/mcp/recent-chats?limit=10',
                     description: 'Most recent conversations (limit defaults to 10).',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/mcp/search-chats?keyword=memory',
                     description: 'Keyword search across message content.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/mcp/contextual-memory?topic=queues&limit=5',
                     description: 'Embedding-powered contextual memory lookup with keyword fallback.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/admin/mcp-utilities/embeddings/compare',
                     description: 'Compare message totals vs. embeddings and return missing counts.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'POST',
                     path: '/api/admin/mcp-utilities/embeddings/populate',
                     description: 'Generate embeddings for messages that are missing them.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
+                    jsonBody: ['limit' => 100],
                 ),
                 $this->endpointDefinition(
                     method: 'GET',
                     path: '/api/admin/mcp-utilities/traffic?limit=40&provider=ollama',
                     description: 'Recent in-app MCP tool traffic (filterable by provider).',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
                 $this->endpointDefinition(
                     method: 'POST',
                     path: '/api/admin/mcp-utilities/flush',
                     description: 'Flush failed queue jobs and stale RunChatSession overlap locks, then restart workers.',
                     baseUrl: $baseUrl,
+                    requiresApiKey: true,
                 ),
             ],
         ]);
@@ -253,19 +263,45 @@ class McpUtilitiesController extends Controller
     }
 
     /**
-     * @return array{method: string, path: string, description: string, url: string}
+     * @param  array<string, int|string|float|bool|null>|null  $jsonBody
+     * @return array{method: string, path: string, description: string, url: string, curl: string}
      */
     private function endpointDefinition(
         string $method,
         string $path,
         string $description,
         string $baseUrl,
+        bool $requiresApiKey = false,
+        ?array $jsonBody = null,
     ): array {
+        $url = $baseUrl.$path;
+
+        $curlParts = ['curl'];
+
+        if ($method !== 'GET') {
+            $curlParts[] = '-X '.$method;
+        }
+
+        $curlParts[] = '-H "Accept: application/json"';
+
+        if ($requiresApiKey) {
+            $curlParts[] = '-H "Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN"';
+        }
+
+        if ($jsonBody !== null) {
+            $jsonPayload = json_encode($jsonBody, JSON_THROW_ON_ERROR);
+            $curlParts[] = '-H "Content-Type: application/json"';
+            $curlParts[] = "-d '".$jsonPayload."'";
+        }
+
+        $curlParts[] = '"'.$url.'"';
+
         return [
             'method' => $method,
             'path' => $path,
             'description' => $description,
-            'url' => $baseUrl.$path,
+            'url' => $url,
+            'curl' => implode(' ', $curlParts),
         ];
     }
 

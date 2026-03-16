@@ -82,6 +82,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Persona routes
     Route::post('/personas/generate', [PersonaController::class, 'generate'])->name('personas.generate');
+    Route::patch('/personas/favorites/clear', [PersonaController::class, 'clearFavorites'])->name('personas.favorites.clear');
     Route::patch('/personas/{persona}/favorite', [PersonaController::class, 'toggleFavorite'])->name('personas.favorite');
     Route::resource('personas', PersonaController::class);
 

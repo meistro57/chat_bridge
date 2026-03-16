@@ -607,6 +607,15 @@ Admin controls for MCP tooling and embedding operations:
 - Provider capability status (including Ollama tool-call support checks)
 - Live MCP traffic watch with provider filter, limit control, and auto-refresh
 - Backed by `/admin/mcp-utilities/traffic` for recent tool execution events
+- Endpoint table now includes API-key-ready `curl` examples with `Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN`
+
+Create a token at `/personal-tokens`, then call protected MCP/admin APIs like:
+
+```bash
+curl -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN" \
+  "https://your-app.example/api/mcp/health"
+```
 
 ### 🔴 **Redis Dashboard** (`/admin/redis`)
 

@@ -41,6 +41,7 @@ class AdminMcpUtilitiesTest extends TestCase
             ->has('traffic.events')
             ->has('ollamaToolsSupported')
             ->has('endpoints', 9)
+            ->has('endpoints.0.curl')
         );
     }
 

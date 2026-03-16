@@ -50,7 +50,7 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
     const [error, setError] = useState('');
     const [populateSummary, setPopulateSummary] = useState(null);
     const [trafficEvents, setTrafficEvents] = useState(Array.isArray(traffic?.events) ? traffic.events : []);
-    const [trafficProvider, setTrafficProvider] = useState('ollama');
+    const [trafficProvider, setTrafficProvider] = useState('');
     const [trafficLimit, setTrafficLimit] = useState(40);
     const [trafficLoading, setTrafficLoading] = useState(false);
     const [trafficError, setTrafficError] = useState('');
@@ -389,7 +389,7 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
                         <div className="space-y-1">
                             <h2 className="text-lg font-semibold text-zinc-100">Available MCP Endpoints</h2>
                             <p className="text-sm text-zinc-400">
-                                These are ready to call from MCP clients or curl on the host machine.
+                                Use your Personal Access Token in the Authorization header when calling protected API endpoints.
                             </p>
                         </div>
 
@@ -400,7 +400,7 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
                                         <th className="px-4 py-3">Method</th>
                                         <th className="px-4 py-3">Path</th>
                                         <th className="px-4 py-3">Description</th>
-                                        <th className="px-4 py-3 text-right">Example</th>
+                                        <th className="px-4 py-3 text-right">Curl (API key ready)</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
@@ -417,7 +417,7 @@ export default function McpUtilities({ health, stats, endpoints, traffic, ollama
                                             <td className="px-4 py-3 text-zinc-300">{endpoint.description}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <code className="rounded-lg border border-white/10 bg-zinc-950/80 px-3 py-2 text-xs text-zinc-200">
-                                                    curl {endpoint.url}
+                                                    {endpoint.curl}
                                                 </code>
                                             </td>
                                         </tr>

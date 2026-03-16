@@ -9,6 +9,7 @@ The MCP server provides a standardized JSON-RPC 2.0 interface for AI models to q
 - **Endpoint**: `POST /api/mcp`
 - **Protocol Version**: `2024-11-05`
 - **Transport**: HTTP (Stateless)
+- **Authentication**: Personal Access Token (`Authorization: Bearer <token>`) via Sanctum
 
 ## Available Tools
 
@@ -50,13 +51,24 @@ The server implements the following JSON-RPC 2.0 methods:
 
 ```bash
 curl -X POST http://localhost:8000/api/mcp \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
 ### Security
 
-For local development, no authentication is required. For production use, ensure this endpoint is protected by your preferred authentication middleware or network-level security.
+`/api/mcp` and `/api/mcp/*` require a valid personal access token.
+
+1. Create a token in **Personal Access Tokens** (`/personal-tokens`).
+2. Send it on every request:
+
+```http
+Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN
+```
+
+Admin-only MCP utility API routes (`/api/admin/mcp-utilities/*`) also require an admin account in addition to a valid token.
 
 ---
 💘 Generated with Crush

@@ -27,6 +27,11 @@ All notable changes to Chat Bridge will be documented in this file.
 - New `PATCH /personas/{persona}/favorite` route (`personas.favorite`) to toggle favorite status.
 - Personas list now sorts favorites to the top, then by most recently created.
 - Star toggle rendered inline on the Personas index page.
+- Added a clear-favorites action and favorites-only filter controls on the Personas index page.
+
+### 🧭 MCP Utilities Docs & Endpoint Examples
+- Updated `/admin/mcp-utilities` endpoint table to show API-key-ready `curl` examples (including Authorization headers and JSON payload where needed).
+- Updated `README.md` and `MCP.md` to document Personal Access Token usage for `/api/mcp/*` and `/api/admin/mcp-utilities/*` routes.
 
 ### 🧠 Embedding Tracking & Retry
 - New `embedding_status`, `embedding_attempts`, `embedding_last_error`, `embedding_skip_reason`, `embedding_last_attempt_at`, and `embedding_next_retry_at` columns on `messages` table for observability.

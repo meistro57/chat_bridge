@@ -21,6 +21,28 @@ class PersonaTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_persona_index_only_includes_authenticated_users_personas(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+
+        $userPersona = Persona::factory()->create([
+            'user_id' => $user->id,
+        ]);
+
+        Persona::factory()->create([
+            'user_id' => $otherUser->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/personas');
+
+        $response->assertStatus(200);
+        $personas = collect($response->viewData('page')['props']['personas'] ?? []);
+
+        $this->assertCount(1, $personas);
+        $this->assertSame($userPersona->id, $personas->first()['id'] ?? null);
+    }
+
     public function test_persona_index_includes_sessions_count(): void
     {
         $user = User::factory()->create();
@@ -105,6 +127,42 @@ class PersonaTest extends TestCase
         $this->assertDatabaseHas('personas', [
             'id' => $persona->id,
             'is_favorite' => false,
+        ]);
+    }
+
+    public function test_can_clear_all_persona_favorites(): void
+    {
+        $user = User::factory()->create();
+
+        $favoritePersonaA = Persona::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => true,
+        ]);
+
+        $favoritePersonaB = Persona::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => true,
+        ]);
+
+        $otherUserFavoritePersona = Persona::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'is_favorite' => true,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('personas.favorites.clear'));
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('personas', [
+            'id' => $favoritePersonaA->id,
+            'is_favorite' => false,
+        ]);
+        $this->assertDatabaseHas('personas', [
+            'id' => $favoritePersonaB->id,
+            'is_favorite' => false,
+        ]);
+        $this->assertDatabaseHas('personas', [
+            'id' => $otherUserFavoritePersona->id,
+            'is_favorite' => true,
         ]);
     }
 

@@ -21,6 +21,7 @@ class PersonaController extends Controller
     public function index(): InertiaResponse
     {
         $personas = Persona::query()
+            ->where('user_id', auth()->id())
             ->orderByDesc('is_favorite')
             ->latest()
             ->get();
@@ -115,7 +116,7 @@ class PersonaController extends Controller
         return redirect()->route('personas.index')->with('success', 'Persona deleted.');
     }
 
-    public function toggleFavorite(Persona $persona): RedirectResponse
+    public function toggleFavorite(Request $request, Persona $persona): JsonResponse|RedirectResponse
     {
         if ($persona->user_id !== auth()->id()) {
             abort(403);
@@ -125,7 +126,30 @@ class PersonaController extends Controller
             'is_favorite' => ! $persona->is_favorite,
         ]);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'is_favorite' => (bool) $persona->is_favorite,
+            ]);
+        }
+
         return back()->with('success', 'Persona favorite status updated.');
+    }
+
+    public function clearFavorites(Request $request): JsonResponse|RedirectResponse
+    {
+        Persona::query()
+            ->where('user_id', auth()->id())
+            ->where('is_favorite', true)
+            ->update(['is_favorite' => false]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+            ]);
+        }
+
+        return redirect()->route('personas.index')->with('success', 'All persona favorites cleared.');
     }
 
     public function generate(GeneratePersonaRequest $request): JsonResponse

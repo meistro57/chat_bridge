@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
+import axios from 'axios';
 
 export default function Index({ personas }) {
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
     const revealClasses = [
         'butter-reveal',
         'butter-reveal butter-reveal-delay-1',
@@ -16,8 +19,54 @@ export default function Index({ personas }) {
     };
 
     const handleToggleFavorite = (id) => {
-        router.patch(route('personas.favorite', id), {}, { preserveScroll: true });
+        router.patch(route('personas.favorite', id), {}, {
+            preserveScroll: true,
+            preserveState: false,
+            onSuccess: () => {
+                router.reload({
+                    only: ['personas'],
+                    preserveScroll: true,
+                });
+            },
+        });
     };
+
+    const handleClearFavorites = async () => {
+        if (!confirm('Clear all favorites?')) {
+            return;
+        }
+
+        const favoritePersonas = personas.filter((persona) => persona.is_favorite);
+
+        if (favoritePersonas.length === 0) {
+            return;
+        }
+
+        try {
+            await Promise.all(
+                favoritePersonas.map((persona) => axios.patch(route('personas.favorite', persona.id))),
+            );
+
+            if (showFavoritesOnly) {
+                setShowFavoritesOnly(false);
+            }
+
+            router.reload({
+                only: ['personas'],
+                preserveScroll: true,
+            });
+        } catch {
+            router.reload({
+                only: ['personas'],
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const hasFavorites = personas.some((persona) => persona.is_favorite);
+    const filteredPersonas = showFavoritesOnly
+        ? personas.filter((persona) => persona.is_favorite)
+        : personas;
 
     return (
         <AuthenticatedLayout>
@@ -33,18 +82,35 @@ export default function Index({ personas }) {
                         <p className="text-zinc-500 mt-2">Manage defined AI entities and behavioral configurations.</p>
                     </div>
                     
-                    <Link 
-                        href="/personas/create"
-                        className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                        Construct New Persona
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                        <button
+                            onClick={() => setShowFavoritesOnly((current) => !current)}
+                            className={`group flex items-center gap-2 rounded-xl border px-5 py-2.5 font-medium transition-all ${showFavoritesOnly ? 'border-indigo-400/50 bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30' : 'border-zinc-700 bg-zinc-900/70 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900'}`}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={showFavoritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            {showFavoritesOnly ? 'Show All' : 'Favorites Only'}
+                        </button>
+                        <button
+                            onClick={handleClearFavorites}
+                            disabled={!hasFavorites}
+                            className="group flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 font-medium text-amber-200 transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-zinc-700/60 disabled:bg-zinc-900/60 disabled:text-zinc-500"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="20"/><path d="M12 17.77 5.82 21.02 7 14.14 2 9.27l6.91-1.01L12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88z"/></svg>
+                            Clear Favorites
+                        </button>
+                        <Link
+                            href="/personas/create"
+                            className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                            Construct New Persona
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {personas.map((persona, index) => (
+                    {filteredPersonas.map((persona, index) => (
                         <div
                             key={persona.id}
                             className={`group relative bg-zinc-900/50 backdrop-blur-2xl rounded-2xl p-6 border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden glass-butter hover:bg-zinc-900/60 hover:border-white/[0.15] hover:shadow-[0_18px_50px_rgba(8,12,20,0.5)] ${revealClasses[index % revealClasses.length]}`}
