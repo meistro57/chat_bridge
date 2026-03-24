@@ -105,6 +105,7 @@ export default function Show({ conversation, stopSignal }) {
     const [retryModelB, setRetryModelB] = useState(conversation.model_b ?? '');
     const [retryModelsA, setRetryModelsA] = useState([]);
     const [retryModelsB, setRetryModelsB] = useState([]);
+    const [configuredProviders, setConfiguredProviders] = useState([]);
     const [retryLoadingA, setRetryLoadingA] = useState(false);
     const [retryLoadingB, setRetryLoadingB] = useState(false);
     const [isRetrying, setIsRetrying] = useState(false);
@@ -148,7 +149,7 @@ export default function Show({ conversation, stopSignal }) {
     useEffect(() => {
         const channel = window.Echo.private(`conversation.${conversation.id}`);
         appendLiveLog('info', 'channel.subscribed', `conversation.${conversation.id}`);
-        
+
         channel.listen('.message.chunk', (e) => {
             if (terminalStatusRef.current) {
                 appendLiveLog('debug', 'message.chunk.ignored', 'terminal-status');
@@ -221,6 +222,41 @@ export default function Show({ conversation, stopSignal }) {
     }, [conversation.id]);
 
     useEffect(() => {
+        setStatus(conversation.status);
+        terminalStatusRef.current = isTerminalStatus(conversation.status);
+        setIsStopping(stopSignal);
+
+        setMessages((previousMessages) => {
+            const incomingMessages = conversation.messages || [];
+
+            if (incomingMessages.length >= previousMessages.length) {
+                return incomingMessages;
+            }
+
+            return previousMessages;
+        });
+    }, [conversation.messages, conversation.status, stopSignal]);
+
+    useEffect(() => {
+        if (isTerminalStatus(status)) {
+            return undefined;
+        }
+
+        const pollingInterval = window.setInterval(() => {
+            router.reload({
+                only: ['conversation', 'stopSignal'],
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        }, 3000);
+
+        return () => {
+            window.clearInterval(pollingInterval);
+        };
+    }, [status]);
+
+    useEffect(() => {
         if (status === 'failed' && lastErrorMessage) {
             appendLiveLog('error', 'conversation.failed', lastErrorMessage);
         }
@@ -253,9 +289,10 @@ export default function Show({ conversation, stopSignal }) {
 
     const fetchRetryModels = async (provider, setModels, setLoading) => {
         if (!provider) { setModels([]); return; }
+        const baseProvider = provider.includes(':') ? provider.split(':')[0] : provider;
         setLoading(true);
         try {
-            const res = await fetch(`/api/providers/models?provider=${provider}`, {
+            const res = await fetch(`/api/providers/models?provider=${baseProvider}`, {
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
             if (res.ok) {
@@ -269,6 +306,15 @@ export default function Show({ conversation, stopSignal }) {
 
     useEffect(() => { fetchRetryModels(retryProviderA, setRetryModelsA, setRetryLoadingA); }, [retryProviderA]);
     useEffect(() => { fetchRetryModels(retryProviderB, setRetryModelsB, setRetryLoadingB); }, [retryProviderB]);
+
+    useEffect(() => {
+        fetch('/api/providers/configured', {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => { if (d?.providers) { setConfiguredProviders(d.providers); } })
+            .catch(() => {});
+    }, []);
 
     const handleRetryWith = () => {
         router.post(`/chat/${conversation.id}/retry-with`, {
@@ -607,7 +653,7 @@ export default function Show({ conversation, stopSignal }) {
                                         onChange={(e) => { setRetryProviderA(e.target.value); setRetryModelA(''); }}
                                         className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-indigo-500/50"
                                     >
-                                        {PROVIDERS.map((p) => (
+                                        {configuredProviders.map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
@@ -645,7 +691,7 @@ export default function Show({ conversation, stopSignal }) {
                                         onChange={(e) => { setRetryProviderB(e.target.value); setRetryModelB(''); }}
                                         className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-purple-500/50"
                                     >
-                                        {PROVIDERS.map((p) => (
+                                        {configuredProviders.map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>

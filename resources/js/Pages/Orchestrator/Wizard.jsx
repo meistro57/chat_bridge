@@ -2,14 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 
-const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'deepseek', 'ollama', 'lmstudio'];
-
 async function fetchModelsForProvider(provider) {
     if (!provider) {
         return [];
     }
+    const baseProvider = provider.includes(':') ? provider.split(':')[0] : provider;
     try {
-        const response = await fetch(`/api/providers/models?provider=${provider}`, {
+        const response = await fetch(`/api/providers/models?provider=${baseProvider}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         });
         if (!response.ok) {
@@ -64,7 +63,7 @@ function TypingIndicator() {
     );
 }
 
-function StepEditor({ stepConfigs, setStepConfigs }) {
+function StepEditor({ stepConfigs, setStepConfigs, configuredProviders }) {
     const [modelsCache, setModelsCache] = useState({});
     const [loadingCache, setLoadingCache] = useState({});
 
@@ -129,8 +128,8 @@ function StepEditor({ stepConfigs, setStepConfigs }) {
                                         className={selectClass}
                                     >
                                         <option value="">— provider —</option>
-                                        {PROVIDERS.map((p) => (
-                                            <option key={p} value={p}>{p}</option>
+                                        {configuredProviders.map((p) => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
                                     {isLoading ? (
@@ -171,7 +170,17 @@ export default function Wizard() {
     const [streamToDiscord, setStreamToDiscord] = useState(false);
     const [streamToDiscourse, setStreamToDiscourse] = useState(false);
     const [isMaterializing, setIsMaterializing] = useState(false);
+    const [configuredProviders, setConfiguredProviders] = useState([]);
     const bottomRef = useRef(null);
+
+    useEffect(() => {
+        fetch('/api/providers/configured', {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => { if (d?.providers) { setConfiguredProviders(d.providers); } })
+            .catch(() => {});
+    }, []);
 
     const scrollToBottom = () => {
         setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -297,7 +306,7 @@ export default function Wizard() {
                                 {draft.goal && <p className="text-zinc-400 text-sm mt-1">{draft.goal}</p>}
                                 <p className="text-zinc-500 text-xs mt-2">{draft.steps?.length ?? 0} step{draft.steps?.length !== 1 ? 's' : ''}</p>
                             </div>
-                            <StepEditor stepConfigs={stepConfigs} setStepConfigs={setStepConfigs} />
+                            <StepEditor stepConfigs={stepConfigs} setStepConfigs={setStepConfigs} configuredProviders={configuredProviders} />
                             <div className="space-y-2 rounded-xl border border-white/10 bg-zinc-900/40 p-3">
                                 <label className="flex items-center gap-2 text-xs text-zinc-300">
                                     <input

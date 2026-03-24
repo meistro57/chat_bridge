@@ -51,8 +51,77 @@ class ProviderController extends Controller
         }
     }
 
+    public function getConfiguredProviders(): JsonResponse
+    {
+        $userId = auth()->id();
+
+        // Fetch all active keys for the current user, ordered oldest-first so
+        // single-key providers keep their plain id.
+        $userKeys = ApiKey::where('user_id', $userId)
+            ->where('is_active', true)
+            ->orderBy('created_at')
+            ->get(['id', 'provider', 'label']);
+
+        $byProvider = $userKeys->groupBy('provider');
+        $result = collect();
+
+        foreach ($byProvider as $provider => $keys) {
+            if ($keys->count() === 1) {
+                $result->push([
+                    'id' => $provider,
+                    'name' => $this->providerDisplayName($provider),
+                ]);
+            } else {
+                foreach ($keys as $key) {
+                    $displayName = $key->label
+                        ? $key->label
+                        : $this->providerDisplayName($provider);
+                    $result->push([
+                        'id' => "{$provider}:{$key->id}",
+                        'name' => $displayName,
+                    ]);
+                }
+            }
+        }
+
+        // Bedrock uses env/config, not DB keys
+        if ((string) config('services.bedrock.access_key_id', '') !== ''
+            && (string) config('services.bedrock.secret_access_key', '') !== '') {
+            $result->push(['id' => 'bedrock', 'name' => 'Bedrock']);
+        }
+
+        // Local providers are always available if the user has none of them from keys already
+        foreach (['ollama' => 'Ollama', 'lmstudio' => 'LM Studio'] as $id => $name) {
+            if ($result->where('id', $id)->isEmpty()) {
+                $result->push(['id' => $id, 'name' => $name]);
+            }
+        }
+
+        return response()->json(['providers' => $result->values()]);
+    }
+
+    private function providerDisplayName(string $provider): string
+    {
+        return match ($provider) {
+            'openai' => 'OpenAI',
+            'anthropic' => 'Anthropic',
+            'deepseek' => 'DeepSeek',
+            'openrouter' => 'OpenRouter',
+            'gemini' => 'Gemini',
+            'bedrock' => 'Bedrock',
+            'ollama' => 'Ollama',
+            'lmstudio' => 'LM Studio',
+            default => ucfirst($provider),
+        };
+    }
+
     private function fetchModelsForProvider(string $provider): array
     {
+        // Strip optional ":keyId" suffix
+        if (str_contains($provider, ':')) {
+            $provider = explode(':', $provider, 2)[0];
+        }
+
         return match ($provider) {
             'anthropic' => $this->fetchAnthropicModels(),
             'openai' => $this->fetchOpenAIModels(),

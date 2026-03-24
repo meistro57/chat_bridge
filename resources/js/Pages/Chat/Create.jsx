@@ -135,6 +135,7 @@ export default function Create({
             : [],
     }));
 
+    const [configuredProviders, setConfiguredProviders] = useState([]);
     const [modelsA, setModelsA] = useState([]);
     const [modelsB, setModelsB] = useState([]);
     const [loadingModelsA, setLoadingModelsA] = useState(false);
@@ -147,12 +148,15 @@ export default function Create({
         openrouter: openRouterModels.length > 0 ? openRouterModels : FALLBACK_MODELS_BY_PROVIDER.openrouter,
     };
 
+    const baseProviderA = data.provider_a.includes(':') ? data.provider_a.split(':')[0] : data.provider_a;
+    const baseProviderB = data.provider_b.includes(':') ? data.provider_b.split(':')[0] : data.provider_b;
+
     const visibleModelsA = modelsA.length > 0
         ? modelsA
-        : (data.provider_a ? (fallbackModelsByProvider[data.provider_a] || []) : []);
+        : (data.provider_a ? (fallbackModelsByProvider[baseProviderA] || []) : []);
     const visibleModelsB = modelsB.length > 0
         ? modelsB
-        : (data.provider_b ? (fallbackModelsByProvider[data.provider_b] || []) : []);
+        : (data.provider_b ? (fallbackModelsByProvider[baseProviderB] || []) : []);
 
     const modelSupportsTools = (model) => model.supports_tools !== false;
 
@@ -189,15 +193,26 @@ export default function Create({
         max_rounds: data.max_rounds,
     });
 
+    useEffect(() => {
+        fetch('/api/providers/configured', {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.ok ? r.json() : null)
+            .then((d) => { if (d?.providers) { setConfiguredProviders(d.providers); } })
+            .catch(() => {});
+    }, []);
+
     const fetchModels = async (provider, setModels, setLoading) => {
         if (!provider) {
             setModels([]);
             return;
         }
 
+        const baseProvider = provider.includes(':') ? provider.split(':')[0] : provider;
+
         setLoading(true);
         try {
-            const response = await fetch(`/api/providers/models?provider=${provider}`, {
+            const response = await fetch(`/api/providers/models?provider=${baseProvider}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
@@ -215,15 +230,15 @@ export default function Create({
             const result = await response.json();
             console.log(`Fetched models for ${provider}:`, result);
             const models = result.models || [];
-            if (models.length === 0 && fallbackModelsByProvider[provider]) {
-                console.warn(`No models returned for ${provider}, using fallback list.`);
-                setModels(fallbackModelsByProvider[provider]);
+            if (models.length === 0 && fallbackModelsByProvider[baseProvider]) {
+                console.warn(`No models returned for ${baseProvider}, using fallback list.`);
+                setModels(fallbackModelsByProvider[baseProvider]);
             } else {
                 setModels(models);
             }
         } catch (error) {
             console.error('Error fetching models:', error);
-            setModels(fallbackModelsByProvider[provider] || []);
+            setModels(fallbackModelsByProvider[baseProvider] || []);
         } finally {
             setLoading(false);
         }
@@ -447,8 +462,8 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
                                 >
                                     <option value="">Select Provider...</option>
-                                    {PROVIDERS.map(p => (
-                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
+                                    {configuredProviders.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_a && <div className="text-red-400 text-sm">{errors.provider_a}</div>}
@@ -517,8 +532,8 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none"
                                 >
                                     <option value="">Select Provider...</option>
-                                    {PROVIDERS.map(p => (
-                                        <option key={p.id} value={p.id}>{p.is_favorite ? `★ ${p.name}` : p.name}</option>
+                                    {configuredProviders.map((p) => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_b && <div className="text-red-400 text-sm">{errors.provider_b}</div>}

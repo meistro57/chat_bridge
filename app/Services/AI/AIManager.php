@@ -217,6 +217,18 @@ class AIManager extends Manager
             return $this->driver();
         }
 
+        // Support "provider:keyId" format for selecting a specific API key
+        if (str_contains($provider, ':')) {
+            [$baseName, $keyId] = explode(':', $provider, 2);
+            if (is_numeric($keyId)) {
+                $apiKey = ApiKey::find((int) $keyId);
+                if ($apiKey && ! empty($apiKey->key)) {
+                    return $this->driverForApiKey($apiKey, $model);
+                }
+            }
+            $provider = $baseName;
+        }
+
         return match ($provider) {
             'openai' => $this->createOpenAIDriver($model),
             'anthropic' => $this->createAnthropicDriver($model),
