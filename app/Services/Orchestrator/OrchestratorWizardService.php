@@ -78,8 +78,11 @@ class OrchestratorWizardService
             'cron_expression' => $draft['cron_expression'] ?? null,
             'timezone' => $draft['timezone'] ?? 'UTC',
             'status' => 'idle',
+            'metadata' => [
+                'discord_streaming_enabled' => (bool) ($draft['discord_streaming_enabled'] ?? false),
+                'discourse_streaming_enabled' => (bool) ($draft['discourse_streaming_enabled'] ?? false),
+            ],
         ]);
-
         foreach ($draft['steps'] ?? [] as $index => $stepData) {
             $personaAId = $this->resolvePersonaId($stepData, 'persona_a', $personaMap);
             $personaBId = $this->resolvePersonaId($stepData, 'persona_b', $personaMap);
@@ -190,7 +193,8 @@ You are an AI orchestration assistant for ChatBridge. Help the user design a seq
 
 Existing personas: {$existingPersonas}
 Existing templates: {$existingTemplates}
-Available providers: openai, anthropic, gemini, openrouter, deepseek, ollama
+Available providers: openai, anthropic, gemini, openrouter, deepseek, ollama, lmstudio
+IMPORTANT: Always set model_a and model_b to null in the draft JSON. The user will select the correct model in the review step.
 
 Each orchestration step runs a two-persona AI conversation. Every step needs persona_a and persona_b.
 You can either use an existing persona (by ID) or define a brand-new one inline.
@@ -213,6 +217,8 @@ Define new personas in the top-level "new_personas" array; reference existing on
   "is_scheduled": false,
   "cron_expression": null,
   "timezone": "UTC",
+  "discord_streaming_enabled": false,
+  "discourse_streaming_enabled": false,
   "new_personas": [
     {
       "ref": "persona_researcher",

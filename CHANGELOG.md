@@ -2,6 +2,15 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-24 (Fix: Provider-aware model selection in Orchestrator wizard)
+
+### 🐛 Fix: Invalid provider/model combos no longer possible in Orchestrator steps
+
+- **Root cause** — The wizard AI prompt listed providers but no models, so Claude could emit any model string for any provider (e.g. `provider: deepseek, model: gemini-2.0-flash`). There was no UI step to review/correct model selection before materializing.
+- **Wizard draft step editor** — The draft review panel now expands each step with Agent A / Agent B columns, each containing a provider dropdown and a live model dropdown. Changing the provider fetches models from `/api/providers/models` and resets the model field, exactly like `Chat/Create.jsx`. The corrected configs are merged back into the draft on "Save & Create".
+- **Wizard system prompt** — AI is now instructed to always set `model_a` and `model_b` to `null` so the user picks the correct model in the review step.
+- **Backend validation** — `provider_a` / `provider_b` on steps now validate against the known provider list (`in:openai,anthropic,gemini,openrouter,deepseek,ollama,lmstudio,bedrock,mock`) in both `StoreOrchestratorRequest` and `UpdateOrchestratorRequest`.
+
 ## [Unreleased] - 2026-03-24 (Bug Fix: AI Driver 400 / Temperature)
 
 ### 🐛 Fix: 400 error from AI providers (body logged, temperature wired, retry hardened)

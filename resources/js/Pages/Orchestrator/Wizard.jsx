@@ -1,6 +1,26 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const PROVIDERS = ['openai', 'anthropic', 'gemini', 'openrouter', 'deepseek', 'ollama', 'lmstudio'];
+
+async function fetchModelsForProvider(provider) {
+    if (!provider) {
+        return [];
+    }
+    try {
+        const response = await fetch(`/api/providers/models?provider=${provider}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        if (!response.ok) {
+            return [];
+        }
+        const result = await response.json();
+        return result.models || [];
+    } catch {
+        return [];
+    }
+}
 
 function UserBubble({ text }) {
     return (
@@ -44,11 +64,112 @@ function TypingIndicator() {
     );
 }
 
+function StepEditor({ stepConfigs, setStepConfigs }) {
+    const [modelsCache, setModelsCache] = useState({});
+    const [loadingCache, setLoadingCache] = useState({});
+
+    const loadModels = async (provider) => {
+        if (!provider || modelsCache[provider] !== undefined) {
+            return;
+        }
+        setLoadingCache((prev) => ({ ...prev, [provider]: true }));
+        const models = await fetchModelsForProvider(provider);
+        setModelsCache((prev) => ({ ...prev, [provider]: models }));
+        setLoadingCache((prev) => ({ ...prev, [provider]: false }));
+    };
+
+    useEffect(() => {
+        stepConfigs.forEach((step) => {
+            if (step.provider_a) loadModels(step.provider_a);
+            if (step.provider_b) loadModels(step.provider_b);
+        });
+    }, []);
+
+    const handleProviderChange = async (index, side, value) => {
+        setStepConfigs((prev) => {
+            const updated = [...prev];
+            updated[index] = { ...updated[index], [`provider_${side}`]: value, [`model_${side}`]: '' };
+            return updated;
+        });
+        if (value) {
+            await loadModels(value);
+        }
+    };
+
+    const handleModelChange = (index, side, value) => {
+        setStepConfigs((prev) => {
+            const updated = [...prev];
+            updated[index] = { ...updated[index], [`model_${side}`]: value };
+            return updated;
+        });
+    };
+
+    const selectClass = 'w-full rounded-lg border border-white/10 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-100 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 focus:outline-none';
+
+    return (
+        <div className="space-y-2">
+            {stepConfigs.map((step, index) => (
+                <div key={index} className="rounded-xl border border-white/10 bg-zinc-900/60 p-3 space-y-2">
+                    <p className="text-xs font-medium text-zinc-300">
+                        Step {index + 1}{step.label ? ` — ${step.label}` : ''}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                        {['a', 'b'].map((side) => {
+                            const provider = step[`provider_${side}`] || '';
+                            const model = step[`model_${side}`] || '';
+                            const models = modelsCache[provider] || [];
+                            const isLoading = loadingCache[provider] || false;
+
+                            return (
+                                <div key={side} className="space-y-1.5">
+                                    <p className="text-xs text-zinc-500 font-medium">Agent {side.toUpperCase()}</p>
+                                    <select
+                                        value={provider}
+                                        onChange={(e) => handleProviderChange(index, side, e.target.value)}
+                                        className={selectClass}
+                                    >
+                                        <option value="">— provider —</option>
+                                        {PROVIDERS.map((p) => (
+                                            <option key={p} value={p}>{p}</option>
+                                        ))}
+                                    </select>
+                                    {isLoading ? (
+                                        <div className="flex items-center gap-1.5 px-2 py-1.5">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                                        </div>
+                                    ) : (
+                                        <select
+                                            value={model}
+                                            onChange={(e) => handleModelChange(index, side, e.target.value)}
+                                            disabled={!provider || models.length === 0}
+                                            className={selectClass}
+                                        >
+                                            <option value="">— model —</option>
+                                            {models.map((m) => (
+                                                <option key={m.id} value={m.id}>{m.name || m.id}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function Wizard() {
     const [history, setHistory] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [draft, setDraft] = useState(null);
+    const [stepConfigs, setStepConfigs] = useState([]);
+    const [streamToDiscord, setStreamToDiscord] = useState(false);
+    const [streamToDiscourse, setStreamToDiscourse] = useState(false);
     const [isMaterializing, setIsMaterializing] = useState(false);
     const bottomRef = useRef(null);
 
@@ -84,6 +205,16 @@ export default function Wizard() {
 
             if (data.done && data.orchestration_draft) {
                 setDraft(data.orchestration_draft);
+                setStepConfigs(
+                    (data.orchestration_draft.steps ?? []).map((s) => ({
+                        provider_a: s.provider_a ?? '',
+                        model_a: s.model_a ?? '',
+                        provider_b: s.provider_b ?? '',
+                        model_b: s.model_b ?? '',
+                    }))
+                );
+                setStreamToDiscord(Boolean(data.orchestration_draft.discord_streaming_enabled ?? false));
+                setStreamToDiscourse(Boolean(data.orchestration_draft.discourse_streaming_enabled ?? false));
             }
         } catch {
             setHistory((prev) => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }]);
@@ -105,7 +236,18 @@ export default function Wizard() {
             return;
         }
         setIsMaterializing(true);
-        router.post(route('orchestrator.wizard.materialize'), { draft }, {
+        const mergedSteps = (draft.steps ?? []).map((step, index) => ({
+            ...step,
+            ...(stepConfigs[index] ?? {}),
+        }));
+        router.post(route('orchestrator.wizard.materialize'), {
+            draft: {
+                ...draft,
+                steps: mergedSteps,
+                discord_streaming_enabled: streamToDiscord,
+                discourse_streaming_enabled: streamToDiscourse,
+            },
+        }, {
             onError: () => setIsMaterializing(false),
         });
     };
@@ -154,6 +296,27 @@ export default function Wizard() {
                                 <p className="text-white font-semibold">{draft.name}</p>
                                 {draft.goal && <p className="text-zinc-400 text-sm mt-1">{draft.goal}</p>}
                                 <p className="text-zinc-500 text-xs mt-2">{draft.steps?.length ?? 0} step{draft.steps?.length !== 1 ? 's' : ''}</p>
+                            </div>
+                            <StepEditor stepConfigs={stepConfigs} setStepConfigs={setStepConfigs} />
+                            <div className="space-y-2 rounded-xl border border-white/10 bg-zinc-900/40 p-3">
+                                <label className="flex items-center gap-2 text-xs text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={streamToDiscord}
+                                        onChange={(e) => setStreamToDiscord(e.target.checked)}
+                                        className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/50"
+                                    />
+                                    Stream each step chat to Discord
+                                </label>
+                                <label className="flex items-center gap-2 text-xs text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={streamToDiscourse}
+                                        onChange={(e) => setStreamToDiscourse(e.target.checked)}
+                                        className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/50"
+                                    />
+                                    Stream each step chat to Discourse
+                                </label>
                             </div>
                             <div className="flex gap-3">
                                 <button
