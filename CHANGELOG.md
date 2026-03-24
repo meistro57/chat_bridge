@@ -2,6 +2,16 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-24 (Bug Fix: AI Driver 400 / Temperature)
+
+### 🐛 Fix: 400 error from AI providers (body logged, temperature wired, retry hardened)
+
+- **Root cause** — `OpenAIDriver::sendChatRequest` never passed `temperature` to the HTTP payload and swallowed 400 response bodies entirely, making provider rejections invisible in logs. A misconfigured step (e.g. `provider: deepseek`, `model: gemini-2.0-flash`) would crash with `HTTP request returned status code 400` and no further detail.
+- **Temperature** — `sendChatRequest` and `sendToolChatRequest` now accept and forward the `temperature` parameter in every outgoing payload. Same fix applied to `OpenRouterDriver::chat()` and `streamChat()`.
+- **400 logging** — Both `sendChatRequest` and `sendToolChatRequest` log `provider_url`, `model`, `status`, and the full response `body` on any failed response, so provider-side errors (unknown model, invalid param, quota, etc.) are immediately visible in logs.
+- **Retry hardening** — `buildRequest()` retry condition is now explicit: retry on `ConnectionException`, `429`, and `5xx`; never retry `4xx` client errors (bad request, auth, not found). Added `throw: false` so the failed response is returned and handled by the existing `$response->failed()` guards rather than auto-thrown as a generic `RequestException`.
+- **OpenRouter stream guard** — `OpenRouterDriver::streamChat()` now checks `$response->failed()` and throws with the response body before attempting to read the SSE stream, preventing a stream-read loop on a non-streaming error response.
+
 ## [Unreleased] - 2026-03-24 (Bug Fix: Persona Guidelines)
 
 ### 🐛 Fix: `foreach` crash on string-typed persona guidelines

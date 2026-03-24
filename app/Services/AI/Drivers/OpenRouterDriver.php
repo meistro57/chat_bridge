@@ -37,6 +37,7 @@ class OpenRouterDriver extends OpenAIDriver
         try {
             $requestBody = [
                 'model' => $this->model,
+                'temperature' => $temperature,
                 'messages' => $messages->map->toArray()->all(),
             ];
 
@@ -130,9 +131,19 @@ class OpenRouterDriver extends OpenAIDriver
             ])
             ->post("{$this->baseUrl}/chat/completions", [
                 'model' => $this->model,
+                'temperature' => $temperature,
                 'messages' => $messages->map->toArray()->all(),
                 'stream' => true,
             ]);
+
+        if ($response->failed()) {
+            \Log::error('OpenRouter stream request failed', [
+                'model' => $this->model,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception('OpenRouter API Error: '.$response->body(), $response->status());
+        }
 
         $body = $response->toPsrResponse()->getBody();
         $yieldedContent = false;

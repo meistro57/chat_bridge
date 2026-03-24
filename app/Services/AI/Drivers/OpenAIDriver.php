@@ -7,8 +7,10 @@ use App\Services\AI\Data\AIResponse;
 use App\Services\AI\Tools\ToolDefinition;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class OpenAIDriver implements AIDriverInterface
 {
@@ -22,7 +24,7 @@ class OpenAIDriver implements AIDriverInterface
 
     public function chat(Collection $messages, float $temperature = 0.7): AIResponse
     {
-        $response = $this->sendChatRequest($messages, false);
+        $response = $this->sendChatRequest($messages, false, $temperature);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
@@ -50,7 +52,7 @@ class OpenAIDriver implements AIDriverInterface
     {
         $this->lastTokenUsage = null;
 
-        $response = $this->sendChatRequest($messages, true);
+        $response = $this->sendChatRequest($messages, true, $temperature);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
@@ -104,7 +106,7 @@ class OpenAIDriver implements AIDriverInterface
 
     public function chatWithTools(Collection $messages, Collection $tools, float $temperature = 0.7): array
     {
-        $response = $this->sendToolChatRequest($messages, $tools);
+        $response = $this->sendToolChatRequest($messages, $tools, $temperature);
 
         if ($response->failed()) {
             throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
@@ -195,10 +197,11 @@ class OpenAIDriver implements AIDriverInterface
         return trim($buffer);
     }
 
-    private function sendChatRequest(Collection $messages, bool $stream)
+    private function sendChatRequest(Collection $messages, bool $stream, float $temperature = 0.7)
     {
         $payload = [
             'model' => $this->model,
+            'temperature' => $temperature,
             'messages' => $messages->map(function ($m) {
                 $msgArray = $m->toArray();
                 // Prepend speaker name to assistant messages for clarity
@@ -225,13 +228,25 @@ class OpenAIDriver implements AIDriverInterface
             ]);
         }
 
-        return $client->post("{$this->baseUrl}/chat/completions", $payload);
+        $response = $client->post("{$this->baseUrl}/chat/completions", $payload);
+
+        if ($response->failed()) {
+            Log::error('AI API request failed', [
+                'provider_url' => $this->baseUrl,
+                'model' => $this->model,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
+
+        return $response;
     }
 
-    private function sendToolChatRequest(Collection $messages, Collection $tools)
+    private function sendToolChatRequest(Collection $messages, Collection $tools, float $temperature = 0.7)
     {
         $payload = [
             'model' => $this->model,
+            'temperature' => $temperature,
             'messages' => $messages->map(function ($m) {
                 $msgArray = $m->toArray();
                 if ($m->name && $m->role === 'assistant') {
@@ -245,7 +260,18 @@ class OpenAIDriver implements AIDriverInterface
             'tool_choice' => 'auto',
         ];
 
-        return $this->buildRequest()->post("{$this->baseUrl}/chat/completions", $payload);
+        $response = $this->buildRequest()->post("{$this->baseUrl}/chat/completions", $payload);
+
+        if ($response->failed()) {
+            Log::error('AI API request failed', [
+                'provider_url' => $this->baseUrl,
+                'model' => $this->model,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
+
+        return $response;
     }
 
     private function buildRequest(): PendingRequest
@@ -263,7 +289,19 @@ class OpenAIDriver implements AIDriverInterface
             $request = $request->retry(
                 $retryAttempts,
                 $retryDelayMs,
-                fn (\Exception $exception): bool => $exception instanceof ConnectionException
+                function (\Exception $exception): bool {
+                    if ($exception instanceof ConnectionException) {
+                        return true;
+                    }
+                    if ($exception instanceof RequestException) {
+                        $status = $exception->response->status();
+                        // Retry on 429 (rate limit) and 5xx (server errors); never on 4xx client errors.
+                        return $status === 429 || $status >= 500;
+                    }
+
+                    return false;
+                },
+                throw: false
             );
         }
 
