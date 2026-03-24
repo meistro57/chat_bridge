@@ -70,6 +70,7 @@ class ProviderController extends Controller
                 $result->push([
                     'id' => $provider,
                     'name' => $this->providerDisplayName($provider),
+                    'supports_tools' => $this->providerSupportsTools($provider),
                 ]);
             } else {
                 foreach ($keys as $key) {
@@ -79,6 +80,7 @@ class ProviderController extends Controller
                     $result->push([
                         'id' => "{$provider}:{$key->id}",
                         'name' => $displayName,
+                        'supports_tools' => $this->providerSupportsTools($provider),
                     ]);
                 }
             }
@@ -87,17 +89,26 @@ class ProviderController extends Controller
         // Bedrock uses env/config, not DB keys
         if ((string) config('services.bedrock.access_key_id', '') !== ''
             && (string) config('services.bedrock.secret_access_key', '') !== '') {
-            $result->push(['id' => 'bedrock', 'name' => 'Bedrock']);
+            $result->push(['id' => 'bedrock', 'name' => 'Bedrock', 'supports_tools' => false]);
         }
 
         // Local providers are always available if the user has none of them from keys already
-        foreach (['ollama' => 'Ollama', 'lmstudio' => 'LM Studio'] as $id => $name) {
+        foreach (['ollama' => true, 'lmstudio' => false] as $id => $supportsTools) {
             if ($result->where('id', $id)->isEmpty()) {
-                $result->push(['id' => $id, 'name' => $name]);
+                $name = $id === 'ollama' ? 'Ollama' : 'LM Studio';
+                $result->push(['id' => $id, 'name' => $name, 'supports_tools' => $supportsTools]);
             }
         }
 
         return response()->json(['providers' => $result->values()]);
+    }
+
+    private function providerSupportsTools(string $provider): bool
+    {
+        return match ($provider) {
+            'openai', 'anthropic', 'gemini', 'ollama' => true,
+            default => false,
+        };
     }
 
     private function providerDisplayName(string $provider): string

@@ -106,6 +106,7 @@ export default function Show({ conversation, stopSignal }) {
     const [retryModelsA, setRetryModelsA] = useState([]);
     const [retryModelsB, setRetryModelsB] = useState([]);
     const [configuredProviders, setConfiguredProviders] = useState([]);
+    const toolCapableProviders = configuredProviders.filter((p) => p.supports_tools !== false);
     const [retryLoadingA, setRetryLoadingA] = useState(false);
     const [retryLoadingB, setRetryLoadingB] = useState(false);
     const [isRetrying, setIsRetrying] = useState(false);
@@ -653,7 +654,7 @@ export default function Show({ conversation, stopSignal }) {
                                         onChange={(e) => { setRetryProviderA(e.target.value); setRetryModelA(''); }}
                                         className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-indigo-500/50"
                                     >
-                                        {configuredProviders.map((p) => (
+                                        {toolCapableProviders.map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
@@ -691,7 +692,7 @@ export default function Show({ conversation, stopSignal }) {
                                         onChange={(e) => { setRetryProviderB(e.target.value); setRetryModelB(''); }}
                                         className="w-full rounded-lg border border-white/10 bg-zinc-900/70 px-2 py-1.5 text-xs text-zinc-100 outline-none focus:border-purple-500/50"
                                     >
-                                        {configuredProviders.map((p) => (
+                                        {toolCapableProviders.map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>

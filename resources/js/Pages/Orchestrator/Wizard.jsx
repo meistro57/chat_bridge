@@ -63,7 +63,7 @@ function TypingIndicator() {
     );
 }
 
-function StepEditor({ stepConfigs, setStepConfigs, configuredProviders }) {
+function StepEditor({ stepConfigs, setStepConfigs, configuredProviders, toolCapableProviders }) {
     const [modelsCache, setModelsCache] = useState({});
     const [loadingCache, setLoadingCache] = useState({});
 
@@ -128,7 +128,7 @@ function StepEditor({ stepConfigs, setStepConfigs, configuredProviders }) {
                                         className={selectClass}
                                     >
                                         <option value="">— provider —</option>
-                                        {configuredProviders.map((p) => (
+                                        {(toolCapableProviders ?? configuredProviders).map((p) => (
                                             <option key={p.id} value={p.id}>{p.name}</option>
                                         ))}
                                     </select>
@@ -171,6 +171,7 @@ export default function Wizard() {
     const [streamToDiscourse, setStreamToDiscourse] = useState(false);
     const [isMaterializing, setIsMaterializing] = useState(false);
     const [configuredProviders, setConfiguredProviders] = useState([]);
+    const toolCapableProviders = configuredProviders.filter((p) => p.supports_tools !== false);
     const bottomRef = useRef(null);
 
     useEffect(() => {
@@ -306,7 +307,7 @@ export default function Wizard() {
                                 {draft.goal && <p className="text-zinc-400 text-sm mt-1">{draft.goal}</p>}
                                 <p className="text-zinc-500 text-xs mt-2">{draft.steps?.length ?? 0} step{draft.steps?.length !== 1 ? 's' : ''}</p>
                             </div>
-                            <StepEditor stepConfigs={stepConfigs} setStepConfigs={setStepConfigs} configuredProviders={configuredProviders} />
+                            <StepEditor stepConfigs={stepConfigs} setStepConfigs={setStepConfigs} configuredProviders={configuredProviders} toolCapableProviders={toolCapableProviders} />
                             <div className="space-y-2 rounded-xl border border-white/10 bg-zinc-900/40 p-3">
                                 <label className="flex items-center gap-2 text-xs text-zinc-300">
                                     <input

@@ -158,6 +158,14 @@ export default function Create({
         ? modelsB
         : (data.provider_b ? (fallbackModelsByProvider[baseProviderB] || []) : []);
 
+    const providerSupportsTools = (p) => p.supports_tools !== false;
+    const filteredProviders = mcpEnabled
+        ? configuredProviders.filter(providerSupportsTools)
+        : configuredProviders;
+    const toolFilteredProviderCount = mcpEnabled
+        ? configuredProviders.filter((p) => !providerSupportsTools(p)).length
+        : 0;
+
     const modelSupportsTools = (model) => model.supports_tools !== false;
 
     const filteredModelsA = useMemo(() => {
@@ -462,11 +470,14 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-indigo-500/50 outline-none"
                                 >
                                     <option value="">Select Provider...</option>
-                                    {configuredProviders.map((p) => (
+                                    {filteredProviders.map((p) => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_a && <div className="text-red-400 text-sm">{errors.provider_a}</div>}
+                                {mcpEnabled && toolFilteredProviderCount > 0 && (
+                                    <p className="text-xs text-amber-500/80 ml-1">{toolFilteredProviderCount} provider{toolFilteredProviderCount > 1 ? 's' : ''} hidden — no tool support (MCP active)</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
@@ -532,11 +543,14 @@ export default function Create({
                                     className="w-full bg-zinc-900/50 border border-white/10 rounded-xl p-3 text-zinc-100 focus:ring-2 focus:ring-purple-500/50 outline-none"
                                 >
                                     <option value="">Select Provider...</option>
-                                    {configuredProviders.map((p) => (
+                                    {filteredProviders.map((p) => (
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
                                 {errors.provider_b && <div className="text-red-400 text-sm">{errors.provider_b}</div>}
+                                {mcpEnabled && toolFilteredProviderCount > 0 && (
+                                    <p className="text-xs text-amber-500/80 ml-1">{toolFilteredProviderCount} provider{toolFilteredProviderCount > 1 ? 's' : ''} hidden — no tool support (MCP active)</p>
+                                )}
                             </div>
 
                             <div className="space-y-2">
