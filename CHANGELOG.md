@@ -2,6 +2,29 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-24 (Feature: Web fetch tool + Provider/tool-support filtering)
+
+### 🌐 Feature: AI personas can now fetch external URLs
+
+- Added `fetch_url` tool to `McpTools` — when an AI is given a website address during a conversation, it can call `fetch_url(url)` to retrieve and read the page content.
+- HTML responses are cleaned to plain text: `<script>` and `<style>` blocks are stripped first, then all remaining tags are removed and whitespace collapsed.
+- Output is capped at 2× `ai.tool_result_max_chars` (~8 000 chars) to keep context usage manageable. URLs that fail (network error, non-200) return a structured error so the AI can explain the failure instead of crashing.
+- Available on all tool-capable providers (OpenAI, Anthropic, Gemini, Ollama).
+
+### 🔒 Fix: Provider dropdowns now filtered to configured & tool-capable providers only
+
+- **Configured providers** — All provider dropdowns (Chat Create, Edit & Retry modal, Orchestrator Wizard) now fetch from the new `GET /api/providers/configured` endpoint and show only providers that have an active API key in the database for the current user. Bedrock is included if env credentials are present; Ollama and LM Studio always appear as local options.
+- **Multi-key providers** — When a user has multiple keys for the same provider (e.g. two DeepSeek keys with different labels), each key appears as a separate selectable entry (`deepseek:KEY_ID`). `AIManager::driverForProvider()` parses the compound `provider:keyId` format and loads that specific key.
+- **Tool-support filter** — The `supports_tools` flag is now part of the configured-providers API response (per-driver: `true` for openai, anthropic, gemini, ollama; `false` for deepseek, openrouter, lmstudio, bedrock). When MCP is active, provider dropdowns filter out non-tool-capable providers — closing the gap where the existing model-level filter was already hiding incompatible models but still allowing incompatible providers to be selected. An amber hint on the Create page shows how many providers are hidden.
+- **Orchestrator validation** — `provider_a` / `provider_b` rules updated from `in:` to regex to accept the `provider:keyId` compound format.
+
+## [Unreleased] - 2026-03-24 (Fix: Stream error body consumed before throw)
+
+### 🐛 Fix: `OpenAI API Error:` exception with empty message on stream failures
+
+- **Root cause** — `sendChatRequest()` called `$response->body()` in its logging block when `$stream=true`, exhausting the underlying PSR-7 stream. The subsequent `$response->body()` call in `streamChat()`'s `throw` statement returned an empty string, hiding the real API error (e.g. `"Model Not Exist"` from DeepSeek).
+- **Fix** — `sendChatRequest()` skips body logging for stream requests (`! $stream` guard). `streamChat()` reads the body exactly once on failure, uses it for both the error log entry and the exception message.
+
 ## [Unreleased] - 2026-03-24 (Fix: Provider-aware model selection in Orchestrator wizard)
 
 ### 🐛 Fix: Invalid provider/model combos no longer possible in Orchestrator steps
