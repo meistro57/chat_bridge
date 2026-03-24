@@ -250,6 +250,7 @@ class PersonaTest extends TestCase
         config(['services.openai.key' => 'test-openai-key']);
         config(['services.openai.model' => 'gpt-4o-mini']);
         config(['services.openrouter.key' => 'test-openrouter-key']);
+        config(['ai.http_retry_attempts' => 1]); // disable retries so 429 falls through immediately
 
         $user = User::factory()->create();
 

@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 class OpenAIDriverTest extends TestCase
 {
-    public function test_chat_does_not_send_temperature(): void
+    public function test_chat_sends_temperature(): void
     {
         Http::fake([
             'https://api.openai.com/v1/chat/completions' => Http::response([
@@ -31,10 +31,10 @@ class OpenAIDriverTest extends TestCase
         $this->assertInstanceOf(AIResponse::class, $result);
         $this->assertSame('OK', $result->content);
         Http::assertSentCount(1);
-        Http::assertSent(fn ($request): bool => ! array_key_exists('temperature', $request->data()));
+        Http::assertSent(fn ($request): bool => ($request->data()['temperature'] ?? null) === 0.7);
     }
 
-    public function test_stream_chat_does_not_send_temperature(): void
+    public function test_stream_chat_sends_temperature(): void
     {
         $streamBody = implode("\n", [
             'data: {"choices":[{"delta":{"content":"Hello "}}]}',
@@ -58,10 +58,10 @@ class OpenAIDriverTest extends TestCase
 
         $this->assertSame(['Hello ', 'World'], $chunks);
         Http::assertSentCount(1);
-        Http::assertSent(fn ($request): bool => ! array_key_exists('temperature', $request->data()));
+        Http::assertSent(fn ($request): bool => ($request->data()['temperature'] ?? null) === 0.7);
     }
 
-    public function test_chat_with_tools_does_not_send_temperature(): void
+    public function test_chat_with_tools_sends_temperature(): void
     {
         Http::fake([
             'https://api.openai.com/v1/chat/completions' => Http::response([
@@ -98,6 +98,6 @@ class OpenAIDriverTest extends TestCase
         $this->assertInstanceOf(AIResponse::class, $result['response']);
         $this->assertSame('Toolless response', $result['response']->content);
         Http::assertSentCount(1);
-        Http::assertSent(fn ($request): bool => ! array_key_exists('temperature', $request->data()));
+        Http::assertSent(fn ($request): bool => ($request->data()['temperature'] ?? null) === 0.7);
     }
 }

@@ -148,6 +148,7 @@ class SystemDiagnosticsTest extends TestCase
     public function test_admin_embeddings_key_test_fails_with_no_key(): void
     {
         $admin = User::factory()->admin()->create();
+        config(['services.openrouter.key' => null]); // ensure no fallback key is available
 
         $response = $this->actingAs($admin)->post(route('admin.system.embeddings-key.test'), [
             'openrouter_key' => null,
