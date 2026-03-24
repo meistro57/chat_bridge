@@ -23,7 +23,7 @@ class Persona extends Model
     ];
 
     protected $casts = [
-        'guidelines' => 'json',
+        'guidelines' => 'array',
         'temperature' => 'float',
         'is_favorite' => 'boolean',
     ];

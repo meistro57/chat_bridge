@@ -57,7 +57,29 @@ class ProcessConversationTurn implements ShouldQueue
         $driver = $ai->driverForProvider($settings['provider'], $settings['model']);
         $messages = collect();
         $messages->push(new MessageData('system', $currentPersona->system_prompt));
-        foreach ($currentPersona->guidelines ?? [] as $guideline) {
+        $guidelines = $currentPersona->guidelines;
+        if (! is_array($guidelines)) {
+            if (is_string($guidelines) && $guidelines !== '') {
+                \Log::warning('Persona guidelines is a string payload; normalizing', [
+                    'persona_id' => $currentPersona->id,
+                    'round' => $this->round,
+                    'type' => gettype($guidelines),
+                    'sample' => mb_substr($guidelines, 0, 120),
+                ]);
+                $decoded = json_decode($guidelines, true);
+                $guidelines = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
+            } else {
+                if ($guidelines !== null) {
+                    \Log::warning('Persona guidelines is not iterable; skipping', [
+                        'persona_id' => $currentPersona->id,
+                        'round' => $this->round,
+                        'type' => gettype($guidelines),
+                    ]);
+                }
+                $guidelines = [];
+            }
+        }
+        foreach ($guidelines as $guideline) {
             $messages->push(new MessageData('system', "Guideline: $guideline"));
         }
         $messages = $messages->concat($history);

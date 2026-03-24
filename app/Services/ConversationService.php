@@ -137,7 +137,7 @@ class ConversationService
         $messages->push(new MessageData('system', $conversationContext));
 
         // Guidelines
-        foreach ($persona->guidelines ?? [] as $guideline) {
+        foreach ($this->normalizeToArray($persona->guidelines, 'persona.guidelines', "persona:{$persona->id} conversation:{$conversation->id}") as $guideline) {
             $messages->push(new MessageData('system', "Guideline: $guideline"));
         }
 
@@ -343,7 +343,7 @@ class ConversationService
 
     protected function templateFileContextMessage(array $ragConfig): ?string
     {
-        $paths = collect($ragConfig['files'] ?? [])
+        $paths = collect($this->normalizeToArray($ragConfig['files'] ?? null, 'ragConfig.files', "conversation:{$ragConfig['conversation_id']}"))
             ->filter(fn ($path) => is_string($path) && trim($path) !== '')
             ->values();
 
@@ -535,6 +535,57 @@ class ConversationService
         }
 
         return max(1000, (int) config('ai.prompt_char_budgets.default', 120000));
+    }
+
+    /**
+     * Normalize a value to a plain PHP array.
+     *
+     * Handles: array → as-is, Collection → all(), JSON-encoded array string → decoded,
+     * other non-iterable values → [] with a warning log so failures stay non-fatal.
+     *
+     * @return array<mixed>
+     */
+    protected function normalizeToArray(mixed $value, string $fieldName, string $logContext = ''): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if ($value instanceof \Illuminate\Support\Collection) {
+            return $value->all();
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                Log::warning("ConversationService: {$fieldName} was a JSON-encoded string; decoded to array", [
+                    'field' => $fieldName,
+                    'context' => $logContext,
+                    'sample' => mb_substr($value, 0, 120),
+                ]);
+
+                return $decoded;
+            }
+
+            Log::warning("ConversationService: {$fieldName} is a non-iterable string; skipping", [
+                'field' => $fieldName,
+                'type' => gettype($value),
+                'context' => $logContext,
+                'sample' => mb_substr($value, 0, 120),
+            ]);
+
+            return [];
+        }
+
+        if ($value !== null) {
+            Log::warning("ConversationService: {$fieldName} is not iterable; skipping", [
+                'field' => $fieldName,
+                'type' => gettype($value),
+                'context' => $logContext,
+            ]);
+        }
+
+        return [];
     }
 
     protected function readTemplateFileSnippet(string $path, int $maxChars): ?string

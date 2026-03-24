@@ -2,6 +2,18 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-24 (Bug Fix: Persona Guidelines)
+
+### 🐛 Fix: `foreach` crash on string-typed persona guidelines
+
+- **Root cause** — The `guidelines` column on `personas` was stored as a JSON-encoded string (e.g. `"Be concise."`) instead of a JSON array (`["Be concise."]`) for some personas created via older UI paths. Laravel's `json` cast returns a PHP `string` for that case, and the `?? []` null-guard did not protect against non-null strings. Every conversation turn using one of these personas crashed with `foreach() argument must be of type array|object, string given`.
+- **Data migration** (`fix_persona_guidelines_string_to_array`) — Scans all existing personas and wraps any JSON-string guidelines value into a single-element JSON array. Confirmed 0 remaining bad rows after migration.
+- **Model cast** — Changed `guidelines` cast from `'json'` to `'array'` on `Persona` model (`json_decode($v, true)`), which is the correct cast for an array field.
+- **Guard method** — Added `ConversationService::normalizeToArray()` that safely coerces any value (array, `Collection`, JSON-array string, or unknown type) to a plain PHP array, logging a warning for unexpected shapes instead of crashing.
+- **Applied at two callsites** — `ConversationService::buildMessages()` line 140 (primary crash site) and `templateFileContextMessage()` RAG files payload; same inline guard added to `ProcessConversationTurn` line 60 which contains the identical pattern.
+- **Non-fatal design** — Malformed guidelines are skipped; the turn still generates a response rather than failing the conversation.
+- **11 regression tests** added in `PersonaGuidelinesNormalizationTest` covering array/null/JSON-string/multi-line-string payloads through both `ProcessConversationTurn` and `ConversationService::generateTurn`, plus RAG file-path normalization and the migration logic.
+
 ## [Unreleased] - 2026-03-15 (AI Orchestrator)
 
 ### 🎛️ AI Orchestrator
