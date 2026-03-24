@@ -55,7 +55,14 @@ class OpenAIDriver implements AIDriverInterface
         $response = $this->sendChatRequest($messages, true, $temperature);
 
         if ($response->failed()) {
-            throw new \Exception('OpenAI API Error: '.$response->body(), $response->status());
+            $errorBody = $response->body();
+            Log::error('AI API request failed', [
+                'provider_url' => $this->baseUrl,
+                'model' => $this->model,
+                'status' => $response->status(),
+                'body' => $errorBody,
+            ]);
+            throw new \Exception('OpenAI API Error: '.$errorBody, $response->status());
         }
 
         $body = $response->toPsrResponse()->getBody();
@@ -230,7 +237,7 @@ class OpenAIDriver implements AIDriverInterface
 
         $response = $client->post("{$this->baseUrl}/chat/completions", $payload);
 
-        if ($response->failed()) {
+        if ($response->failed() && ! $stream) {
             Log::error('AI API request failed', [
                 'provider_url' => $this->baseUrl,
                 'model' => $this->model,
