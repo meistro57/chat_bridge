@@ -7,6 +7,8 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class McpTools
@@ -23,12 +25,95 @@ class McpTools
     public function getAllTools(): Collection
     {
         return collect([
+            $this->fetchUrlTool(),
             $this->searchConversationsTool(),
             $this->getContextualMemoryTool(),
             $this->getRecentChatsTool(),
             $this->getConversationTool(),
             $this->getMcpStatsTool(),
         ]);
+    }
+
+    protected function fetchUrlTool(): ToolDefinition
+    {
+        return new ToolDefinition(
+            name: 'fetch_url',
+            description: 'Fetch the content of a web page or URL and return its readable text. Use this when given a website address to visit, or when needing to read content from an external link.',
+            parameters: [
+                'type' => 'object',
+                'properties' => [
+                    'url' => [
+                        'type' => 'string',
+                        'description' => 'The full URL to fetch (must start with http:// or https://)',
+                    ],
+                ],
+                'required' => ['url'],
+            ],
+            executor: function (array $args): array {
+                $url = trim((string) ($args['url'] ?? ''));
+
+                if (! str_starts_with($url, 'http://') && ! str_starts_with($url, 'https://')) {
+                    return ['error' => 'URL must start with http:// or https://'];
+                }
+
+                try {
+                    $response = Http::withHeaders([
+                        'User-Agent' => 'Mozilla/5.0 (compatible; ChatBridge/1.0)',
+                        'Accept' => 'text/html,application/xhtml+xml,text/plain,*/*',
+                    ])
+                        ->timeout(15)
+                        ->get($url);
+
+                    if ($response->failed()) {
+                        return [
+                            'url' => $url,
+                            'error' => "Request failed with status {$response->status()}",
+                        ];
+                    }
+
+                    $body = $response->body();
+                    $contentType = $response->header('Content-Type') ?? '';
+
+                    // For HTML, strip tags and clean up whitespace
+                    if (str_contains($contentType, 'html') || str_contains($body, '<html')) {
+                        // Remove scripts and styles entirely
+                        $body = preg_replace('/<(script|style)[^>]*>.*?<\/\1>/si', '', $body) ?? $body;
+                        // Strip remaining tags
+                        $body = strip_tags($body);
+                    }
+
+                    // Collapse whitespace
+                    $body = preg_replace('/\s{2,}/', "\n", $body) ?? $body;
+                    $body = trim($body);
+
+                    // Limit to ~8000 chars to keep the context window manageable
+                    $maxChars = (int) config('ai.tool_result_max_chars', 4000) * 2;
+                    if (strlen($body) > $maxChars) {
+                        $body = substr($body, 0, $maxChars).'… [truncated]';
+                    }
+
+                    Log::info('fetch_url tool succeeded', [
+                        'url' => $url,
+                        'content_length' => strlen($body),
+                    ]);
+
+                    return [
+                        'url' => $url,
+                        'content' => $body,
+                    ];
+                } catch (\Exception $e) {
+                    Log::warning('fetch_url tool failed', [
+                        'url' => $url,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return [
+                        'url' => $url,
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+        );
     }
 
     protected function searchConversationsTool(): ToolDefinition
