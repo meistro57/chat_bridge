@@ -87,6 +87,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('personas', PersonaController::class);
 
     // Template routes
+    Route::patch('/templates/favorites/clear', [\App\Http\Controllers\ConversationTemplateController::class, 'clearFavorites'])->name('templates.favorites.clear');
+    Route::patch('/templates/{template}/favorite', [\App\Http\Controllers\ConversationTemplateController::class, 'toggleFavorite'])->name('templates.favorite');
     Route::resource('templates', \App\Http\Controllers\ConversationTemplateController::class);
     Route::post('/templates/{template}/use', [\App\Http\Controllers\ConversationTemplateController::class, 'use'])->name('templates.use');
     Route::post('/templates/{template}/clone', [\App\Http\Controllers\ConversationTemplateController::class, 'clone'])->name('templates.clone');

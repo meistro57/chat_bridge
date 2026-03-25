@@ -21,6 +21,7 @@ class ConversationTemplate extends Model
         'persona_a_id',
         'persona_b_id',
         'is_public',
+        'is_favorite',
         'rag_enabled',
         'rag_source_limit',
         'rag_score_threshold',
@@ -32,6 +33,7 @@ class ConversationTemplate extends Model
     {
         return [
             'is_public' => 'boolean',
+            'is_favorite' => 'boolean',
             'max_rounds' => 'integer',
             'rag_enabled' => 'boolean',
             'rag_source_limit' => 'integer',

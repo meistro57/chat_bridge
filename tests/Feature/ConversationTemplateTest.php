@@ -372,4 +372,105 @@ class ConversationTemplateTest extends TestCase
         Storage::disk('local')->assertExists($pathToKeep);
         Storage::disk('local')->assertMissing($pathToDelete);
     }
+
+    public function test_owner_can_toggle_template_favorite_on(): void
+    {
+        $user = User::factory()->create();
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => false,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('templates.favorite', $template));
+
+        $response->assertRedirect();
+        $this->assertTrue($template->fresh()->is_favorite);
+    }
+
+    public function test_owner_can_toggle_template_favorite_off(): void
+    {
+        $user = User::factory()->create();
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => true,
+        ]);
+
+        $response = $this->actingAs($user)->patch(route('templates.favorite', $template));
+
+        $response->assertRedirect();
+        $this->assertFalse($template->fresh()->is_favorite);
+    }
+
+    public function test_toggle_favorite_returns_json_when_requested(): void
+    {
+        $user = User::factory()->create();
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $user->id,
+            'is_favorite' => false,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson(route('templates.favorite', $template));
+
+        $response->assertOk();
+        $response->assertJson(['ok' => true, 'is_favorite' => true]);
+    }
+
+    public function test_non_owner_cannot_toggle_template_favorite(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $template = ConversationTemplate::factory()->create([
+            'user_id' => $owner->id,
+            'is_favorite' => false,
+        ]);
+
+        $response = $this->actingAs($other)->patch(route('templates.favorite', $template));
+
+        $response->assertForbidden();
+        $this->assertFalse($template->fresh()->is_favorite);
+    }
+
+    public function test_owner_can_clear_all_template_favorites(): void
+    {
+        $user = User::factory()->create();
+        ConversationTemplate::factory()->count(3)->create([
+            'user_id' => $user->id,
+            'is_favorite' => true,
+        ]);
+
+        $response = $this->actingAs($user)->patchJson(route('templates.favorites.clear'));
+
+        $response->assertOk();
+        $response->assertJson(['ok' => true]);
+        $this->assertSame(0, ConversationTemplate::where('user_id', $user->id)->where('is_favorite', true)->count());
+    }
+
+    public function test_clear_favorites_only_affects_current_user(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+
+        ConversationTemplate::factory()->create(['user_id' => $user->id, 'is_favorite' => true]);
+        $otherTemplate = ConversationTemplate::factory()->create(['user_id' => $other->id, 'is_favorite' => true]);
+
+        $this->actingAs($user)->patchJson(route('templates.favorites.clear'));
+
+        $this->assertTrue($otherTemplate->fresh()->is_favorite);
+    }
+
+    public function test_favorites_are_sorted_first_in_index(): void
+    {
+        $user = User::factory()->create();
+        ConversationTemplate::factory()->create(['user_id' => $user->id, 'name' => 'Zzz Template', 'is_favorite' => false]);
+        ConversationTemplate::factory()->create(['user_id' => $user->id, 'name' => 'Aaa Template', 'is_favorite' => true]);
+
+        $response = $this->actingAs($user)->get(route('templates.index'));
+
+        $response->assertOk();
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('Templates/Index')
+            ->where('templates.0.name', 'Aaa Template')
+            ->where('templates.1.name', 'Zzz Template')
+        );
+    }
 }

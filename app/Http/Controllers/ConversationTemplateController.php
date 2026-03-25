@@ -6,6 +6,7 @@ use App\Http\Requests\StoreConversationTemplateRequest;
 use App\Http\Requests\UpdateConversationTemplateRequest;
 use App\Models\ConversationTemplate;
 use App\Models\Persona;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -29,6 +30,7 @@ class ConversationTemplateController extends Controller
             })
             ->byCategory($category)
             ->with(['personaA:id,name', 'personaB:id,name', 'user:id,name'])
+            ->orderByDesc('is_favorite')
             ->orderBy('name')
             ->get();
 
@@ -146,6 +148,40 @@ class ConversationTemplateController extends Controller
 
         return Redirect::route('templates.edit', $copy)
             ->with('success', 'Template cloned.');
+    }
+
+    public function toggleFavorite(Request $request, ConversationTemplate $template): JsonResponse|RedirectResponse
+    {
+        $this->authorizeOwner($request, $template);
+
+        $template->update([
+            'is_favorite' => ! $template->is_favorite,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'is_favorite' => (bool) $template->is_favorite,
+            ]);
+        }
+
+        return back()->with('success', 'Template favorite status updated.');
+    }
+
+    public function clearFavorites(Request $request): JsonResponse|RedirectResponse
+    {
+        ConversationTemplate::query()
+            ->where('user_id', $request->user()->id)
+            ->where('is_favorite', true)
+            ->update(['is_favorite' => false]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+            ]);
+        }
+
+        return redirect()->route('templates.index')->with('success', 'All template favorites cleared.');
     }
 
     private function authorizeOwner(Request $request, ConversationTemplate $template): void

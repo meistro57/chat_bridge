@@ -8,7 +8,6 @@ use App\Models\Persona;
 use App\Services\AI\AIManager;
 use App\Services\AI\Data\MessageData;
 use App\Services\AI\Drivers\MockDriver;
-use App\Services\AI\Drivers\OpenAIDriver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -154,9 +153,11 @@ class PersonaController extends Controller
 
     public function generate(GeneratePersonaRequest $request): JsonResponse
     {
-        $openAiKey = (string) config('services.openai.key', '');
+        $openAiDriver = app(AIManager::class)->createOpenAIDriver(
+            (string) config('services.openai.model', 'gpt-4o-mini')
+        );
 
-        if ($openAiKey === '') {
+        if ($openAiDriver instanceof MockDriver) {
             return response()->json([
                 'message' => 'OpenAI service API key is not configured.',
             ], 422);
@@ -186,11 +187,7 @@ class PersonaController extends Controller
         $parsed = [];
 
         try {
-            $driver = new OpenAIDriver(
-                apiKey: $openAiKey,
-                model: (string) config('services.openai.model', 'gpt-4o-mini')
-            );
-            $response = $driver->chat($messages, 0.7);
+            $response = $openAiDriver->chat($messages, 0.7);
             $parsed = $this->extractPersonaJson($response->content);
         } catch (\Throwable $exception) {
             if ($this->shouldFallbackToOpenRouter($exception)) {

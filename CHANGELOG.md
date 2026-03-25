@@ -2,6 +2,33 @@
 
 All notable changes to Chat Bridge will be documented in this file.
 
+## [Unreleased] - 2026-03-25 (Feature: Template favorites + Fix: Persona AI creator key resolution)
+
+### ⭐ Feature: Favorite conversation templates
+
+- Added `is_favorite` boolean column to `conversation_templates` (migration included, default `false`).
+- `ConversationTemplateController` gains `toggleFavorite` and `clearFavorites` actions, mirroring the existing Persona favorites API.
+- Templates index now orders favorites first, then alphabetically by name.
+- `Templates/Index.jsx` updated with: star toggle button on each owned card, "Favorites Only" filter toggle, "Clear Favorites" button, and a "Favorite" badge on favorited cards — matching the Personas UI.
+- 7 new feature tests covering toggle on/off, JSON response, non-owner 403, clear (own only), and sort order.
+
+### 🐛 Fix: Persona AI creator now respects user-level API keys
+
+- `PersonaController::generate()` was reading `config('services.openai.key')` directly, bypassing `AIManager::getKey()` which checks user DB keys first. If the system `.env` key was invalid, persona generation would fail even when the user had a valid key stored in their account.
+- Fixed by replacing the manual `new OpenAIDriver(...)` call with `AIManager::createOpenAIDriver()`, which resolves keys in the correct priority order: user DB key → any active DB key → config fallback.
+
+### ⭐ Feature: Orchestrator Discord & Discourse streaming toggles
+
+- Added `discord_streaming_enabled` and `discourse_streaming_enabled` flags to orchestration `metadata` (JSON column, persisted on create and update).
+- `RunOrchestration` job reads these flags when spawning each step's conversation, passing `discord_webhook_url` (from the run owner's profile) and `discourse_streaming_enabled` through to the conversation record.
+- `Orchestrator/Show.jsx` gains a "Streaming" panel with two checkboxes that immediately persist changes via `PUT` without a full page reload.
+
+### 🐛 Fix: Orchestrator `latestRun` N+1 and broadcast auth
+
+- `OrchestratorController::index()` replaced `with('latestRun')` (which used a `HasOne` with `latest()` — an unreliable pattern under pagination) with a single bulk query fetching the most-recent run per orchestration and keying them manually. Eliminates one query per orchestration card.
+- `Orchestration::latestRun()` relationship simplified to a plain `hasOne` (ordering removed from the relationship; callers that need the latest run now call `runs()->latest('created_at')->first()` explicitly).
+- `routes/channels.php` — `conversation.{id}` broadcast auth now uses `Conversation::whereKey()->where('user_id')` instead of `$user->conversations()->where('id')`, avoiding a subtle query difference when `id` is cast as a string.
+
 ## [Unreleased] - 2026-03-24 (Feature: Web fetch tool + Provider/tool-support filtering)
 
 ### 🌐 Feature: AI personas can now fetch external URLs

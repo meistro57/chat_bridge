@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 const STATUS_STYLES = {
     idle: 'text-zinc-400 bg-zinc-800',
@@ -77,6 +78,24 @@ function RunRow({ run }) {
 }
 
 export default function Show({ orchestration, runs }) {
+    const [streamToDiscord, setStreamToDiscord] = useState(Boolean(orchestration.metadata?.discord_streaming_enabled ?? false));
+    const [streamToDiscourse, setStreamToDiscourse] = useState(Boolean(orchestration.metadata?.discourse_streaming_enabled ?? false));
+
+    useEffect(() => {
+        setStreamToDiscord(Boolean(orchestration.metadata?.discord_streaming_enabled ?? false));
+        setStreamToDiscourse(Boolean(orchestration.metadata?.discourse_streaming_enabled ?? false));
+    }, [orchestration.metadata]);
+
+    const updateStreamingFlags = (discordEnabled, discourseEnabled) => {
+        router.put(route('orchestrator.update', orchestration.id), {
+            discord_streaming_enabled: discordEnabled,
+            discourse_streaming_enabled: discourseEnabled,
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
+
     const handleRun = () => router.post(route('orchestrator.run', orchestration.id));
     const handlePause = () => router.post(route('orchestrator.pause', orchestration.id));
     const handleDelete = () => {
@@ -128,6 +147,38 @@ export default function Show({ orchestration, runs }) {
                                     Delete
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold text-white">Streaming</h2>
+                        <div className="space-y-2 rounded-xl border border-white/10 bg-zinc-900/40 p-4">
+                            <label className="flex items-center gap-2 text-sm text-zinc-300">
+                                <input
+                                    type="checkbox"
+                                    checked={streamToDiscord}
+                                    onChange={(event) => {
+                                        const nextValue = event.target.checked;
+                                        setStreamToDiscord(nextValue);
+                                        updateStreamingFlags(nextValue, streamToDiscourse);
+                                    }}
+                                    className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/50"
+                                />
+                                Stream each step chat to Discord
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-zinc-300">
+                                <input
+                                    type="checkbox"
+                                    checked={streamToDiscourse}
+                                    onChange={(event) => {
+                                        const nextValue = event.target.checked;
+                                        setStreamToDiscourse(nextValue);
+                                        updateStreamingFlags(streamToDiscord, nextValue);
+                                    }}
+                                    className="h-4 w-4 rounded border-white/20 bg-zinc-900 text-indigo-500 focus:ring-indigo-500/50"
+                                />
+                                Stream each step chat to Discourse
+                            </label>
                         </div>
                     </div>
 

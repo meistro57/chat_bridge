@@ -22,10 +22,23 @@ class OrchestratorController extends Controller
     {
         $orchestrations = Orchestration::query()
             ->where('user_id', $request->user()->id)
-            ->with('latestRun')
             ->withCount('runs')
             ->latest()
             ->paginate(20);
+
+        $latestRuns = OrchestratorRun::query()
+            ->whereIn('orchestration_id', $orchestrations->getCollection()->pluck('id'))
+            ->orderByDesc('created_at')
+            ->orderByDesc('updated_at')
+            ->get()
+            ->unique('orchestration_id')
+            ->keyBy('orchestration_id');
+
+        $orchestrations->getCollection()->transform(function (Orchestration $orchestration) use ($latestRuns): Orchestration {
+            $orchestration->setRelation('latestRun', $latestRuns->get($orchestration->id));
+
+            return $orchestration;
+        });
 
         return Inertia::render('Orchestrator/Index', [
             'orchestrations' => $orchestrations,
@@ -41,7 +54,8 @@ class OrchestratorController extends Controller
             abort(403);
         }
 
-        $orchestration->load(['steps', 'latestRun']);
+        $orchestration->load('steps');
+        $orchestration->setRelation('latestRun', $orchestration->runs()->latest('created_at')->first());
 
         $runs = $orchestration->runs()
             ->with('stepRuns.step')
@@ -70,8 +84,11 @@ class OrchestratorController extends Controller
             'cron_expression' => $validated['cron_expression'] ?? null,
             'timezone' => $validated['timezone'] ?? 'UTC',
             'status' => 'idle',
+            'metadata' => [
+                'discord_streaming_enabled' => (bool) ($validated['discord_streaming_enabled'] ?? false),
+                'discourse_streaming_enabled' => (bool) ($validated['discourse_streaming_enabled'] ?? false),
+            ],
         ]);
-
         foreach ($validated['steps'] as $stepData) {
             OrchestratorStep::create([
                 'orchestration_id' => $orchestration->id,
@@ -109,6 +126,16 @@ class OrchestratorController extends Controller
 
         $validated = $request->validated();
 
+        $metadata = is_array($orchestration->metadata) ? $orchestration->metadata : [];
+
+        if (array_key_exists('discord_streaming_enabled', $validated)) {
+            $metadata['discord_streaming_enabled'] = (bool) $validated['discord_streaming_enabled'];
+        }
+
+        if (array_key_exists('discourse_streaming_enabled', $validated)) {
+            $metadata['discourse_streaming_enabled'] = (bool) $validated['discourse_streaming_enabled'];
+        }
+
         $orchestration->update([
             'name' => $validated['name'] ?? $orchestration->name,
             'description' => $validated['description'] ?? $orchestration->description,
@@ -116,8 +143,8 @@ class OrchestratorController extends Controller
             'is_scheduled' => $validated['is_scheduled'] ?? $orchestration->is_scheduled,
             'cron_expression' => $validated['cron_expression'] ?? $orchestration->cron_expression,
             'timezone' => $validated['timezone'] ?? $orchestration->timezone,
+            'metadata' => $metadata,
         ]);
-
         if (isset($validated['steps'])) {
             $orchestration->steps()->delete();
 

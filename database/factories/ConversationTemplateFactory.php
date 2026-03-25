@@ -28,6 +28,7 @@ class ConversationTemplateFactory extends Factory
             'persona_a_id' => Persona::factory(),
             'persona_b_id' => Persona::factory(),
             'is_public' => false,
+            'is_favorite' => false,
         ];
     }
 

@@ -140,6 +140,10 @@ class RunOrchestration implements ShouldQueue
     protected function createAndRunConversation(OrchestratorStep $step, OrchestratorRun $run, string $input): Conversation
     {
         $template = $step->template;
+        $orchestrationMetadata = is_array($run->orchestration->metadata) ? $run->orchestration->metadata : [];
+        $discordStreamingEnabled = (bool) ($orchestrationMetadata['discord_streaming_enabled'] ?? false);
+        $discourseStreamingEnabled = (bool) ($orchestrationMetadata['discourse_streaming_enabled'] ?? false);
+        $conversationOwner = $run->user;
 
         $personaAId = $step->persona_a_id ?? $template?->persona_a_id;
         $personaBId = $step->persona_b_id ?? $template?->persona_b_id;
@@ -182,8 +186,10 @@ class RunOrchestration implements ShouldQueue
                 'orchestration_run_id' => $run->id,
                 'orchestration_id' => $run->orchestration_id,
             ],
+            'discord_streaming_enabled' => $discordStreamingEnabled,
+            'discord_webhook_url' => $discordStreamingEnabled ? $conversationOwner?->discord_webhook_url : null,
+            'discourse_streaming_enabled' => $discourseStreamingEnabled,
         ]);
-
         $conversation->messages()->create([
             'user_id' => $run->user_id,
             'role' => 'user',

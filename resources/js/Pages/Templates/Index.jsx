@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import axios from 'axios';
 
 export default function Index({ templates, categories, filters }) {
     const user = usePage().props.auth.user;
     const activeCategory = filters?.category ?? '';
+    const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
     const handleDelete = (templateId) => {
         if (confirm('Delete this template?')) {
@@ -18,6 +21,56 @@ export default function Index({ templates, categories, filters }) {
     const handleClone = (templateId) => {
         router.post(route('templates.clone', templateId));
     };
+
+    const handleToggleFavorite = (id) => {
+        router.patch(route('templates.favorite', id), {}, {
+            preserveScroll: true,
+            preserveState: false,
+            onSuccess: () => {
+                router.reload({
+                    only: ['templates'],
+                    preserveScroll: true,
+                });
+            },
+        });
+    };
+
+    const handleClearFavorites = async () => {
+        if (!confirm('Clear all favorites?')) {
+            return;
+        }
+
+        const favoriteTemplates = templates.filter((t) => t.is_favorite && t.user_id === user.id);
+
+        if (favoriteTemplates.length === 0) {
+            return;
+        }
+
+        try {
+            await Promise.all(
+                favoriteTemplates.map((t) => axios.patch(route('templates.favorite', t.id))),
+            );
+
+            if (showFavoritesOnly) {
+                setShowFavoritesOnly(false);
+            }
+
+            router.reload({
+                only: ['templates'],
+                preserveScroll: true,
+            });
+        } catch {
+            router.reload({
+                only: ['templates'],
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const hasFavorites = templates.some((t) => t.is_favorite && t.user_id === user.id);
+    const filteredTemplates = showFavoritesOnly
+        ? templates.filter((t) => t.is_favorite)
+        : templates;
 
     return (
         <AuthenticatedLayout>
@@ -36,13 +89,30 @@ export default function Index({ templates, categories, filters }) {
                             <p className="text-zinc-500 mt-2">Build reusable starting points for high-impact sessions.</p>
                         </div>
 
-                        <Link
-                            href={route('templates.create')}
-                            className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                            New Template
-                        </Link>
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                            <button
+                                onClick={() => setShowFavoritesOnly((current) => !current)}
+                                className={`group flex items-center gap-2 rounded-xl border px-5 py-2.5 font-medium transition-all ${showFavoritesOnly ? 'border-indigo-400/50 bg-indigo-500/20 text-indigo-200 hover:bg-indigo-500/30' : 'border-zinc-700 bg-zinc-900/70 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900'}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill={showFavoritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                {showFavoritesOnly ? 'Show All' : 'Favorites Only'}
+                            </button>
+                            <button
+                                onClick={handleClearFavorites}
+                                disabled={!hasFavorites}
+                                className="group flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-5 py-2.5 font-medium text-amber-200 transition-all hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-zinc-700/60 disabled:bg-zinc-900/60 disabled:text-zinc-500"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="4" x2="20" y2="20"/><path d="M12 17.77 5.82 21.02 7 14.14 2 9.27l6.91-1.01L12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88z"/></svg>
+                                Clear Favorites
+                            </button>
+                            <Link
+                                href={route('templates.create')}
+                                className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all hover:shadow-[0_0_20px_rgba(99,102,241,0.3)]"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                                New Template
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="glass-panel glass-butter rounded-2xl p-5 border border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -71,7 +141,7 @@ export default function Index({ templates, categories, filters }) {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {templates.map((template, index) => {
+                        {filteredTemplates.map((template, index) => {
                             const isOwner = template.user_id === user.id;
 
                             return (
@@ -88,6 +158,11 @@ export default function Index({ templates, categories, filters }) {
                                                 {template.name}
                                             </h3>
                                             <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                {template.is_favorite && (
+                                                    <span className="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                                                        Favorite
+                                                    </span>
+                                                )}
                                                 {template.category && (
                                                     <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                                                         {template.category}
@@ -107,6 +182,16 @@ export default function Index({ templates, categories, filters }) {
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                 </Link>
+                                            )}
+                                            {isOwner && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleFavorite(template.id)}
+                                                    className={`p-2 rounded-lg transition-colors ${template.is_favorite ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30' : 'bg-zinc-900/80 text-zinc-400 hover:bg-zinc-700 hover:text-amber-300'}`}
+                                                    title={template.is_favorite ? 'Remove Favorite' : 'Mark Favorite'}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={template.is_favorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                                </button>
                                             )}
                                             {isOwner && (
                                                 <button
@@ -162,9 +247,9 @@ export default function Index({ templates, categories, filters }) {
                             );
                         })}
 
-                        {templates.length === 0 && (
+                        {filteredTemplates.length === 0 && (
                             <div className="col-span-full text-center text-zinc-500 py-12">
-                                No templates found for this category.
+                                {showFavoritesOnly ? 'No favorite templates yet.' : 'No templates found for this category.'}
                             </div>
                         )}
                     </div>
