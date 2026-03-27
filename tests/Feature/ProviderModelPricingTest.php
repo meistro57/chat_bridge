@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\ApiKey;
 use App\Models\ModelPrice;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -11,6 +13,12 @@ use Tests\TestCase;
 class ProviderModelPricingTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->actingAs(User::factory()->create());
+    }
 
     public function test_gemini_models_are_fetched_from_api_when_key_is_available(): void
     {
@@ -184,5 +192,62 @@ class ProviderModelPricingTest extends TestCase
         $this->assertTrue($ids->contains('llama3.2:latest'));
         $this->assertTrue($ids->contains('mistral:latest'));
         $this->assertSame('Mistral 7B', collect($response->json('models'))->firstWhere('id', 'mistral:latest')['name']);
+    }
+
+    public function test_configured_provider_endpoint_includes_all_default_providers_without_user_keys(): void
+    {
+        $response = $this->getJson('/api/providers/configured');
+
+        $response->assertOk();
+
+        $providerIds = collect($response->json('providers'))->pluck('id')->all();
+
+        $this->assertContains('openai', $providerIds);
+        $this->assertContains('anthropic', $providerIds);
+        $this->assertContains('gemini', $providerIds);
+        $this->assertContains('openrouter', $providerIds);
+        $this->assertContains('deepseek', $providerIds);
+        $this->assertContains('bedrock', $providerIds);
+        $this->assertContains('ollama', $providerIds);
+        $this->assertContains('lmstudio', $providerIds);
+        $this->assertContains('mock', $providerIds);
+    }
+
+    public function test_configured_provider_endpoint_exposes_scoped_provider_ids_for_multiple_keys(): void
+    {
+        $user = User::query()->firstOrFail();
+
+        $firstKey = ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openai',
+            'label' => 'Primary OpenAI',
+            'is_active' => true,
+        ]);
+
+        $secondKey = ApiKey::factory()->create([
+            'user_id' => $user->id,
+            'provider' => 'openai',
+            'label' => 'Secondary OpenAI',
+            'is_active' => true,
+        ]);
+
+        $response = $this->getJson('/api/providers/configured');
+
+        $response->assertOk();
+        $providerIds = collect($response->json('providers'))->pluck('id')->all();
+
+        $this->assertContains('openai', $providerIds);
+        $this->assertContains("openai:{$firstKey->id}", $providerIds);
+        $this->assertContains("openai:{$secondKey->id}", $providerIds);
+    }
+
+    public function test_mock_models_are_available_from_provider_models_endpoint(): void
+    {
+        $response = $this->getJson('/api/providers/models?provider=mock');
+
+        $response->assertOk();
+        $response->assertJsonPath('provider', 'mock');
+        $response->assertJsonPath('models.0.id', 'mock-default');
+        $response->assertJsonPath('models.0.supports_tools', false);
     }
 }

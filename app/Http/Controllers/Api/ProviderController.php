@@ -55,52 +55,66 @@ class ProviderController extends Controller
     {
         $userId = auth()->id();
 
+        $result = collect($this->defaultProviders())
+            ->keyBy('id');
+
         // Fetch all active keys for the current user, ordered oldest-first so
         // single-key providers keep their plain id.
-        $userKeys = ApiKey::where('user_id', $userId)
+        $userKeys = ApiKey::query()
+            ->where('user_id', $userId)
             ->where('is_active', true)
             ->orderBy('created_at')
             ->get(['id', 'provider', 'label']);
 
         $byProvider = $userKeys->groupBy('provider');
-        $result = collect();
+        $scopedProviderEntries = collect();
 
         foreach ($byProvider as $provider => $keys) {
-            if ($keys->count() === 1) {
-                $result->push([
+            if (! $result->has($provider)) {
+                $result->put($provider, [
                     'id' => $provider,
                     'name' => $this->providerDisplayName($provider),
                     'supports_tools' => $this->providerSupportsTools($provider),
                 ]);
-            } else {
-                foreach ($keys as $key) {
-                    $displayName = $key->label
-                        ? $key->label
-                        : $this->providerDisplayName($provider);
-                    $result->push([
-                        'id' => "{$provider}:{$key->id}",
-                        'name' => $displayName,
-                        'supports_tools' => $this->providerSupportsTools($provider),
-                    ]);
-                }
+            }
+
+            if ($keys->count() === 1) {
+                continue;
+            }
+
+            foreach ($keys as $key) {
+                $displayName = $key->label
+                    ? $key->label
+                    : $this->providerDisplayName($provider);
+                $scopedProviderEntries->push([
+                    'id' => "{$provider}:{$key->id}",
+                    'name' => $displayName,
+                    'supports_tools' => $this->providerSupportsTools($provider),
+                ]);
             }
         }
 
-        // Bedrock uses env/config, not DB keys
-        if ((string) config('services.bedrock.access_key_id', '') !== ''
-            && (string) config('services.bedrock.secret_access_key', '') !== '') {
-            $result->push(['id' => 'bedrock', 'name' => 'Bedrock', 'supports_tools' => false]);
-        }
+        return response()->json([
+            'providers' => $result->values()->merge($scopedProviderEntries)->values(),
+        ]);
+    }
 
-        // Local providers are always available if the user has none of them from keys already
-        foreach (['ollama' => true, 'lmstudio' => false] as $id => $supportsTools) {
-            if ($result->where('id', $id)->isEmpty()) {
-                $name = $id === 'ollama' ? 'Ollama' : 'LM Studio';
-                $result->push(['id' => $id, 'name' => $name, 'supports_tools' => $supportsTools]);
-            }
-        }
-
-        return response()->json(['providers' => $result->values()]);
+    /**
+     * @return array<int, array{id:string, name:string, supports_tools:bool}>
+     */
+    private function defaultProviders(): array
+    {
+        return [
+            ['id' => 'openai', 'name' => 'OpenAI', 'supports_tools' => true],
+            ['id' => 'anthropic', 'name' => 'Anthropic', 'supports_tools' => true],
+            ['id' => 'gemini', 'name' => 'Gemini', 'supports_tools' => true],
+            ['id' => 'openrouter', 'name' => 'OpenRouter', 'supports_tools' => false],
+            ['id' => 'deepseek', 'name' => 'DeepSeek', 'supports_tools' => false],
+            ['id' => 'bedrock', 'name' => 'Bedrock', 'supports_tools' => false],
+            ['id' => 'ollama', 'name' => 'Ollama', 'supports_tools' => true],
+            ['id' => 'lmstudio', 'name' => 'LM Studio', 'supports_tools' => false],
+            ['id' => 'mock', 'name' => 'Mock', 'supports_tools' => false],
+        ];
     }
 
     private function providerSupportsTools(string $provider): bool
@@ -122,6 +136,7 @@ class ProviderController extends Controller
             'bedrock' => 'Bedrock',
             'ollama' => 'Ollama',
             'lmstudio' => 'LM Studio',
+            'mock' => 'Mock',
             default => ucfirst($provider),
         };
     }
@@ -142,6 +157,7 @@ class ProviderController extends Controller
             'deepseek' => $this->fetchDeepSeekModels(),
             'ollama' => $this->fetchOllamaModels(),
             'lmstudio' => $this->fetchLMStudioModels(),
+            'mock' => $this->getDefaultMockModels(),
             default => throw new \Exception("Unsupported provider: {$provider}"),
         };
     }
@@ -665,6 +681,13 @@ class ProviderController extends Controller
             ['id' => 'gpt-4o-mini', 'name' => 'GPT-4o Mini', 'cost' => '$0.15/$0.60', 'supports_tools' => true],
             ['id' => 'o1', 'name' => 'o1', 'cost' => '$15.00/$60.00', 'supports_tools' => true],
             ['id' => 'o3-mini', 'name' => 'o3-mini', 'cost' => '$1.10/$4.40', 'supports_tools' => true],
+        ];
+    }
+
+    private function getDefaultMockModels(): array
+    {
+        return [
+            ['id' => 'mock-default', 'name' => 'Mock Default', 'cost' => 'FREE', 'supports_tools' => false],
         ];
     }
 

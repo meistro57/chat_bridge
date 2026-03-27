@@ -134,9 +134,16 @@ class PersonalAccessTokenTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_providers_models_remains_public(): void
+    public function test_providers_models_requires_session_authentication(): void
     {
         $this->getJson('/api/providers/models?provider=openai')
+            ->assertUnauthorized();
+    }
+
+    public function test_providers_models_is_available_to_authenticated_session_users(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/providers/models?provider=openai')
             ->assertOk();
     }
 }

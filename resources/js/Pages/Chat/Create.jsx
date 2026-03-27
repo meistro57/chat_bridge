@@ -12,6 +12,7 @@ const PROVIDERS = [
     { id: 'deepseek', name: 'DeepSeek' },
     { id: 'ollama', name: 'Ollama (Local)' },
     { id: 'lmstudio', name: 'LM Studio (Local)' },
+    { id: 'mock', name: 'Mock Provider' },
 ];
 
 const FALLBACK_MODELS_BY_PROVIDER = {
@@ -63,6 +64,9 @@ const FALLBACK_MODELS_BY_PROVIDER = {
     ],
     lmstudio: [
         { id: 'local-model', name: 'Local Model', cost: 'FREE (local)' },
+    ],
+    mock: [
+        { id: 'mock-default', name: 'Mock Default', cost: 'FREE', supports_tools: false },
     ],
 };
 
@@ -135,7 +139,12 @@ export default function Create({
             : [],
     }));
 
-    const [configuredProviders, setConfiguredProviders] = useState([]);
+    const [configuredProviders, setConfiguredProviders] = useState(
+        PROVIDERS.map((provider) => ({
+            ...provider,
+            supports_tools: true,
+        }))
+    );
     const [modelsA, setModelsA] = useState([]);
     const [modelsB, setModelsB] = useState([]);
     const [loadingModelsA, setLoadingModelsA] = useState(false);
@@ -158,37 +167,20 @@ export default function Create({
         ? modelsB
         : (data.provider_b ? (fallbackModelsByProvider[baseProviderB] || []) : []);
 
-    const providerSupportsTools = (p) => p.supports_tools !== false;
-    const filteredProviders = mcpEnabled
-        ? configuredProviders.filter(providerSupportsTools)
-        : configuredProviders;
-    const toolFilteredProviderCount = mcpEnabled
-        ? configuredProviders.filter((p) => !providerSupportsTools(p)).length
-        : 0;
-
-    const modelSupportsTools = (model) => model.supports_tools !== false;
+    const filteredProviders = configuredProviders;
+    const toolFilteredProviderCount = 0;
 
     const filteredModelsA = useMemo(() => {
-        return visibleModelsA
-            .filter((model) => !mcpEnabled || modelSupportsTools(model))
-            .filter((model) => modelMatchesQuery(model, modelFilterA));
-    }, [visibleModelsA, modelFilterA, mcpEnabled]);
+        return visibleModelsA.filter((model) => modelMatchesQuery(model, modelFilterA));
+    }, [visibleModelsA, modelFilterA]);
 
     const filteredModelsB = useMemo(() => {
-        return visibleModelsB
-            .filter((model) => !mcpEnabled || modelSupportsTools(model))
-            .filter((model) => modelMatchesQuery(model, modelFilterB));
-    }, [visibleModelsB, modelFilterB, mcpEnabled]);
+        return visibleModelsB.filter((model) => modelMatchesQuery(model, modelFilterB));
+    }, [visibleModelsB, modelFilterB]);
 
-    const toolFilteredCountA = useMemo(() => {
-        if (!mcpEnabled) return 0;
-        return visibleModelsA.filter((model) => !modelSupportsTools(model)).length;
-    }, [visibleModelsA, mcpEnabled]);
+    const toolFilteredCountA = 0;
 
-    const toolFilteredCountB = useMemo(() => {
-        if (!mcpEnabled) return 0;
-        return visibleModelsB.filter((model) => !modelSupportsTools(model)).length;
-    }, [visibleModelsB, mcpEnabled]);
+    const toolFilteredCountB = 0;
 
     const templateForm = useForm({
         name: '',

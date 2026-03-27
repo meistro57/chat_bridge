@@ -135,6 +135,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/transmission', [\App\Http\Controllers\TransmissionController::class, 'index'])->name('transmission.index');
     Route::post('/transmission', [\App\Http\Controllers\TransmissionController::class, 'store'])->name('transmission.store');
 
+    // Provider API routes (need session auth to resolve user's API keys)
+    Route::prefix('api')->group(function () {
+        Route::get('/providers/models', [\App\Http\Controllers\Api\ProviderController::class, 'getModels']);
+        Route::get('/providers/configured', [\App\Http\Controllers\Api\ProviderController::class, 'getConfiguredProviders']);
+    });
+
     // Orchestrator routes
     Route::prefix('orchestrator')->name('orchestrator.')->group(function () {
         Route::get('/', [\App\Http\Controllers\OrchestratorController::class, 'index'])->name('index');

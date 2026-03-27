@@ -1161,6 +1161,13 @@ Chat Bridge supports multiple AI providers through the Neuron AI package:
 
 - **OpenAI**: GPT-4, GPT-3.5, etc.
 - **Anthropic**: Claude 3.5 Sonnet, Claude 3 Opus, etc.
+- **Gemini**: Google Gemini models
+- **OpenRouter**: Aggregated multi-model access
+- **DeepSeek**: Chat and reasoning models
+- **Bedrock**: AWS-hosted foundation models
+- **Ollama**: Local models over Ollama
+- **LM Studio**: Local OpenAI-compatible models
+- **Mock**: Built-in no-key testing provider
 - **Custom**: Extend with additional providers
 
 Add API keys via the web interface (`/api-keys`) for secure encrypted storage.

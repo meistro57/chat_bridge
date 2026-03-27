@@ -68,6 +68,4 @@ Route::prefix('admin/mcp-utilities')->middleware([EnsureSanctumToken::class, 'ad
     Route::get('/traffic', [McpUtilitiesController::class, 'traffic']);
 });
 
-// Provider API routes (no auth required — used by the Create Conversation UI)
-Route::get('/providers/models', [\App\Http\Controllers\Api\ProviderController::class, 'getModels']);
-Route::get('/providers/configured', [\App\Http\Controllers\Api\ProviderController::class, 'getConfiguredProviders']);
+// Provider routes moved to routes/web.php (need session auth for user API key lookup)
