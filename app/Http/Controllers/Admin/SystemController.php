@@ -11,8 +11,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -233,7 +233,7 @@ class SystemController extends Controller
             ], 422);
         }
 
-        $model = (string) config('services.openrouter.embedding_model', 'openai/text-embedding-3-small');
+        $model = (string) config('services.openrouter.embedding_model', 'google/gemini-embedding-2');
 
         try {
             $response = \Illuminate\Support\Facades\Http::withHeaders(array_filter([
