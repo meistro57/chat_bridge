@@ -55,6 +55,7 @@ return [
         'model' => env('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
         'app_name' => env('OPENROUTER_APP_NAME', 'Chat Bridge'),
         'referer' => env('OPENROUTER_REFERER', 'https://github.com/meistro57/chat_bridge'),
+        'embedding_model' => env('OPENROUTER_EMBEDDING_MODEL', 'google/gemini-embedding-2'),
     ],
 
     'gemini' => [
