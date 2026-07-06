@@ -276,6 +276,13 @@ export default function System({ systemInfo }) {
         { id: 'view_logs', label: 'View Logs', icon: '📋', color: 'orange' },
     ];
 
+    const monitoringDashboards = [
+        { href: '/horizon', icon: '🔭', label: 'Horizon' },
+        { href: '/telescope', icon: '🔬', label: 'Telescope' },
+        { href: '/pulse', icon: '💓', label: 'Pulse' },
+        { href: 'http://localhost:6333/dashboard', icon: '🧠', label: 'Qdrant' },
+    ];
+
     const handleActionSelect = (actionId) => {
         const action = codexActions.find(a => a.id === actionId);
         if (action) {
@@ -403,30 +410,17 @@ export default function System({ systemInfo }) {
                         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
                         <h3 className="relative text-lg font-bold text-zinc-100 mb-4">Monitoring Dashboards</h3>
                         <div className="relative flex flex-wrap gap-3">
-                            <a
-                                href="/horizon"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
-                            >
-                                <span>🔭</span> Horizon
-                            </a>
-                            <a
-                                href="/telescope"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
-                            >
-                                <span>🔬</span> Telescope
-                            </a>
-                            <a
-                                href="/pulse"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
-                            >
-                                <span>💓</span> Pulse
-                            </a>
+                            {monitoringDashboards.map((dashboard) => (
+                                <a
+                                    key={dashboard.label}
+                                    href={dashboard.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.08] text-sm font-medium text-zinc-200 hover:bg-zinc-700 hover:border-violet-500/40 transition-all duration-200"
+                                >
+                                    <span>{dashboard.icon}</span> {dashboard.label}
+                                </a>
+                            ))}
                         </div>
                     </div>
 
