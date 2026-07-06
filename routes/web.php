@@ -67,6 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/database/restore', [DatabaseController::class, 'restoreRun'])->name('database.restore.run');
         Route::get('/database/backups/{filename}/download', [DatabaseController::class, 'download'])->name('database.backups.download');
         Route::delete('/database/backups', [DatabaseController::class, 'delete'])->name('database.backups.delete');
+        Route::delete('/database/chats', [DatabaseController::class, 'clearChats'])->name('database.chats.clear');
         Route::get('/boost', [BoostDashboardController::class, 'index'])->name('boost.dashboard');
         Route::get('/boost/stats', [BoostDashboardController::class, 'stats'])->name('boost.stats');
         Route::get('/redis', [RedisDashboardController::class, 'index'])->name('redis.index');

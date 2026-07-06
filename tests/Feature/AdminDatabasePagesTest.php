@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Conversation;
+use App\Models\Message;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -124,6 +126,56 @@ class AdminDatabasePagesTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('content-disposition');
+    }
+
+    public function test_admin_can_clear_all_chats(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $conversation = Conversation::factory()->create();
+        Message::factory()->count(3)->create([
+            'conversation_id' => $conversation->id,
+        ]);
+
+        $response = $this->actingAs($admin)->delete(route('admin.database.chats.clear'), [
+            'confirmation' => 'DELETE ALL CHATS',
+        ]);
+
+        $response->assertRedirect(route('admin.database.backup'));
+        $response->assertSessionHas('success');
+        $this->assertSame(0, Conversation::query()->count());
+        $this->assertSame(0, Message::query()->count());
+    }
+
+    public function test_clearing_chats_requires_exact_confirmation_phrase(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $conversation = Conversation::factory()->create();
+
+        $response = $this->actingAs($admin)->delete(route('admin.database.chats.clear'), [
+            'confirmation' => 'nope',
+        ]);
+
+        $response->assertSessionHasErrors('confirmation');
+        $this->assertSame(1, Conversation::query()->count());
+    }
+
+    public function test_non_admin_cannot_clear_all_chats(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'user',
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('admin.database.chats.clear'), [
+                'confirmation' => 'DELETE ALL CHATS',
+            ])
+            ->assertForbidden();
     }
 
     public function test_non_admin_cannot_view_database_pages(): void

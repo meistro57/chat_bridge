@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ClearChatsRequest;
 use App\Http\Requests\DeleteBackupRequest;
 use App\Http\Requests\RestoreBackupRequest;
+use App\Models\Conversation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -19,6 +21,7 @@ class DatabaseController extends Controller
     {
         return Inertia::render('Admin/Database/Backup', [
             'backups' => $this->listBackups(),
+            'conversationsCount' => Conversation::query()->count(),
         ]);
     }
 
@@ -76,6 +79,17 @@ class DatabaseController extends Controller
         return redirect()
             ->route('admin.database.backup')
             ->with('success', "Backup created: {$filename}");
+    }
+
+    public function clearChats(ClearChatsRequest $request): RedirectResponse
+    {
+        $count = Conversation::query()->count();
+
+        Conversation::query()->delete();
+
+        return redirect()
+            ->route('admin.database.backup')
+            ->with('success', "Cleared {$count} conversation(s) and all associated messages.");
     }
 
     public function restore(): Response

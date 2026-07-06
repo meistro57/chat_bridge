@@ -1,8 +1,51 @@
+import DangerButton from '@/Components/DangerButton';
+import InputError from '@/Components/InputError';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
+import TextInput from '@/Components/TextInput';
 import { GlassCard } from '@/Components/ui/GlassCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
-export default function Backup({ backups = [] }) {
+const CLEAR_CHATS_CONFIRMATION_PHRASE = 'DELETE ALL CHATS';
+
+export default function Backup({ backups = [], conversationsCount = 0 }) {
+    const [confirmingClearChats, setConfirmingClearChats] = useState(false);
+
+    const {
+        data,
+        setData,
+        delete: destroy,
+        processing,
+        reset,
+        errors,
+        clearErrors,
+    } = useForm({
+        confirmation: '',
+    });
+
+    const confirmClearChats = () => {
+        setConfirmingClearChats(true);
+    };
+
+    const closeClearChatsModal = () => {
+        setConfirmingClearChats(false);
+
+        clearErrors();
+        reset();
+    };
+
+    const clearChats = (e) => {
+        e.preventDefault();
+
+        destroy(route('admin.database.chats.clear'), {
+            preserveScroll: true,
+            onSuccess: () => closeClearChatsModal(),
+            onFinish: () => reset(),
+        });
+    };
+
     return (
         <AuthenticatedLayout>
             <Head title="Database Backup" />
@@ -115,8 +158,87 @@ export default function Backup({ backups = [] }) {
                             </li>
                         </ul>
                     </GlassCard>
+
+                    <GlassCard accent="red" className="space-y-4">
+                        <h2 className="text-lg font-semibold text-zinc-100">
+                            Danger Zone
+                        </h2>
+                        <p className="text-sm text-zinc-400">
+                            Permanently delete all conversations and messages
+                            from the database (
+                            {conversationsCount}{' '}
+                            {conversationsCount === 1
+                                ? 'conversation'
+                                : 'conversations'}{' '}
+                            currently stored). This cannot be undone. Take a
+                            backup first if you may need this data later.
+                        </p>
+                        <DangerButton onClick={confirmClearChats}>
+                            Clear All Chats
+                        </DangerButton>
+                    </GlassCard>
                 </div>
             </div>
+
+            <Modal show={confirmingClearChats} onClose={closeClearChatsModal}>
+                <form onSubmit={clearChats} className="p-6">
+                    <h2 className="text-lg font-medium text-zinc-100">
+                        Are you sure you want to clear all chats?
+                    </h2>
+
+                    <p className="mt-1 text-sm text-zinc-400">
+                        This will permanently delete all{' '}
+                        {conversationsCount}{' '}
+                        {conversationsCount === 1
+                            ? 'conversation'
+                            : 'conversations'}{' '}
+                        and their messages. This action cannot be undone.
+                        Type{' '}
+                        <span className="font-mono text-zinc-200">
+                            {CLEAR_CHATS_CONFIRMATION_PHRASE}
+                        </span>{' '}
+                        below to confirm.
+                    </p>
+
+                    <div className="mt-6">
+                        <TextInput
+                            id="confirmation"
+                            type="text"
+                            name="confirmation"
+                            value={data.confirmation}
+                            onChange={(e) =>
+                                setData('confirmation', e.target.value)
+                            }
+                            className="mt-1 block w-full"
+                            isFocused
+                            placeholder={CLEAR_CHATS_CONFIRMATION_PHRASE}
+                            autoComplete="off"
+                        />
+
+                        <InputError
+                            message={errors.confirmation}
+                            className="mt-2"
+                        />
+                    </div>
+
+                    <div className="mt-6 flex justify-end">
+                        <SecondaryButton onClick={closeClearChatsModal}>
+                            Cancel
+                        </SecondaryButton>
+
+                        <DangerButton
+                            className="ms-3"
+                            disabled={
+                                processing ||
+                                data.confirmation !==
+                                    CLEAR_CHATS_CONFIRMATION_PHRASE
+                            }
+                        >
+                            Clear All Chats
+                        </DangerButton>
+                    </div>
+                </form>
+            </Modal>
         </AuthenticatedLayout>
     );
 }

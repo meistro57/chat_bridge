@@ -35,7 +35,7 @@ abstract class TestCase extends BaseTestCase
 
     private function forceTestingEnvironment(): void
     {
-        foreach ($this->testingEnvironmentVariables() as $key => $value) {
+        foreach ($this->environmentOverrides() as $key => $value) {
             putenv("{$key}={$value}");
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
@@ -45,7 +45,7 @@ abstract class TestCase extends BaseTestCase
     /**
      * @return array<string, string>
      */
-    private function testingEnvironmentVariables(): array
+    private function environmentOverrides(): array
     {
         return [
             'APP_ENV' => 'testing',
@@ -64,6 +64,11 @@ abstract class TestCase extends BaseTestCase
             'QUEUE_CONNECTION' => 'sync',
             'SESSION_DRIVER' => 'array',
             'TELESCOPE_ENABLED' => 'false',
+            'OPENAI_API_KEY' => '',
+            'OPENROUTER_API_KEY' => '',
+            'ANTHROPIC_API_KEY' => '',
+            'DEEPSEEK_API_KEY' => '',
+            'GEMINI_API_KEY' => '',
         ];
     }
 }
