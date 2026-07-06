@@ -17,7 +17,6 @@ use App\Services\AI\TranscriptService;
 use App\Services\ConversationService;
 use App\Services\RagService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
@@ -145,7 +144,9 @@ class PersonaGuidelinesNormalizationTest extends TestCase
             'metadata' => ['rag' => ['enabled' => false]],
         ]);
 
-        $driver = $this->mockDriver((function () { yield 'hello'; })());
+        $driver = $this->mockDriver((function () {
+            yield 'hello';
+        })());
         $service = $this->makeConversationService($this->mockManager($driver));
 
         $history = collect([new MessageData('user', 'Hello')]);
@@ -171,7 +172,9 @@ class PersonaGuidelinesNormalizationTest extends TestCase
             'metadata' => ['rag' => ['enabled' => false]],
         ]);
 
-        $driver = $this->mockDriver((function () { yield 'hello'; })());
+        $driver = $this->mockDriver((function () {
+            yield 'hello';
+        })());
         $service = $this->makeConversationService($this->mockManager($driver));
 
         $history = collect([new MessageData('user', 'Hello')]);
@@ -193,7 +196,9 @@ class PersonaGuidelinesNormalizationTest extends TestCase
             'metadata' => ['rag' => ['enabled' => false]],
         ]);
 
-        $driver = $this->mockDriver((function () { yield 'hello'; })());
+        $driver = $this->mockDriver((function () {
+            yield 'hello';
+        })());
         $service = $this->makeConversationService($this->mockManager($driver));
 
         $history = collect([new MessageData('user', 'Hello')]);
@@ -225,7 +230,9 @@ class PersonaGuidelinesNormalizationTest extends TestCase
             ],
         ]);
 
-        $driver = $this->mockDriver((function () { yield 'hello'; })());
+        $driver = $this->mockDriver((function () {
+            yield 'hello';
+        })());
         $service = $this->makeConversationService($this->mockManager($driver));
 
         $history = collect([new MessageData('user', 'Hello')]);
@@ -252,7 +259,9 @@ class PersonaGuidelinesNormalizationTest extends TestCase
             ],
         ]);
 
-        $driver = $this->mockDriver((function () { yield 'hello'; })());
+        $driver = $this->mockDriver((function () {
+            yield 'hello';
+        })());
         $service = $this->makeConversationService($this->mockManager($driver));
 
         $history = collect([new MessageData('user', 'Hello')]);

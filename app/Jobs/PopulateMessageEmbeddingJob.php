@@ -12,9 +12,7 @@ class PopulateMessageEmbeddingJob implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public int $messageId)
-    {
-    }
+    public function __construct(public int $messageId) {}
 
     public function handle(EmbeddingService $embeddingService, MessageEmbeddingPopulator $populator): void
     {

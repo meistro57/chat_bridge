@@ -302,6 +302,7 @@ class OpenAIDriver implements AIDriverInterface
                     }
                     if ($exception instanceof RequestException) {
                         $status = $exception->response->status();
+
                         // Retry on 429 (rate limit) and 5xx (server errors); never on 4xx client errors.
                         return $status === 429 || $status >= 500;
                     }

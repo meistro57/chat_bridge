@@ -250,7 +250,7 @@ class AdminMcpUtilitiesTest extends TestCase
 
         $message = Message::factory()->create([
             'embedding' => null,
-            'content' => "   ",
+            'content' => '   ',
             'embedding_attempts' => 0,
         ]);
 

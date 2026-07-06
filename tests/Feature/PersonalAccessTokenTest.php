@@ -76,7 +76,7 @@ class PersonalAccessTokenTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('test');
 
-        $this->withHeaders(['Authorization' => 'Bearer ' . $token->plainTextToken])
+        $this->withHeaders(['Authorization' => 'Bearer '.$token->plainTextToken])
             ->postJson('/api/chat-bridge/respond', [])
             ->assertStatus(422); // passes auth, fails validation
     }
@@ -110,7 +110,7 @@ class PersonalAccessTokenTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('test');
 
-        $this->withHeaders(['Authorization' => 'Bearer ' . $token->plainTextToken])
+        $this->withHeaders(['Authorization' => 'Bearer '.$token->plainTextToken])
             ->getJson('/api/mcp/health')
             ->assertOk();
     }
@@ -120,7 +120,7 @@ class PersonalAccessTokenTest extends TestCase
         $user = User::factory()->create();
         $token = $user->createToken('test-contextual-memory-alias');
 
-        $this->withHeaders(['Authorization' => 'Bearer ' . $token->plainTextToken])
+        $this->withHeaders(['Authorization' => 'Bearer '.$token->plainTextToken])
             ->getJson('/api/mcp/contextual_memory?topic=queues&limit=5')
             ->assertOk();
     }

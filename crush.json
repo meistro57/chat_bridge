@@ -2,7 +2,12 @@
   "mcpServers": {
     "chat-bridge": {
       "type": "http",
-      "url": "http://localhost:8000/api/mcp"
+      "url": "http://localhost:18080/api/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_PERSONAL_ACCESS_TOKEN",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+      }
     }
   }
 }
