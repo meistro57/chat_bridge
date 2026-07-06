@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Orchestration;
 use App\Models\OrchestratorRun;
 use App\Models\OrchestratorStep;
+use App\Models\OrchestratorStepRun;
 use App\Models\Persona;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,6 +197,40 @@ class OrchestratorControllerTest extends TestCase
         $this->actingAs($user)
             ->post(route('orchestrator.resume', $run->id))
             ->assertForbidden();
+    }
+
+    public function test_resume_job_dispatches_from_approved_paused_step(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create();
+        $orchestration = Orchestration::factory()->create(['user_id' => $user->id]);
+        $run = OrchestratorRun::factory()->create([
+            'orchestration_id' => $orchestration->id,
+            'user_id' => $user->id,
+            'status' => 'paused',
+        ]);
+        $step = OrchestratorStep::factory()->create([
+            'orchestration_id' => $orchestration->id,
+            'step_number' => 2,
+            'pause_before_run' => true,
+        ]);
+        $stepRun = OrchestratorStepRun::factory()->create([
+            'run_id' => $run->id,
+            'step_id' => $step->id,
+            'status' => 'paused',
+        ]);
+
+        (new \App\Jobs\ResumeOrchestratorRun($run->id))->handle();
+
+        $this->assertDatabaseHas('orchestrator_step_runs', [
+            'id' => $stepRun->id,
+            'status' => 'approved',
+        ]);
+
+        Queue::assertPushed(\App\Jobs\RunOrchestration::class, fn ($job) => $job->runId === $run->id
+            && $job->startFromStep === 2
+            && $job->approvedStepId === $step->id);
     }
 
     public function test_wizard_page_loads(): void

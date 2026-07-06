@@ -2,7 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Models\OrchestratorRun;
+use App\Models\OrchestratorStep;
 use App\Services\Orchestrator\OrchestratorService;
+use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
 
 class OrchestratorServiceTest extends TestCase
@@ -12,7 +15,7 @@ class OrchestratorServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new OrchestratorService();
+        $this->service = new OrchestratorService;
     }
 
     public function test_evaluate_condition_returns_true_when_null(): void
@@ -73,5 +76,33 @@ class OrchestratorServiceTest extends TestCase
     public function test_evaluate_condition_with_null_previous_output(): void
     {
         $this->assertFalse($this->service->evaluateCondition(['contains' => 'approved'], null));
+    }
+
+    public function test_evaluate_condition_invalid_regex_returns_false(): void
+    {
+        $this->assertFalse($this->service->evaluateCondition(['regex' => '['], 'Request was approved.'));
+    }
+
+    public function test_resolve_step_input_serializes_array_variables(): void
+    {
+        $step = new OrchestratorStep([
+            'input_source' => 'variable',
+            'input_variable_name' => 'research.findings',
+        ]);
+
+        $run = new OrchestratorRun([
+            'variables' => [
+                'research' => [
+                    'findings' => ['approved' => true],
+                ],
+            ],
+        ]);
+
+        $this->assertSame('{"approved":true}', $this->service->resolveStepInput($step, $run));
+    }
+
+    public function test_compute_next_run_at_returns_carbon_instance(): void
+    {
+        $this->assertInstanceOf(Carbon::class, $this->service->computeNextRunAt('* * * * *', 'UTC'));
     }
 }

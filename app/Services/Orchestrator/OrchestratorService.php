@@ -6,8 +6,10 @@ use App\Models\Conversation;
 use App\Models\OrchestratorRun;
 use App\Models\OrchestratorStep;
 use Carbon\Carbon;
+use Cron\CronExpression;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class OrchestratorService
 {
@@ -49,7 +51,7 @@ class OrchestratorService
         }
 
         if (isset($condition['regex'])) {
-            return (bool) preg_match('/' . $condition['regex'] . '/i', $output);
+            return $this->matchesRegex((string) $condition['regex'], $output);
         }
 
         return true;
@@ -60,8 +62,10 @@ class OrchestratorService
      */
     public function computeNextRunAt(string $cronExpression, string $timezone): Carbon
     {
-        return \Cron\CronExpression::factory($cronExpression)
+        $nextRunDate = CronExpression::factory($cronExpression)
             ->getNextRunDate('now', 0, false, $timezone);
+
+        return Carbon::instance($nextRunDate);
     }
 
     /**
@@ -104,7 +108,34 @@ class OrchestratorService
      */
     protected function resolveVariable(string $key, array $variables): string
     {
-        return data_get($variables, $key, '') ?? '';
+        $value = data_get($variables, $key, '');
+
+        if ($value === null) {
+            return '';
+        }
+
+        if (is_scalar($value) || $value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        return json_encode($value, JSON_THROW_ON_ERROR);
+    }
+
+    protected function matchesRegex(string $pattern, string $output): bool
+    {
+        $delimiter = '~';
+        $escapedPattern = str_replace($delimiter, '\\'.$delimiter, $pattern);
+
+        try {
+            return preg_match($delimiter.$escapedPattern.$delimiter.'i', $output) === 1;
+        } catch (\Throwable $e) {
+            Log::warning('Orchestrator condition regex failed', [
+                'regex' => Str::limit($pattern, 200),
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     protected function postToWebhook(string $url, string $output, OrchestratorStep $step, OrchestratorRun $run): void

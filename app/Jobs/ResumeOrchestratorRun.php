@@ -40,9 +40,9 @@ class ResumeOrchestratorRun implements ShouldQueue
         /** @var OrchestratorStep $pausedStep */
         $pausedStep = $pausedStepRun->step;
 
-        $pausedStepRun->update(['status' => 'skipped']);
+        $pausedStepRun->update(['status' => 'approved']);
         $run->update(['status' => 'queued']);
 
-        RunOrchestration::dispatch($run->id, $pausedStep->step_number);
+        RunOrchestration::dispatch($run->id, $pausedStep->step_number, $pausedStep->id);
     }
 }
