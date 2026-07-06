@@ -24,14 +24,13 @@ class RunOrchestration implements ShouldQueue
 
     /**
      * The number of seconds the job can run before timing out.
-     *
-     * @var int
      */
     public int $timeout = 3600;
 
     public function __construct(
         public string $runId,
-        public int $startFromStep = 1
+        public int $startFromStep = 1,
+        public ?string $approvedStepId = null
     ) {}
 
     public function handle(OrchestratorService $service): void
@@ -92,7 +91,6 @@ class RunOrchestration implements ShouldQueue
 
         foreach ($steps as $step) {
             /** @var OrchestratorStep $step */
-
             $conditionPassed = $service->evaluateCondition($step->condition, $previousOutput);
 
             $stepRun = OrchestratorStepRun::create([
@@ -104,10 +102,11 @@ class RunOrchestration implements ShouldQueue
 
             if (! $conditionPassed) {
                 $stepRun->update(['status' => 'skipped']);
+
                 continue;
             }
 
-            if ($step->pause_before_run) {
+            if ($step->pause_before_run && $step->id !== $this->approvedStepId) {
                 $stepRun->update(['status' => 'paused']);
                 $run->update(['status' => 'paused']);
                 $stepRun->load('run.orchestration');
