@@ -160,7 +160,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'We deployed using Docker Compose on the production server.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.92;
 
@@ -209,7 +209,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'We can use model-specific settings for this answer.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.91;
 
@@ -314,7 +314,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'Some transcript content here.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.85;
 
@@ -366,7 +366,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'We used queue workers for throughput improvements.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.89;
 
@@ -432,7 +432,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'Auth fallback should still answer.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.89;
 
@@ -487,7 +487,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'We migrated workloads in phases.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.9;
 
@@ -531,7 +531,7 @@ class TranscriptChatControllerTest extends TestCase
             'persona_id' => $persona->id,
             'role' => 'assistant',
             'content' => 'Some transcript content.',
-            'embedding' => array_fill(0, 1536, 0.1),
+            'embedding' => array_fill(0, 3072, 0.1),
         ]);
         $message->similarity_score = 0.88;
 

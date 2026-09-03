@@ -6,6 +6,7 @@ use App\Models\Message;
 use App\Services\AI\EmbeddingService;
 use App\Services\Qdrant\QdrantConnector;
 use App\Services\Qdrant\Requests\CreateCollectionRequest;
+use App\Services\Qdrant\Requests\DeleteCollectionRequest;
 use App\Services\Qdrant\Requests\GetCollectionRequest;
 use App\Services\Qdrant\Requests\SearchPointsRequest;
 use App\Services\Qdrant\Requests\UpsertPointsRequest;
@@ -18,7 +19,7 @@ class RagService
 
     protected string $collectionName = 'chat_messages';
 
-    protected int $vectorSize = 1536;
+    protected int $vectorSize = 3072;
 
     public function __construct(protected EmbeddingService $embeddingService)
     {
@@ -34,19 +35,39 @@ class RagService
     public function initializeCollection(): bool
     {
         try {
-            // Check if collection exists
             $response = $this->qdrant->send(new GetCollectionRequest($this->collectionName));
 
             if ($response->successful()) {
-                Log::info('Qdrant collection already exists', ['collection' => $this->collectionName]);
+                $configuredDimensions = $this->extractCollectionVectorSize($response->json());
 
-                return true;
+                if ($configuredDimensions === $this->vectorSize) {
+                    Log::info('Qdrant collection already exists', ['collection' => $this->collectionName]);
+
+                    return true;
+                }
+
+                Log::warning('Qdrant collection dimension mismatch detected, recreating collection', [
+                    'collection' => $this->collectionName,
+                    'expected_dimensions' => $this->vectorSize,
+                    'configured_dimensions' => $configuredDimensions,
+                ]);
+
+                if (! $this->deleteCollection()) {
+                    return false;
+                }
             }
-        } catch (\Exception $e) {
-            // Collection doesn't exist, create it
-            Log::info('Creating Qdrant collection', ['collection' => $this->collectionName]);
+        } catch (\Throwable $exception) {
+            Log::info('Creating Qdrant collection', [
+                'collection' => $this->collectionName,
+                'reason' => $exception->getMessage(),
+            ]);
         }
 
+        return $this->createCollection();
+    }
+
+    private function createCollection(): bool
+    {
         try {
             $response = $this->qdrant->send(
                 new CreateCollectionRequest(
@@ -68,14 +89,67 @@ class RagService
             ]);
 
             return false;
-        } catch (\Exception $e) {
+        } catch (\Throwable $exception) {
             Log::error('Exception creating Qdrant collection', [
                 'collection' => $this->collectionName,
-                'error' => $e->getMessage(),
+                'error' => $exception->getMessage(),
             ]);
 
             return false;
         }
+    }
+
+    private function deleteCollection(): bool
+    {
+        try {
+            $response = $this->qdrant->send(new DeleteCollectionRequest($this->collectionName));
+
+            if ($response->successful()) {
+                Log::info('Qdrant collection deleted successfully', ['collection' => $this->collectionName]);
+
+                return true;
+            }
+
+            Log::error('Failed to delete Qdrant collection', [
+                'collection' => $this->collectionName,
+                'response' => $response->body(),
+            ]);
+
+            return false;
+        } catch (\Throwable $exception) {
+            Log::error('Exception deleting Qdrant collection', [
+                'collection' => $this->collectionName,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function extractCollectionVectorSize(array $payload): ?int
+    {
+        $vectorConfig = data_get($payload, 'result.config.params.vectors');
+
+        if (is_array($vectorConfig)) {
+            if (isset($vectorConfig['size']) && is_numeric($vectorConfig['size'])) {
+                return (int) $vectorConfig['size'];
+            }
+
+            $firstVectorConfig = reset($vectorConfig);
+            if (is_array($firstVectorConfig) && isset($firstVectorConfig['size']) && is_numeric($firstVectorConfig['size'])) {
+                return (int) $firstVectorConfig['size'];
+            }
+        }
+
+        return null;
+    }
+
+    private function isVectorDimensionMismatchResponse(string $responseBody): bool
+    {
+        return str_contains(strtolower($responseBody), 'vector dimension error');
     }
 
     /**
@@ -116,6 +190,16 @@ class RagService
             $response = $this->qdrant->send(
                 new UpsertPointsRequest($this->collectionName, [$point])
             );
+
+            if (! $response->successful() && $this->isVectorDimensionMismatchResponse($response->body())) {
+                if (! $this->initializeCollection()) {
+                    return false;
+                }
+
+                $response = $this->qdrant->send(
+                    new UpsertPointsRequest($this->collectionName, [$point])
+                );
+            }
 
             if ($response->successful()) {
                 Log::info('Message stored in Qdrant', ['message_id' => $message->id]);
@@ -268,9 +352,23 @@ class RagService
             );
 
             if (! $response->successful()) {
-                Log::error('Failed to search Qdrant', ['response' => $response->body()]);
+                if ($this->isVectorDimensionMismatchResponse($response->body()) && $this->initializeCollection()) {
+                    $response = $this->qdrant->send(
+                        new SearchPointsRequest(
+                            collectionName: $this->collectionName,
+                            vector: $queryEmbedding,
+                            limit: $limit,
+                            filter: $qdrantFilter,
+                            scoreThreshold: $scoreThreshold
+                        )
+                    );
+                }
 
-                return null;
+                if (! $response->successful()) {
+                    Log::error('Failed to search Qdrant', ['response' => $response->body()]);
+
+                    return null;
+                }
             }
 
             $results = $response->json('result', []);

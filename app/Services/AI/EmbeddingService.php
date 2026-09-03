@@ -12,6 +12,8 @@ class EmbeddingService
 
     protected string $openRouterBaseUrl = 'https://openrouter.ai/api/v1';
 
+    protected int $vectorSize = 3072;
+
     /**
      * Generate embedding using OpenRouter first, falling back to OpenAI when unavailable.
      */
@@ -56,13 +58,13 @@ class EmbeddingService
             return $this->getOpenAiEmbedding($openAiKey, $text);
         }
 
-        return array_fill(0, 1536, 0.0);
+        return array_fill(0, $this->vectorSize, 0.0);
     }
 
     private function getOpenAiEmbedding(string $apiKey, string $text): array
     {
         $response = Http::withToken($apiKey)
-            ->post("{$this->openAiBaseUrl}/embeddings", $this->embeddingPayload('text-embedding-3-small', $text));
+            ->post("{$this->openAiBaseUrl}/embeddings", $this->embeddingPayload('text-embedding-3-large', $text));
 
         if ($response->successful()) {
             $embedding = $this->extractEmbedding($response);
@@ -163,6 +165,27 @@ class EmbeddingService
             }
         }
 
-        return array_map(static fn ($value): float => (float) $value, $embedding);
+        return $this->normalizeEmbeddingDimensions(
+            array_map(static fn ($value): float => (float) $value, $embedding)
+        );
+    }
+
+    /**
+     * @param  array<int, float>  $embedding
+     * @return array<int, float>
+     */
+    private function normalizeEmbeddingDimensions(array $embedding): array
+    {
+        $currentDimensions = count($embedding);
+
+        if ($currentDimensions === $this->vectorSize) {
+            return $embedding;
+        }
+
+        if ($currentDimensions > $this->vectorSize) {
+            return array_slice($embedding, 0, $this->vectorSize);
+        }
+
+        return array_pad($embedding, $this->vectorSize, 0.0);
     }
 }

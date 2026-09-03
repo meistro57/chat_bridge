@@ -81,7 +81,7 @@ User: [Current message]
                          ▼
                   ┌──────────────┐
                   │   Vector     │
-                  │ [1536 dims]  │
+                  │ [3072 dims]  │
                   └──────┬───────┘
                          │
        ┌─────────────────┼─────────────────┐
@@ -132,13 +132,17 @@ QDRANT_ENABLED=false
 
 ### Embedding Provider
 
-Currently uses OpenAI embeddings. Configure in `.env`:
+Uses OpenRouter embeddings first, with OpenAI fallback. Configure in `.env`:
 
 ```env
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_EMBEDDING_MODEL=google/gemini-embedding-2
+
+# Optional fallback
 OPENAI_API_KEY=sk-...
 ```
 
-The embedding model used is `text-embedding-3-small` (1536 dimensions).
+Fallback embedding model: `text-embedding-3-large` (3072 dimensions).
 
 ### Search Parameters
 
@@ -256,7 +260,7 @@ php artisan embeddings:generate --limit=100
 
 - **Speed**: 1-5ms for 10K messages, 10-50ms for 1M messages
 - **Scalability**: Qdrant handles millions of vectors efficiently
-- **Memory**: ~6KB per message (1536 dims × 4 bytes)
+- **Memory**: ~12KB per message (3072 dims × 4 bytes)
 
 ### Optimization Tips
 
@@ -337,6 +341,16 @@ php artisan config:clear
 echo $QDRANT_HOST
 echo $QDRANT_PORT
 ```
+
+### Vector Dimension Mismatch
+
+**Problem**: Qdrant returns `Vector dimension error: expected dim: 1536, got 3072`
+
+**Solution**:
+1. **Recreate collection**: Run `php artisan qdrant:init` once to align collection size
+2. **Resync data**: Run `php artisan qdrant:init --sync` to repopulate vectors
+3. **Verify model**: Confirm embedding output is 3072 dimensions
+4. **Note**: Runtime writes/searches now auto-detect this mismatch and recreate the collection
 
 ### No Context Retrieved
 

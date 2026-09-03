@@ -17,8 +17,8 @@ class EmbeddingServiceTest extends TestCase
         $service = new EmbeddingService;
         $embedding = $service->getEmbedding('hello world');
 
-        $this->assertCount(1536, $embedding);
-        $this->assertSame(array_fill(0, 1536, 0.0), $embedding);
+        $this->assertCount(3072, $embedding);
+        $this->assertSame(array_fill(0, 3072, 0.0), $embedding);
     }
 
     public function test_it_uses_openrouter_gemini_embeddings_when_configured(): void
@@ -38,7 +38,8 @@ class EmbeddingServiceTest extends TestCase
         $service = new EmbeddingService;
         $embedding = $service->getEmbedding('hello world');
 
-        $this->assertSame([0.5, 0.25, 0.125], $embedding);
+        $this->assertCount(3072, $embedding);
+        $this->assertSame([0.5, 0.25, 0.125], array_slice($embedding, 0, 3));
 
         Http::assertSentCount(1);
         Http::assertSent(function ($request): bool {
@@ -64,7 +65,8 @@ class EmbeddingServiceTest extends TestCase
         $service = new EmbeddingService;
         $embedding = $service->getEmbedding('hello world');
 
-        $this->assertSame([1.0], $embedding);
+        $this->assertCount(3072, $embedding);
+        $this->assertSame([1.0], array_slice($embedding, 0, 1));
 
         Http::assertSentCount(2);
     }
